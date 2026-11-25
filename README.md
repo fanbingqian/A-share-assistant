@@ -182,6 +182,37 @@ npm run shortcuts                         # 可选：创建桌面与开始菜单
 
 ---
 
+## 一·E、设置页「智能体连通性检测」怎么看（2026-11-25）
+
+「设置 → 智能体大模型 → 发起连通性检测」会向两条后端各发一次真实最小请求（约 16 token）：
+
+| 显示项 | 含义 |
+|---|---|
+| 官方 Hermes `✓ 在线` / `✗ fetch failed` | 本机 `127.0.0.1:8765` 上的 **官方 Hermes Agent 通道**。它走 WSL2 里的 Hermes CLI，带持久记忆、技能、MCP 工具取证，单次约 20–60 秒 |
+| DeepSeek 兜底 `✓ 在线` | Node 直连 DeepSeek API，快（1–2 秒），但**没有**记忆 / 技能 / 工具取证，只是纯文本生成 |
+| 实际可用路径 | `hermes-official`（优先）或 `deepseek-fallback`（降级） |
+| 总体「连通正常」 | 只要有一条通就正常——**不代表两条都通** |
+
+**`fetch failed` 的确切含义**：Node 的 `fetch()` 连 `127.0.0.1:8765` 时被拒绝（ECONNREFUSED），即那一刻**没有任何进程监听 8765**。最常见原因是 WSL2 Ubuntu 被 Windows 回收成 `Stopped`，WSL 内 `hermes-bridge.service` 随之消失；此时系统按 `backend=auto` 自动降级到 DeepSeek，**所有 AI 解读功能照常可用**，只是少了 Hermes 的记忆与工具能力。不是模型故障，也不是 Key 失效（Key 失效会显示 `HTTP 401` 而不是 `fetch failed`）。
+
+**本机已配置的自愈**（换电脑后不适用，见下方）：
+
+- `hermes-bridge/hermes-bridge-win.js`：Windows 侧监听 `127.0.0.1:8765`，收到请求后用 `wsl.exe` 调官方 Hermes CLI。**WSL 被回收也没关系**——每次调用会按需自动唤醒发行版。
+- `scripts/watchdog.ps1`：同时探活 8777 与 8765；常驻循环每 30 秒、`GlobalMarketMonitor-HealthCheck` 每 5 分钟各兜底一次，掉线自动拉起。
+- 启动文件夹的 `开机自启-Hermes桥接Windows.vbs`：登录时静默唤醒 WSL 并拉起 Windows 侧桥接（纯 ASCII，避免中文编码问题；node 路径带双 fallback）。
+
+手动验证 / 修复：
+
+```powershell
+wsl -l -v                                                    # 看 Ubuntu 是否 Stopped
+curl http://127.0.0.1:8765/health                            # 应返回 200 + hermes-bridge-win
+powershell -ExecutionPolicy Bypass -File scripts/watchdog.ps1 -Once   # 一次性自愈
+```
+
+**换一台电脑时**：发行包不含 WSL / Hermes，也不含上述计划任务，因此检测会稳定显示「官方 Hermes ✗ / DeepSeek 兜底 ✓ / 实际路径 deepseek-fallback」——这是**预期行为**，不是故障。想在新电脑上启用官方 Hermes，需自行安装 WSL2 + Hermes Agent 并部署桥接。
+
+---
+
 ## 二、界面能做什么
 
 | 区域 | 内容 |

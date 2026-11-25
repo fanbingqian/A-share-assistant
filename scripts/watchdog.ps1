@@ -22,6 +22,15 @@ $SvcErr  = Join-Path $LogDir 'service-stderr.log'
 $Health  = 'http://127.0.0.1:8777/api/health'
 $Port    = 8777
 
+# Hermes official channel: Windows-side bridge on 8765 (auto-wakes WSL on demand).
+# When WSL2 Ubuntu is reclaimed (Stopped), the WSL systemd bridge disappears and
+# Node's fetch to 127.0.0.1:8765 returns ECONNREFUSED -> "fetch failed" in the UI.
+$BridgeHealth = 'http://127.0.0.1:8765/health'
+$BridgePort   = 8765
+$BridgeEntry  = Join-Path $Root 'hermes-bridge\hermes-bridge-win.js'
+$BridgeOut    = Join-Path $LogDir 'hermes-bridge-win-stdout.log'
+$BridgeErr    = Join-Path $LogDir 'hermes-bridge-win-stderr.log'
+
 if (-not (Test-Path $Node)) {
   $cmd = Get-Command node -ErrorAction SilentlyContinue
   if ($cmd) { $Node = $cmd.Source } else { $Node = $null }
@@ -72,12 +81,48 @@ function Start-MonitorService {
   }
 }
 
+function Test-BridgeHealth {
+  try {
+    $r = Invoke-WebRequest -Uri $BridgeHealth -Method Get -TimeoutSec $TimeoutSec -UseBasicParsing
+    return ($r.StatusCode -eq 200)
+  } catch { return $false }
+}
+
+function Start-HermesBridge {
+  if (-not $Node -or -not (Test-Path $BridgeEntry)) {
+    Write-Log 'ERROR node.exe or hermes-bridge-win.js missing - cannot start bridge'
+    return $false
+  }
+  $listener = Get-NetTCPConnection -LocalPort $BridgePort -State Listen -ErrorAction SilentlyContinue
+  if ($listener) {
+    Write-Log ('bridge port ' + $BridgePort + ' already has a listener - skip start')
+    return $true
+  }
+  try {
+    $cmdLine = 'cmd.exe /c cd /d "' + $Root + '" && "' + $Node + '" hermes-bridge\hermes-bridge-win.js' +
+      ' > "' + $BridgeOut + '" 2> "' + $BridgeErr + '"'
+    $ws = New-Object -ComObject WScript.Shell
+    $rc = $ws.Run($cmdLine, 0, $false)   # hidden, no wait
+    Write-Log ('started hermes bridge via hidden cmd (rc=' + $rc + ')')
+    return ($rc -eq 0)
+  } catch {
+    Write-Log ('ERROR bridge start failed: ' + $_.Exception.Message)
+    return $false
+  }
+}
+
 if ($Once) {
   if (Test-Health) {
-    Write-Log 'ONCE check: healthy'
+    Write-Log 'ONCE check: service healthy'
   } else {
-    Write-Log 'ONCE check: unhealthy -> starting service'
+    Write-Log 'ONCE check: service unhealthy -> starting service'
     Start-MonitorService | Out-Null
+  }
+  if (Test-BridgeHealth) {
+    Write-Log 'ONCE check: hermes bridge healthy'
+  } else {
+    Write-Log 'ONCE check: hermes bridge down -> starting bridge'
+    Start-HermesBridge | Out-Null
   }
   exit 0
 }
@@ -91,6 +136,11 @@ while ($true) {
     $failStreak++
     Write-Log ('health DOWN (streak ' + $failStreak + ') -> restart attempt')
     Start-MonitorService | Out-Null
+  }
+  # Hermes official channel: keep 8765 alive so the UI never shows "fetch failed"
+  if (-not (Test-BridgeHealth)) {
+    Write-Log 'hermes bridge DOWN -> start attempt'
+    Start-HermesBridge | Out-Null
   }
   # backoff: 30s -> 60s -> 120s -> ... capped at 300s while unhealthy
   $wait = $IntervalSec
