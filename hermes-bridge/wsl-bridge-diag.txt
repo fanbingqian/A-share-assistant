@@ -1,0 +1,21 @@
+=== service 状态 ===
+active
+● hermes-bridge.service - Hermes Bridge (OpenAI-compatible HTTP endpoint on 8765)
+     Loaded: loaded (/home/freddy19871122/.config/systemd/user/hermes-bridge.service; enabled; preset: enabled)
+     Active: active (running) since Sat 2026-11-21 16:13:19 CST; 3s ago
+   Main PID: 274 (python3)
+      Tasks: 1 (limit: 9518)
+     Memory: 10.3M (peak: 10.5M)
+        CPU: 52ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/hermes-bridge.service
+             └─274 /usr/bin/python3 /mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/hermes_bridge.py --host 0.0.0.0 --port 8765
+
+Nov 21 16:13:19 LAPTOP-LR6QMSGC systemd[213]: Started hermes-bridge.service - Hermes Bridge (OpenAI-compatible HTTP endpoint on 8765).
+=== 端口 ===
+LISTEN 0      5             0.0.0.0:8765      0.0.0.0:*    users:(("python3",pid=274,fd=3))
+=== systemd 日志 ===
+[bridge] "GET /health HTTP/1.1" 200 -
+[bridge] "POST /v1/chat/completions HTTP/1.1" 200 -
+=== 进程 ===
+your 131072x1 screen size is bogus. expect trouble
+freddy1+     274  1.7  0.2  28172 20736 ?        Ss   16:13   0:00 /usr/bin/python3 /mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/hermes_bridge.py --host 0.0.0.0 --port 8765

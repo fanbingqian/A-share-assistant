@@ -1,0 +1,11 @@
+=== gateway 进程 ===
+your 131072x1 screen size is bogus. expect trouble
+freddy1+     278 27.0  3.1 549716 255792 ?       Rsl  16:04   0:04 /home/freddy19871122/.hermes/tools/python-3.14.9+20261021-linux-x64/bin/python3 -I -c import sys, runpy; sys.path.insert(0, '/home/freddy19871122/.hermes/hermes-agent'); sys.argv = ['/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py', 'gateway', 'run', '--replace']; sys._hermes_relaunched = True; runpy.run_module('hermes_cli.main', run_name='__main__', alter_sys=True)
+freddy1+     280  0.0  0.1  17028 12288 ?        Ss   16:04   0:00 /usr/bin/python3 /home/freddy19871122/.hermes/port-proxy.py 8644 127.0.0.1 8642
+=== 端口 ===
+LISTEN 0      50            0.0.0.0:8644       0.0.0.0:*    users:(("python3",pid=280,fd=3))
+=== 8642 直连测试 ===
+*   Trying 127.0.0.1:8642...
+* connect to 127.0.0.1 port 8642 from 127.0.0.1 port 46138 failed: Connection refused
+* Failed to connect to 127.0.0.1 port 8642 after 0 ms: Couldn't connect to server
+* Closing connection

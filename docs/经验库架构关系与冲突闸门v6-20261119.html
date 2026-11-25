@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>经验知识库与架构关系、获取渠道与冲突闸门 v6 · 2026-11-19</title>
+<style>
+:root{--ink:#1f2328;--ink2:#4a5158;--ink3:#6b737b;--line:#e2e6ea;--bg:#ffffff;--bg2:#f6f8fa;--blue:#185fa5;--blue-bg:#eaf3fc;--amber:#a8680c;--amber-bg:#fdf5e7;--red:#c0392b;--green:#1b8a5a;--gray-bg:#f1f3f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg2);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.75}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 28px 60px}
+header{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:26px 30px;margin-bottom:20px}
+h1{font-size:24px;font-weight:600;margin:0 0 8px}
+.sub{color:var(--ink3);font-size:13px;margin:0}
+.lead{margin-top:18px;padding:14px 18px;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:6px;font-size:14px}
+.lead b{color:var(--blue)}
+section{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:24px 30px;margin-bottom:18px}
+h2{font-size:18px;font-weight:600;margin:0 0 6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+h3{font-size:15px;font-weight:600;margin:22px 0 8px;color:var(--ink)}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--bg2);font-weight:600;color:var(--ink2)}
+tr:nth-child(even) td{background:#fcfdfe}
+code{background:var(--gray-bg);padding:1px 5px;border-radius:4px;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px}
+pre{background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;line-height:1.6;color:#24303a}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;margin-right:6px}
+.t-live{background:#e5f4ec;color:var(--green)}
+.t-proto{background:var(--amber-bg);color:var(--amber)}
+.t-design{background:#eceff2;color:var(--ink3)}
+.note{background:var(--amber-bg);border-left:3px solid var(--amber);padding:12px 16px;border-radius:6px;margin:14px 0;font-size:13px}
+.key{background:var(--blue-bg);border-left:3px solid var(--blue);padding:12px 16px;border-radius:6px;margin:14px 0;font-size:13px}
+.warn{background:#fdeeee;border-left:3px solid var(--red);padding:12px 16px;border-radius:6px;margin:14px 0;font-size:13px}
+.small{font-size:12.5px;color:var(--ink3)}
+footer{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:20px 30px;font-size:12.5px;color:var(--ink2)}
+.disc{background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-top:14px;color:var(--ink2);font-size:12.5px}
+.up{color:var(--red)}.down{color:var(--green)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>经验知识库与架构关系、获取渠道与冲突闸门 v6</h1>
+<p class="sub">GlobalMarketMonitor · 设计文档 · 2026-11-19 盘后 · 承接 v1–v5，不改动任何现有代码或数据文件</p>
+<div class="lead">
+<b>三句话结论：</b>① 经验库不是串联在选股链路里的「决策层」，而是<b>一条可整体关闭的并联旁路 + 一个只读知识层</b>；② 现有代码只有「系统自动统计」一条获取渠道，手写录入、对话归档、外部线索三条都需要新建，且智能体只能<b>自动归类</b>、不能<b>自动生效</b>；③ 前五版写的「人工审核闸门」隐含「用户能专业判别」的错误假设，本版将其重构为<b>三层自动处置 + 用户只做偏好判断</b>，系统默认动作恒为「什么都不改」。
+</div>
+</header>
+
+<section>
+<h2>一、现状三层对账（本次逐文件核实，非设计推断）</h2>
+<p class="small">核实范围：<code>server/stocks.js</code>(1114 行)、<code>server/journal.js</code>(779 行)、<code>server/ic.js</code>(716 行)、<code>server/mypicks.js</code>(153 行)、<code>server/server.js</code>(1893 行)、<code>web/app.js</code>、<code>web/interaction.js</code>、<code>web/navplan.js</code>、<code>data/journal/*</code>。取数时点 2026-11-19 22:2x（北京时间，盘后）。</p>
+<table>
+<thead><tr><th style="width:22%">层次</th><th style="width:38%">已确认的内容</th><th>对你本轮问题的含义</th></tr></thead>
+<tbody>
+<tr><td><span class="tag t-live">已生效代码</span></td><td><code>stocks.js</code> 横截面多因子评分；<code>journal.js</code> 五段式闭环（定格→复盘→归纳→审核→有界回流）；<code>ic.js</code> Rank IC 自检；<code>/api/journal/review</code>、<code>/api/journal/audit</code> 等接口</td><td>选股确实是量化因子方式；经验获取只有自动统计一条；回流通道已经写进代码但当前为空</td></tr>
+<tr><td><span class="tag t-proto">只读原型</span></td><td><code>web/interaction.js</code>「对话分诊」：本地关键词规则把一句话分成「因子候选 / 经验候选 / 待澄清」；<code>factorDraft()</code> / <code>lessonDraft()</code> 生成草案</td><td>项目里已想到「对话」这件事，但页面明确写「未提供提交按钮、不写入因子池 / 经验池」—— 聊天内容目前进不了库</td></tr>
+<tr><td><span class="tag t-design">设计态规划</span></td><td><code>web/navplan.js</code> 因子池状态机（draft→字段白名单→影子运行→Rank IC 复检→人工审核→有界上架，复用 <code>ic.js</code>）；经验池「个人 / 自动 / 讨论三类来源」；12 技能排布、fact-audit 闸</td><td>规划稿把方向写对了，但标注「全部设计态，点击只出说明」「尚未实现」，不能当现成能力</td></tr>
+</tbody>
+</table>
+
+<h3>1.1 目前选股是否为量化因子筛分：是</h3>
+<table>
+<thead><tr><th style="width:22%">环节</th><th>真实实现</th></tr></thead>
+<tbody>
+<tr><td>硬门槛 Gate</td><td>剔除 ST / 退市 / 北交所 / 跌停 / 市值&lt;30亿或&gt;8000亿 / 价格&lt;3元或&gt;1000元；非涨停股要求成交额≥1亿、换手≤30%；涨停股不剔除，改由涨停结构因子刻画（<code>stocks.js:1046</code>）</td></tr>
+<tr><td>三组加权</td><td>技术 <code>base.tech</code>、资金 <code>base.fund</code>、舆情热度 <code>buzz</code>（个股舆情 45% + 关注度 35% + 行业消息 20%）；<code>weightsFor()</code> 按微盘/小盘/中盘/大盘切换阶段感知权重</td></tr>
+<tr><td>五项方向性修正</td><td>外围 / 市值风格 / 公司事件 / 宏观状态 / 涨停结构，合计按 ±22 封顶（<code>adjustCap</code>），抑制共线信号叠加</td></tr>
+<tr><td>风险惩罚</td><td><code>base.risk.penalty</code> + 价值陷阱 <code>trap.penalty</code>（低估值且盈利恶化才扣）</td></tr>
+<tr><td>输出</td><td>0–100 分 → 重点关注(≥70) / 观察(≥58) / 中性(≥44) / 谨慎；另给置信度与可交易性提示</td></tr>
+<tr><td>可证伪机制</td><td><code>ic.js</code> 按 qlib / alphalens 思路做每日定格 + T+1/3/5/10 前瞻收益 + Spearman Rank IC；注释自承「18 只样本单日 IC 标准误约 0.24，结论只认滚动 20 日以上均值」</td></tr>
+</tbody>
+</table>
+
+<h3>1.2 经验链路的真实形态</h3>
+<p><code>snapshot()</code> 每日 09:05 / 22:00 定格 → <code>reviewPending()</code> 15:10 用 <code>barOf()</code> / <code>benchRet()</code> 回填 T+1 真实行情 → <code>buildLessons()</code> 按 <code>LESSON_DIMENSIONS</code> 的 <b>7 个纯量化维度</b>（signal / bucket / board / stage / chase / boards / stack）分组统计，n≥8 才生成 → <code>auditLesson()</code> 人工 approve / reject → <code>rebuildRules()</code> 把 approved 投影成 <code>rules.json</code> → <code>biasFor()</code> 换算乘数。</p>
+<p>回流边界已在代码里写死（<code>stocks.js:607-629</code>）：<b>只作用于涨停结构修正</b>、单股最多 ±2 分、乘数 [0.8, 1.25]、不翻转符号；无规则时乘数为 1，链路与原先完全一致。当前 <code>rules.json count=0</code>，故<b>经验实际尚未影响任何一次评分</b>。</p>
+<div class="warn"><b>本次最重要的现状缺口：</b>全库没有任何「因子 vs 经验」冲突处理代码（检索命中的「冲突」均为新闻关键词「地缘冲突」）；没有任何手写经验录入接口；<code>auditLesson()</code> 的两个动作 <code>approve</code> / <code>reject</code> 之外没有任何辅助信息 —— 没有反例数、没有证伪条件、没有智能体建议、没有历史校准。也就是说，前几版反复强调的「人工闸门」，实现上是让用户在缺少依据的情况下裸判。</div>
+<p class="small">数据快照：<code>picks.jsonl 2 条 / outcomes.jsonl 18 条 / lessons.jsonl 4 条（全 pending）/ rules.json count=0</code>。<code>outcomes</code> 首条 <code>bench: null</code>、<code>excess: null</code>，与 v1 发现的基准缺失口径问题一致。</p>
+</section>
+
+<section>
+<h2>二、经验知识库与整体架构的关系</h2>
+<div class="key"><b>定位一句话：</b>经验库是<b>并联旁路 + 只读知识层</b>，不是串联决策层。它在架构上有两个身份，必须分开，否则会误以为「经验越攒越准、能接管选股」。</div>
+<table>
+<thead><tr><th style="width:18%">身份</th><th style="width:30%">内容</th><th style="width:26%">通向哪里</th><th>关闭后果</th></tr></thead>
+<tbody>
+<tr><td><b>① 有界旁路</b></td><td>事实账本 → 归纳 → 待审 → 闸门 → 规则投影 <code>rules.json</code></td><td>唯一写路径：以乘数微调「涨停结构」这一项修正（±2 分）</td><td>乘数回到 1，<code>stocks.js</code> 与原先完全一致</td></tr>
+<tr><td><b>② 只读知识层</b></td><td>个人手记 / 对话归档 / Flag 风险提示 / 并列假说 / 反例库 / 市场状态解释卡</td><td>只进界面、复盘页与提醒文案；<b>没有通向评分的写路径</b></td><td>提醒与解释消失，评分不变</td></tr>
+</tbody>
+</table>
+<p>这个分层解释了前面几版的一个表述偏差：v1 说「经验回流闭环走通才算数」，其实那只覆盖身份 ①；而你这轮说的「提醒、风险提示、归纳、观察习惯」绝大部分属于身份 ②，它们<b>本来就不该改分</b>。用户价值主要来自 ②，风险控制主要来自 ① 的克制。</p>
+<h3>2.1 为什么必须并联而不是串联</h3>
+<ul>
+<li><b>可审计</b>：旁路可整体一键关闭并做 A/B 对照（冻结基线 v0 永久保留），串联层一旦污染无法分离。</li>
+<li><b>可证伪</b>：经验是少量样本上归纳出的假说，市场非平稳；只有以「有界乘数」形式并联，才能用真实行情逐条检验它是否还有用。</li>
+<li><b>非专业用户可安全使用</b>：旁路默认空、默认不改变任何结果，用户即使完全不操作，系统也不会变坏（见第六节）。</li>
+</ul>
+<p class="small">架构其余部分沿用 v4/v5 结论：8777 零依赖 Node 主服务不动；确定性计算层（Gate / Score / Flag / 四象限 / 冲突重算）在主服务内；Python sidecar 只做受限抽取与翻译，挂掉时主服务照常选股；MCP / 技能只提供现成数据与知识卡，不训练模型。</p>
+</section>
+
+<section>
+<h2>三、经验如何获取：四条渠道与分层落点</h2>
+<table>
+<thead><tr><th style="width:16%">渠道</th><th style="width:20%">现状</th><th style="width:32%">入库方式</th><th>默认落点</th></tr></thead>
+<tbody>
+<tr><td>① 系统自动统计</td><td><span class="tag t-live">已生效</span></td><td>定格名单 + 行情回填 + 7 维分组统计，自动生成 pending</td><td>待审经验区（事实部分进 L0 账本）</td></tr>
+<tr><td>② 个人手写录入</td><td><span class="tag t-proto">缺写管道</span></td><td>结构化四要素表单，口语由智能体抽取、原文永久保留</td><td>待审经验区，标 <code>source: manual</code></td></tr>
+<tr><td>③ 与智能体对话</td><td><span class="tag t-proto">只读原型</span></td><td>问答型不入库；沉淀型归档原文 → 抽取候选 → 待审</td><td><code>conversations.jsonl</code> + 待审经验区</td></tr>
+<tr><td>④ 外部稿件 / 其他 AI</td><td><span class="tag t-design">待建</span></td><td>只作线索，所有数字置 null，标「需核实原文」</td><td>线索隔离区，永不直接进账本</td></tr>
+</tbody>
+</table>
+
+<h3>3.1 手写录入：四要素 + 事前预判</h3>
+<p>不要做「一个自由文本框直接写进库」。每条个人经验必须带齐以下字段，缺任一项只允许存为「草稿」、不得进入待审队列：</p>
+<table>
+<thead><tr><th style="width:20%">字段</th><th style="width:38%">含义</th><th>为什么强制</th></tr></thead>
+<tbody>
+<tr><td><code>claim</code></td><td>我观察到了什么（一句话，不写因果）</td><td>避免「因为 X 所以涨」式不可证伪叙事</td></tr>
+<tr><td><code>falsifyCondition</code></td><td>出现什么现象算我错</td><td>没有证伪条件的复盘只是故事（v2 结论）</td></tr>
+<tr><td><code>scope</code></td><td>适用行情 / 票种 / 持有周期 / 个人画像标签</td><td>同一条经验对不同交易风格含义相反</td></tr>
+<tr><td><code>precommit</code></td><td>结果出来之前，我当时怎么想、打算怎么做</td><td>唯一能把「利好出货 / 提前布局」变成真经验的办法</td></tr>
+<tr><td><code>sourceRef</code> + <code>asOf</code></td><td>来源与系统时间戳</td><td>所有关键内容可回溯；时间由系统写，不接受手填</td></tr>
+</tbody>
+</table>
+<pre>{
+  "expId": "E-FIELD_ID",
+  "source": "manual",
+  "sourceGrade": "C",
+  "polarity": "pitfall",
+  "scope": { "market": "A", "horizon": "swing", "profileTag": ["chase_prone"] },
+  "patternFamily": "event_sell_news",
+  "variant": "medicare_price_unknown",
+  "claim": "FIELD_用户原文主张",
+  "rawText": "FIELD_口语原文永久保留",
+  "falsifyCondition": "FIELD_可观测的证伪现象",
+  "precommit": "FIELD_结果前预判",
+  "registeredAt": "FIELD_系统时间写入",
+  "status": "draft",
+  "supportN": 0,
+  "contradictN": 0,
+  "affectsScore": false,
+  "idempotencyKey": "FIELD_去重键"
+}</pre>
+<p class="small">字段名与 v3/v4 的 <code>experiences.jsonl</code> 契约保持一致，避免再开一套账本；<code>sourceGrade</code> 沿用 v2 的 A 一手 / B 亲历 / C 外部稿件分级。</p>
+
+<h3>3.2 对话内容能不能进知识库：能，但三级隔离</h3>
+<ol>
+<li><b>原文层</b>：<code>conversations.jsonl</code> 只追加、可回溯、可删除，带 <code>sessionId</code> 与「本轮不记录」标记。对话原文<b>不是经验</b>。</li>
+<li><b>抽取层</b>：智能体把口语拆成「主张 / 证据 / 来源 / 时点」四元组，标 <code>user_note</code>、<code>sourceGrade: C</code>；<b>抽取结果不进事实账本</b>。</li>
+<li><b>候选层</b>：只落待审经验区，与自动归纳的条目共用同一条晋升闸门。</li>
+</ol>
+<div class="note"><b>为什么对话里的数字要一律置 null：</b>用户自己复述的数字、日期、结论是全部来源里最软的一层。v2 核过的通化金马案例中，「12.04 元」被当成 11-18 收盘价，实际是当日开盘价；该案例的财务、龙虎榜、融资数字来自其他 AI 稿件，均未与三季报及交易所原文核对。对话能贡献的是「我当时为什么买」这类<b>意图事实</b>，不是行情事实。</div>
+</section>
+
+<section>
+<h2>四、智能体自动读取、分类、新建因子：边界在哪</h2>
+<div class="key"><b>一句话：</b>自动<b>归类</b>可以，自动<b>生效</b>绝对不行。智能体可以把「我发现放量突破后第二天经常回落」判为经验候选、把「把换手率分位数登记成因子」判为因子候选，但两者都只能落到待审/影子区。</div>
+<table>
+<thead><tr><th style="width:26%">动作</th><th style="width:16%">能否自动</th><th>约束</th></tr></thead>
+<tbody>
+<tr><td>读取已有经验与因子、贴标签、发现语义重复</td><td>可以</td><td>确定性分诊先跑，模型只给建议不得覆盖；低置信度进「待澄清」不猜（沿用 <code>interaction.js</code> 现有规则）</td></tr>
+<tr><td>把新经验写入待审队列</td><td>可以</td><td>必须带幂等键、原文、来源时点；<code>status: pending</code>、<code>affectsScore: false</code></td></tr>
+<tr><td>把经验转成 Flag 风险提示</td><td>半自动</td><td>默认推荐路径。先影子运行（只显示不算分），累计反馈后再决定是否升级</td></tr>
+<tr><td>把经验转成新因子 / 改权重</td><td><b>不可以</b></td><td>必须过统计闸门：字段白名单校验 → 影子运行 → Rank IC 复检（IC&gt;0.03 且 IR&gt;0.5）→ 样本外不劣化 → 人工最终否决 → 有界上架</td></tr>
+<tr><td>写入事实账本 / 下单</td><td><b>禁止</b></td><td>事实账本只收行情与核实后的一手来源；系统全程不自动下达委托单</td></tr>
+</tbody>
+</table>
+<p>项目里 <code>web/navplan.js</code> 已经写好了上面那条因子状态机并注明「复用现有 <code>ic.js</code>」，所以<b>不需要重新设计，只需要把设计态落成代码</b>。另有一条纪律要写进产品默认值：按 <code>quant-factor-research</code> 的方法论，5–10 个能验证的强因子优于 30 个弱因子；因此智能体抽取到新经验时，<b>默认建议是「存成 Flag 提示」，不是「新建一个因子」</b>，只有当同类样本反复验证、且现有因子无法解释时才提出因子候选。</p>
+<div class="warn"><b>为什么不让模型直接判「这条该不该变因子」：</b>模型没有你的真实持仓、没有未来行情，也不会做样本外检验。它能做的是整理语言与发现相似，判有效性是 <code>ic.js</code> 与真实行情回填的职责。这也是 v5「零训练四层能力栈」的延续 —— 专业能力靠现成 MCP 数据工具 + 可溯源技能卡，个人经验靠可读可改可删的 JSONL 账本 + 检索增强 + 有界回流，<b>连经验池也不做微调</b>。</div>
+</section>
+
+<section>
+<h2>五、因子与经验冲突：现状、处置矩阵、非专业用户闸门重构</h2>
+<h3>5.1 现状：没有冲突机制，而且人工闸门设计有误</h3>
+<ul>
+<li>代码中不存在因子/经验冲突检测；<code>auditLesson()</code> 只有 <code>approve</code> / <code>reject</code>，<code>reviewer: 'user'</code>，界面只显示 <code>claim</code> + <code>evidence(n / hitRate / avgRet / avgExcess / payoff)</code> + <code>confidence</code>（后者只是 n≥40 / ≥20 的样本量标签，不是统计置信度）。</li>
+<li>没有反例数、没有证伪条件、没有历史校准、没有智能体建议 —— <b>让非股票研究人员判断「这条统计规律是否成立」是不可执行的设计</b>。v1–v5 把这道闸门称为「人工审核」，隐含了一个不成立的假设。</li>
+</ul>
+<h3>5.2 冲突四分法与处置矩阵</h3>
+<table>
+<thead><tr><th style="width:20%">冲突类型</th><th style="width:30%">例子</th><th style="width:26%">谁来解决</th><th>输出</th></tr></thead>
+<tbody>
+<tr><td>事实 / 口径冲突</td><td>叙述说 11-17「低开高走」，日 K 为前收 3602.57 / 开 3585.67 / 收 3584.58；两市成交额 vs 沪市单市场成交额</td><td>确定性重算（代码）</td><td>标注 <code>narrative_conflict</code> / <code>scope_conflict</code>，模型不参与</td></tr>
+<tr><td>方向冲突</td><td>因子打分 77「重点关注」，经验 Flag 提示同类形态历史偏空</td><td>并列呈现 + 结果验证投票</td><td>两条都显示，各自带样本数、反例数、来源时点；系统不裁决</td></tr>
+<tr><td>解释冲突</td><td>同一天出现两种「为什么涨/跌」的假说</td><td>并列假说卡，各自带证伪条件</td><td>每日最多一个主假说，禁止折中合成第三种解释</td></tr>
+<tr><td>价值冲突</td><td>系统提示风险，但你的买入理由是医保准入</td><td>用户（偏好判断）</td><td>只决定「这条提醒我要不要继续看」，不判定谁对</td></tr>
+</tbody>
+</table>
+<h3>5.3 闸门重构：把专业判断从人身上卸下来</h3>
+<table>
+<thead><tr><th style="width:8%">层</th><th style="width:26%">机制</th><th style="width:34%">负责什么</th><th>需要用户吗</th></tr></thead>
+<tbody>
+<tr><td>①</td><td>确定性重算</td><td>事实、口径、时点冲突由代码裁定；超 T+1 标 <code>stale</code></td><td>不需要</td></tr>
+<tr><td>②</td><td>结果验证投票</td><td>复用 <code>barOf()</code> / <code>benchRet()</code> 回填 T+1 / 5 / 20、20 日最大回撤、超额；累计「这类冲突下谁更常对」与假警报率；反例写 <code>counterexamples.jsonl</code></td><td>不需要</td></tr>
+<tr><td>③</td><td>智能体 + 技能</td><td>把两边依据、样本数、反例数、不确定性翻译成人话，给带置信度的建议；禁止裁决、禁止合成、禁止改写数字</td><td>不需要用户判对错</td></tr>
+<tr><td>④</td><td>用户偏好</td><td>「保留提醒 / 关掉这条 / 以后再说」—— 判断的是提示对我有没有用</td><td>只需判断有用没用</td></tr>
+</tbody>
+</table>
+<div class="key"><b>默认动作恒为「什么都不改」</b>：④ 的默认项是「以后再说」。用户长期不点、点错、甚至完全不懂股票，系统状态都不变坏；误判的代价从「污染评分」降为「少看一条提醒」。</div>
+<p><b>「结果验证」和「智能体+技能」不是二选一</b>：结果验证负责<b>最终谁对</b>（慢，几周到几个月，统计性，可证伪）；智能体+技能负责<b>现在怎么看懂</b>（快，翻译，带不确定性）；用户负责<b>我要不要看这条提醒</b>（偏好，随时可改）。只有结果验证，当下看不懂提醒；只有智能体，会变成听模型的话；只有用户，就是现在的死结。</p>
+<h3>5.4 唯一还需要人的场景：晋升改分</h3>
+<p>让一条经验从 Flag 晋升到 Score（改分）仍需人工确认，但门槛不由人把守：<code>n≥30</code>、<code>IC&gt;0.03</code>、<code>IR&gt;0.5</code>、样本外不劣化、一次只登记一个主假说、影子验证先行。人只做最后一道<b>否决</b>，且界面默认按钮是「暂不采纳」；通过后仍受 ±2 分 / 乘数 [0.8, 1.25] / 不翻符号约束，冻结基线 v0 永久保留作对照。</p>
+<h3>5.5 审核按钮的新语义</h3>
+<table>
+<thead><tr><th style="width:30%">旧按钮（现状）</th><th>新按钮</th></tr></thead>
+<tbody>
+<tr><td><code>采纳并回流</code> / <code>驳回</code></td><td><code>保留提醒</code> / <code>关掉这条</code> / <code>以后再说（默认）</code></td></tr>
+<tr><td>隐含要求用户判断统计有效性</td><td>只要求用户判断提示的相关性；有效性交给统计闸门与行情回填</td></tr>
+<tr><td>点错即污染 <code>rules.json</code></td><td>点错最多影响显示；<code>affectsScore</code> 仍为 false</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>六、落地路线（纯增量，不改现有评分公式）</h2>
+<table>
+<thead><tr><th style="width:12%">阶段</th><th style="width:44%">做什么</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>Step 0</td><td>把 4 条 pending 标「需复核、暂不采纳」；修 <code>statsOf()</code> 命中率与平均超额的样本口径不一致；<code>bench</code> 缺失时不再退化为 <code>ret &gt; 0</code></td><td>零 LLM、零风险；口径可复算</td></tr>
+<tr><td>Step 1</td><td>新建 <code>experiences.jsonl</code> / <code>conversations.jsonl</code> / <code>counterexamples.jsonl</code> 写入模块；手写四要素表单录入接口；对话归档开关；<code>market-state.jsonl</code> 写入 11-17 叙述冲突样本</td><td>四类来源均可落到待审区，且 <code>affectsScore</code> 恒为 false</td></tr>
+<tr><td>Step 2</td><td>复用 <code>ic.js</code> 把 <code>navplan.js</code> 的因子状态机从设计态落成代码（draft→白名单→影子→IC 复检→否决→有界上架）；把现有只读「对话分诊」接上受控写管道</td><td>智能体可自动归类，但任何路径都无法绕过影子验证直接改分</td></tr>
+<tr><td>Step 3</td><td>冲突处置四层：确定性重算 → T+1/5/20 回填 → 反例计数 → 智能体翻译建议；审核台换成偏好三按钮，默认「以后再说」</td><td>非专业用户不操作也不降低系统质量；假警报率与风险回避价值并列统计</td></tr>
+<tr><td>Step 4</td><td>股民模式 / 研发模式切换；研发推导链六步继续保留至稳定后再隐藏；<b>明确不做自动下单</b></td><td>发布时可一键下线全部推导视图</td></tr>
+</tbody>
+</table>
+<p class="small">合规边界沿用 v1 结论：只要程序不自动下达委托单，回测、信号、监控、复盘均不落入程序化交易定义、无需报备；一旦脚本自动发单即进入「先报告、后交易」框架。行情数据保持个人自用、注明来源、不对外分发。</p>
+</section>
+
+<section>
+<h2>七、本轮未做的事与已知局限</h2>
+<ul>
+<li>本文档与配套原型均为设计交付，<b>未改动任何现有代码或数据文件</b>；<code>rules.json count=0</code> 保持原状。</li>
+<li>文中「因子打分 77」取自 <code>outcomes.jsonl</code> 首条真实记录（002451 摩恩电气，2026-11-17 定格），仅作字段示例，不代表任何当前信号或建议。</li>
+<li>11-17 上证日 K 数值（前收 3602.57 / 开 3585.67 / 收 3584.58）来自 v3 已核实的 westock-data 日 K，取数 2026-11-19；成交额「1.37 万亿」为媒体口径、需核实原文，本轮不作为结论。</li>
+<li>「高开低走占比」等民间回测数字、通化金马三季报与龙虎榜数字仍未与一手原文逐项核对，继续标「需核实原文」，不进入事实账本。</li>
+<li>结果验证需要时间积累：当前 18 条复盘样本远低于 n≥30 门槛，短期内「谁更常对」的投票不会有统计意义，界面应显示「样本不足」而非给出倾向。</li>
+</ul>
+</section>
+
+<footer>
+<b>来源清单</b>
+<ul>
+<li>本地代码与数据：<code>D:\WorkBuddy\projects\GlobalMarketMonitor\server\{stocks,journal,ic,mypicks,server}.js</code>、<code>web\{app,interaction,navplan}.js</code>、<code>data\journal\{picks,outcomes,lessons}.jsonl</code>、<code>data\journal\rules.json</code>（核实于 2026-11-19 盘后）</li>
+<li>本系列前序文档：<code>docs\智能体选型与三闭环补齐方案-20261119.html</code>、<code>个人经验工程与因素体系设计-20261119.html</code>、<code>风险提示层与事前信号设计-20261119.html</code>、<code>经验体系v3-双向经验与市场状态-20261119.html</code>、<code>智能体选型与技术架构v4-20261119.html</code>、<code>模型接入与股民交互v5-20261119.html</code></li>
+<li>方法论：workbuddy-finance-skill 的 <code>quant-factor-research</code>、<code>systematic-strategies</code>、<code>daily-briefing</code>、<code>market-state</code>、<code>event-catalyst</code>、<code>abnormal-detection</code> 等 reference</li>
+<li>外部事实（前序已核实）：通化金马 000766 公告 2026-40 / 2026-41，上海证券报 2026-11-16、中国证券报 2026-11-19；westock-data 日 K，取数 2026-11-19</li>
+</ul>
+<div class="disc"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</footer>
+
+</div>
+</body>
+</html>

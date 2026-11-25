@@ -1,0 +1,26 @@
+=== service 文件 ===
+[Unit]
+Description=Hermes Bridge (OpenAI-compatible HTTP endpoint on 8765)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge
+Environment=HERMES_BIN=/home/freddy19871122/.hermes/hermes-agent/.hermes/bin/hermes
+Environment=HERMES_TIMEOUT=120
+ExecStart=/usr/bin/python3 /mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/hermes_bridge.py --host 0.0.0.0 --port 8765
+Restart=always
+RestartSec=3
+StandardOutput=append:/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/bridge-systemd.log
+StandardError=append:/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/bridge-systemd.log
+
+[Install]
+WantedBy=default.target
+=== 启用 ===
+Created symlink /home/freddy19871122/.config/systemd/user/default.target.wants/hermes-bridge.service → /home/freddy19871122/.config/systemd/user/hermes-bridge.service.
+=== 状态 ===
+active
+=== 端口 ===
+LISTEN 0      5             0.0.0.0:8765       0.0.0.0:*    users:(("python3",pid=556,fd=3))
+=== health ===
+{"ok": true, "service": "hermes-bridge", "hermes": "/home/freddy19871122/.hermes/hermes-agent/.hermes/bin/hermes"}

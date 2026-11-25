@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AI-Hel2 知识库评估与消息转知识方案</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1d2129;background:#f5f6f8;line-height:1.72;margin:0;padding:32px}
+  .wrap{max-width:980px;margin:0 auto;background:#fff;border-radius:14px;padding:34px 42px;box-shadow:0 6px 24px rgba(20,30,60,.06)}
+  h1{font-size:24px;margin:0 0 6px} h2{font-size:17px;margin:30px 0 12px;padding-bottom:8px;border-bottom:2px solid #e8f0ff}
+  h3{font-size:14px;margin:18px 0 8px;color:#165dff}
+  .sub{color:#86909c;font-size:13px;margin-bottom:20px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{border:1px solid #e5e6eb;padding:7px 11px;text-align:left;vertical-align:top}
+  th{background:#f7f8fa;font-weight:600}
+  code{background:#f2f3f5;padding:1px 6px;border-radius:4px;font-size:12px;color:#c2185b}
+  .tag{display:inline-block;background:#e8f0ff;color:#165dff;padding:2px 8px;border-radius:5px;font-size:11px;margin-right:6px}
+  .warn-tag{background:#fff3e8;color:#d25f00} .ok-tag{background:#e8ffea;color:#0a9e3f} .no-tag{background:#ffece8;color:#cb2634}
+  .note{background:#fff8e8;border-left:3px solid #f7ba1e;padding:10px 14px;border-radius:6px;font-size:13px;color:#4e5969;margin:12px 0}
+  .ok{background:#f0fff4;border-left:3px solid #2ea36a;padding:10px 14px;border-radius:6px;font-size:13px;color:#2b3b32;margin:12px 0}
+  .danger{background:#fff1f0;border-left:3px solid #cb2634;padding:10px 14px;border-radius:6px;font-size:13px;color:#5b2b2b;margin:12px 0}
+  ul{padding-left:22px} li{margin:5px 0}
+  .small{font-size:12px;color:#86909c}
+  .bar{height:14px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:6px}
+  .concl{background:#f2f7ff;border:1px solid #d6e4ff;border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13px}
+  pre{background:#1e2430;color:#d6e0f0;border-radius:8px;padding:14px 16px;font-size:12px;line-height:1.6;overflow:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AI-Hel2 知识库评估 · 消息转知识库逻辑设计 · 图谱分布方案</h1>
+  <div class="sub">2026-11-21 · 面向 A 股智能系统 v2 个人知识库模块 · 含 GitHub / 论文调研结论</div>
+
+  <div class="concl">
+    <strong>一句话结论：</strong>AI-Hel2 的<strong>设计思想值得借鉴，但整套系统不适合直接移植</strong>。它的价值在于「Agent 只存不提取」「置信度 + 去重 + 反馈闭环 + 衰减」这套工程方法；但它实际落库只有 22 个实体、17 条关系，合成/本体/反馈/待合并四张表<strong>全部为空</strong>，且内容是旅行规划而非金融，图谱引擎与 Tauri/Rust/Python/Heimdall 深度耦合。建议：<strong>只借鉴规则与设计，在当前零依赖 Node 服务里增量实现</strong>，不要搬它的运行栈。
+  </div>
+
+  <h2>一、AI-Hel2 知识库评估</h2>
+
+  <h3>1.1 它实际是什么</h3>
+  <table>
+    <tr><th>维度</th><th>实际情况</th><th>判断</th></tr>
+    <tr><td>前端</td><td>Tauri + React + Zustand，图谱用 SVG + d3 力导向（phase4 PixiJS 只是规划文档）</td><td>渲染层已移植到本项目 <code>graph-engine.js</code>，无需再动</td></tr>
+    <tr><td>存储</td><td>SQLite <code>knowledge_cache.db</code>：<code>cache_entities</code> / <code>cache_relations</code> + 迁移 002 的 5 张新表；<strong>不是 Neo4j</strong>，Heimdall 只是基于这两张表构建内存图索引</td><td>结构可映射到本项目的 <code>graph.json</code>，规模小无需图数据库</td></tr>
+    <tr><td>提取</td><td><code>extract_service.py</code> 异步轮询 → 调 LLM → 输出实体/关系 JSON → 回写；Agent 只调 <code>nexus_store(raw_text)</code></td><td class="ok">「只存不提取」职责分离是最大可借鉴点</td></tr>
+    <tr><td>数据来源</td><td><code>source_type</code> 枚举：chat / wikilink / wiki / canvas / upload_doc / upload_image / agent_memory / synthesis</td><td>可直接复用分类思想，映射到本项目消息源</td></tr>
+    <tr><td>实际数据量</td><td>实体 <strong>22</strong>，关系 <strong>17</strong>，内容索引 14；合成 0、本体 0、反馈 0、待合并 0</td><td class="no-tag">高级能力停留在设计文档，未真正跑起来</td></tr>
+    <tr><td>实际实体类型</td><td>location(6)、organization(3)、information_entity(3)、natural_feature(2)、flight_route_status(2)、travel_plan(1)……</td><td class="no-tag">旅行/航班内容，金融领域完全不适用</td></tr>
+    <tr><td>实际关系类型</td><td>located_in(8)、contains(5)、depends_on(3)、depicts(1)</td><td class="no-tag">缺少金融因果/证据/冲突关系</td></tr>
+  </table>
+
+  <h3>1.2 可复用 vs 必须重写</h3>
+  <table>
+    <tr><th>能力</th><th>AI-Hel2 做法</th><th>处置</th></tr>
+    <tr><td>标准入库接口</td><td>Agent 只传原始文本 + source_type + 上下文，提取逻辑集中在服务端</td><td><span class="tag ok-tag">借鉴</span>新增 <code>/api/v2/knowledge/ingest</code>，对话/笔记/事件统一走它</td></tr>
+    <tr><td>提取 prompt</td><td>角色=知识筛选器；置信度锚点 0.9/0.7/0.5/0.3；宁少勿滥</td><td><span class="tag ok-tag">借鉴</span>改写为金融版，保留锚点 + 禁买卖建议</td></tr>
+    <tr><td>入库过滤</td><td>confidence&lt;0.4 丢弃；停用词；长度 2–60；编辑相似度 &gt;85% 合并、60–85% 进待确认</td><td><span class="tag ok-tag">借鉴</span>直接移植到 <code>dedupe()</code></td></tr>
+    <tr><td>多源确认</td><td>同一实体被 ≥2 类不同来源提取 → 置信度 +0.1（上限 0.95）</td><td><span class="tag ok-tag">借鉴</span>本项目的 chat/event/journal 正好构成多源</td></tr>
+    <tr><td>反馈闭环</td><td>隐藏 −0.3 / 删除 −0.5 / 聚焦 +0.1 / 提升 +0.3；每 15 条注入偏好摘要</td><td><span class="tag ok-tag">借鉴</span>但只注入抽取偏好，<strong>不碰 BASE_SYSTEM 买卖纪律</strong></td></tr>
+    <tr><td>衰减清理</td><td>孤立 + 低置信 + 7 天 → 隐藏；隐藏 30 天 → 物理删除</td><td><span class="tag ok-tag">借鉴</span>防止图谱膨胀</td></tr>
+    <tr><td>知识合成</td><td>共享邻居 / 跨文档共现 / 类型模式 → inferred 灰色虚线边</td><td><span class="tag warn-tag">简化借鉴</span>本项目同向边已合并；合成边先只做「共现」一种</td></tr>
+    <tr><td>时序有效性</td><td>AI-Hel2 无时序建模，事实只覆盖不保留历史</td><td><span class="tag no-tag">缺口</span>必须补：投资逻辑会失效，需 valid_from / valid_to</td></tr>
+    <tr><td>运行栈</td><td>Tauri / Rust invoke / Python 提取服务 / Heimdall / SQLite WAL</td><td><span class="tag no-tag">不移植</span>与零依赖 Node 8777 冲突，部署成本高</td></tr>
+  </table>
+
+  <div class="note"><strong>关键判断：</strong>API-Hel2 的实体模型（confidence、importance、namespace、community_id、feedback_score、hidden、inferred）字段设计成熟，但对本项目的 <code>graph.json</code> 而言，一次性铺开全部字段会让抽取和 UI 都变复杂。建议分两步：先补 <code>confidence / sourceType / sourceMessageId / validFrom / status</code> 五个必要字段，跑通链路后再加 feedback_score 与 community_id。</div>
+
+  <h2>二、网上与 GitHub 调研结果</h2>
+
+  <h3>2.1 对话/消息 → 知识图谱（通用记忆层）</h3>
+  <table>
+    <tr><th>项目 / 论文</th><th>核心方法</th><th>对本项目的启发</th></tr>
+    <tr><td><strong>kg-gen / KGGen</strong><br><span class="small">Stanford，MIT/Apache，pip 可装</span></td><td>任意文本或 messages 数组 → 实体/边/三元组；chunking + clustering；做实体与边的聚类去重；经 LiteLLM 支持 DeepSeek；DSPy 结构化输出；自带 MINE 基准</td><td class="ok">最轻的参考实现。它的「实体聚类」「边聚类」正是本项目同向边合并的升级版，可直接读源码借鉴 prompt</td></tr>
+    <tr><td><strong>Graphiti / Zep</strong><br><span class="small">开源框架 + 企业产品</span></td><td>Episode 作为原始锚点；实体/事实/社区；<strong>双时序</strong>：每条事实有 valid window，变化时旧事实失效而非删除；混合检索 = 语义 + BM25 + 图遍历；支持自定义 Pydantic 本体</td><td class="ok">「事实失效不删除」是解决<strong>投资逻辑过期</strong>的关键。需 Neo4j/FalkorDB，本项目只借思想不引依赖</td></tr>
+    <tr><td><strong>Mem0 / Mem0g</strong></td><td>选择性抽取：不是每句话都入库；记忆整合（合并重叠、衰减无关）；user/session/agent 三级作用域；LOCOMO 基准，token 降 93%</td><td class="ok">证明「宁少勿滥」是对的。本项目的价值门控应照此设计，避免把每日闲聊灌进图谱</td></tr>
+    <tr><td><strong>PROM</strong><br><span class="small">2025 论文 + GitHub</span></td><td>从自然对话构建个人知识图谱；LLM few-shot 三元组抽取；多策略知识融合与冲突消解；修正模块 + 多维评估</td><td>知识融合与冲突修正的思路可参考；但 Django+Neo4j+Redis 太重</td></tr>
+    <tr><td><strong>eventual</strong><br><span class="small">milesgray/eventual</span></td><td>事件驱动<strong>超图</strong>：概念为节点、事件为超边（一条边连多个概念），专为聊天场景的态势感知设计；短期/长期记忆分层</td><td>超图思想贴合本项目的「事件归因」：一个事件同时影响多个概念与个股，比二元边更自然</td></tr>
+    <tr><td><strong>knowledge-graph-agent</strong><br><span class="small">rohanprichard，DeepSeek</span></td><td>DeepSeek + instructor 结构化输出 + Pydantic 模型 + pyvis 可视化；对话中增量维护用户 KG</td><td class="ok">技术栈与本项目最接近（DeepSeek），prompt 与数据模型可直接参考</td></tr>
+  </table>
+
+  <h3>2.2 金融领域知识图谱</h3>
+  <table>
+    <tr><th>项目 / 论文</th><th>关键数据与方法</th><th>对本项目的启发</th></tr>
+    <tr><td><strong>FinDKG</strong><br><span class="small">arXiv:2407.10909</span></td><td>约 40 万篇 WSJ 新闻；<strong>时序四元组</strong>（实体、类别、关系、时间戳）；15 种金融关系类型；Sentence-BERT 做实体消歧；ICKG 模型抽取</td><td class="ok">「实体 + 类别 + 关系 + 时间」的五元组结构，正是本项目图谱字段设计的参照</td></tr>
+    <tr><td><strong>FinKario</strong><br><span class="small">2025-08</span></td><td>事件增强金融 KG：30.5 万实体 / 9625 三元组 / 19 种关系；两阶段 RAG 取子图；股价趋势预测较金融 LLM 提升 18.81%</td><td>证明「图谱 + 子图检索」能降低幻觉、提升判断质量；对应本项目的「问答带图谱上下文」</td></tr>
+    <tr><td><strong>FinKG-News</strong><br><span class="small">arXiv:2607.01023，开源</span></td><td>354 个策展事件 → 12407 家公司；80418 实体 / 261168 三元组；事件检测 micro-F1 0.72；置信度 ≥0.9 才保留；事件列表分块 N=20</td><td class="ok">「以事件为锚点」+「高置信阈值」+「证据溯源」是降低金融幻觉的三件套；论文也明确指出：自动幻觉检测不可靠，专家判断不可替代 —— 与本项目的人工闸门一致</td></tr>
+  </table>
+
+  <div class="ok"><strong>调研共识：</strong>① 选择性抽取优于全量存储；② 事实要带时间、失效而非删除；③ 所有结论可溯源到原始消息；④ 人工审核闸门不可省；⑤ 图谱用于「召回证据」而非「直接生成结论」。这五条直接构成下面的设计原则。</div>
+
+  <h2>三、消息转知识库的逻辑设计</h2>
+
+  <h3>3.1 消息源盘点与接入方式</h3>
+  <table>
+    <tr><th>来源</th><th>当前落盘情况</th><th>接入设计</th></tr>
+    <tr><td>对话消息</td><td><strong>未落盘</strong>：前端只保留最近 12 条 history，服务端不存</td><td>在 <code>/api/v2/chat</code> 追加写入 <code>messages.jsonl</code>，一问一答算一条 exchange</td></tr>
+    <tr><td>用户笔记</td><td><code>notes.jsonl</code> 已 append-only 落盘</td><td><code>addNote()</code> 时同步写一条 message 记录，保持单一原始流</td></tr>
+    <tr><td>事件 / 新闻</td><td><code>events-cache.json</code>、<code>stock-news-cache.json</code></td><td>只纳入「有标的 + 有影响关键词」的条目，先入候选队列，不自动进图谱</td></tr>
+    <tr><td>复盘经验</td><td><code>data/journal/</code>、<code>ic-lessons.md</code></td><td>复用既有审核闸门，抽取后状态置 <code>proposed</code>，人工确认才 <code>active</code></td></tr>
+  </table>
+
+  <h3>3.2 四阶段流水线（对应上方图示）</h3>
+  <table>
+    <tr><th>阶段</th><th>规则</th><th>产出</th></tr>
+    <tr><td><strong>① 采集 Ingest</strong></td><td>所有来源统一写 <code>data/knowledge/messages.jsonl</code>，字段：<code>messageId / source / role / content / symbols / timestamp / contentHash / status</code>；hash 相同跳过</td><td>append-only 原始流，永不覆盖</td></tr>
+    <tr><td><strong>② 门控 Gate</strong></td><td>价值分 = 经验信号词 + 具体标的代码 + 因果词 + 数据/时间 + 问答完整性 − 寒暄/格式词；低于阈值不抽取；用户显式「保存到知识库」直接放行</td><td><code>status=candidate</code></td></tr>
+    <tr><td><strong>③ 抽取 Extract</strong></td><td>Hermes 输出固定 JSON：节点（type 白名单 6 类、confidence 锚点）+ 边（type 白名单 5 类）；每节点必带 <code>sourceMessageId</code>；失败回退 <code>extractHeuristic()</code></td><td>候选三元组</td></tr>
+    <tr><td><strong>④ 对齐 Align</strong></td><td>别名表归一（缩量/缩量下跌）→ 编辑相似度 &gt;85% 同类型合并（保留最旧、合并来源、取最高置信）→ 60–85% 进 <code>pending-merge.json</code> → 名称长度 2–60 → conf&lt;0.4 丢弃</td><td>去重后的节点/边</td></tr>
+    <tr><td><strong>⑤ 审核 Review</strong></td><td>新经验/新因子 = <code>proposed</code>，人工确认才生效；<code>contradicts</code> 边挂到冲突清单，不自动消解</td><td>人工闸门</td></tr>
+    <tr><td><strong>⑥ 写盘 Write</strong></td><td>原子写 <code>graph.json</code>；若新事实与旧事实同主语同关系但冲突 → 旧事实置 <code>validTo</code> 而非删除</td><td>可回溯、有时效的图谱</td></tr>
+    <tr><td><strong>⑦ 回流 Feedback</strong></td><td>问答命中的节点置信度 +0.05（上限 0.95）；隐藏/删除/提升记反馈；每 15 条反馈改写抽取 prompt 的「保留偏好」段；孤立低质节点 7 天隐藏、30 天清理</td><td>越用越准，但不改交易纪律</td></tr>
+  </table>
+
+  <h3>3.3 抽取 prompt 要点（金融版）</h3>
+  <pre>角色：知识筛选器（不是投资顾问）
+任务：从消息中抽取值得长期保存的知识三元组
+输出 JSON：nodes[{id,type:concept|factor|experience|pattern|event|question,label,confidence}]
+          edges[{from,to,type:supports|contradicts|causes|relates|instance_of}]
+硬约束：
+ 1. 至少 1 个 experience/question 节点，概念+因子 2–6 个
+ 2. 边必须引用已定义 id；禁止孤立节点超过总数 30%
+ 3. 禁止任何买卖建议、目标价、仓位指令
+ 4. 置信度锚点：核心概念 0.9 / 明确定义 0.7 / 有信息量 0.5 / 边缘提及不输出
+ 5. 无长期价值（寒暄、临时指代、纯格式）→ 输出空 nodes/edges
+上下文：附带最近 N 条对话消息用于消歧（借鉴 nexus_store 的 context）</pre>
+
+  <h3>3.4 与低幻觉四层约束的衔接</h3>
+  <div class="danger">
+    <strong>不可触碰的红线：</strong>知识回流只允许影响「抽取偏好」与「召回证据」，<strong>绝不写回 L1 BASE_SYSTEM 的金融纪律、L2 的 11 个买卖词硬拦截、L3 bridge GUARDRAIL、L4 Hermes SOUL 人格</strong>。经验节点即使被确认，也只是「可被检索的历史判断」，不是「可自动执行的新规则」——沿用 journal 的审核闸门与 hypotheses 的 proposed 状态。
+  </div>
+
+  <h2>四、知识图谱分布设计</h2>
+
+  <h3>4.1 当前分布（实测）</h3>
+  <p>本项目 <code>data/knowledge/graph.json</code> 实际为 <strong>7 节点 / 14 边</strong>（同向合并后约 10 边），全部来自 2 条笔记（且两条笔记内容重复，需在 P0 阶段去重）：</p>
+  <table>
+    <tr><th>类型</th><th>数量</th><th>占比</th><th>具体问题</th></tr>
+    <tr><td>concept 概念</td><td>2</td><td>29%</td><td rowspan="6">样本极小；两条重复笔记产生重复节点；无时序字段；无 feedback 字段；无社区/聚类；边类型分布偏 relates（8/14）</td></tr>
+    <tr><td>factor 因子</td><td>2</td><td>29%</td></tr>
+    <tr><td>experience 经验</td><td>1</td><td>14%</td></tr>
+    <tr><td>question 问题</td><td>2</td><td>29%</td></tr>
+    <tr><td>event 事件</td><td>0</td><td>0%</td></tr>
+    <tr><td>pattern 形态</td><td>0</td><td>0%</td></tr>
+  </table>
+
+  <h3>4.2 目标分布（稳定运行 1–3 个月、约 150–300 节点时）</h3>
+  <p>比例来自本项目的知识结构设计 + FinDKG 的实体类别思想，结合「宁少勿滥」调整：</p>
+  <table>
+    <tr><th>类型</th><th>目标占比</th><th>角色定位</th><th>典型节点</th></tr>
+    <tr><td>concept 概念</td><td><span class="bar" style="width:44px;background:#378ADD"></span>22%</td><td>通用市场概念，图谱的语义底座</td><td>缩量下跌、避险、存量博弈、板块轮动</td></tr>
+    <tr><td>factor 因子</td><td><span class="bar" style="width:44px;background:#1D9E75"></span>22%</td><td>可观测的量化/资金因子，枢纽度最高</td><td>跌破MA5次数、板块资金持续性、量比</td></tr>
+    <tr><td>experience 经验</td><td><span class="bar" style="width:36px;background:#7F77DD"></span>18%</td><td>用户自己的判断沉淀，必须人工确认</td><td>缩量下跌多为观望…</td></tr>
+    <tr><td>event 事件</td><td><span class="bar" style="width:28px;background:#D85A30"></span>14%</td><td>带时间的事件锚点，连接个股与概念</td><td>医保目录调整、业绩预增</td></tr>
+    <tr><td>pattern 形态</td><td><span class="bar" style="width:24px;background:#BA7517"></span>12%</td><td>K 线/情绪结构</td><td>炸板回封、连板分歧</td></tr>
+    <tr><td>question 问题</td><td><span class="bar" style="width:24px;background:#D4537E"></span>12%</td><td>待验证假设，驱动后续检索</td><td>板块资金持续性如何验证</td></tr>
+  </table>
+
+  <h3>4.3 边与拓扑分布目标</h3>
+  <table>
+    <tr><th>指标</th><th>目标</th><th>说明</th></tr>
+    <tr><td>边类型占比</td><td>relates 35% / supports 25% / causes 20% / instance_of 12% / contradicts 8%</td><td>contradicts 保留但单独可视化，不参与自动推理</td></tr>
+    <tr><td>度分布</td><td>核心因子度数 15–30（枢纽）；中位数 2–4；约 20% 低度节点被隐藏</td><td>幂律分布，符合知识图谱自然形态；枢纽即「关键因子」</td></tr>
+    <tr><td>社区聚类</td><td>5 个簇：量价形态 / 资金面 / 事件题材 / 情绪周期 / 经验裁决</td><td>后续可用 community_id 着色；当前先用 type 着色</td></tr>
+    <tr><td>置信度分布</td><td>≥0.7 约 60%；0.4–0.7 约 30%；&lt;0.4 丢弃</td><td>与 AI-Hel2 自适应阈值一致</td></tr>
+    <tr><td>渲染阈值（沿用已移植引擎）</td><td>&lt;200 节点显 conf≥0.3；200–500 显 ≥0.4；500–1000 显 ≥0.5；1000+ 显 ≥0.6</td><td>超过 500 启用 smart display：2-hop、预算 350 节点</td></tr>
+    <tr><td>节点半径</td><td><code>3 + log2(degree+1)×2</code>，3–12px</td><td>已在 <code>graph-engine.js</code> 实现</td></tr>
+  </table>
+
+  <h2>五、落地路线（建议）</h2>
+  <table>
+    <tr><th>阶段</th><th>内容</th><th>依赖</th></tr>
+    <tr><td><strong>P0 数据补洞</strong></td><td>清理重复笔记；扩展 graph.json 字段（confidence/sourceType/sourceMessageId/validFrom/status）；新增 messages.jsonl 落盘</td><td>无</td></tr>
+    <tr><td><strong>P1 抽取链路</strong></td><td>价值门控 + 金融版抽取 prompt + Hermes 调用 + 启发式兜底 + 来源溯源</td><td>P0</td></tr>
+    <tr><td><strong>P2 对齐审核</strong></td><td>别名表 + 相似度合并 + pending-merge + 冲突清单 + 人工确认 UI</td><td>P1</td></tr>
+    <tr><td><strong>P3 时序与回流</strong></td><td>valid_to 事实失效 + 问答命中反馈 + 偏好摘要注入 + 衰减清理</td><td>P2</td></tr>
+    <tr><td><strong>P4 图谱增强</strong></td><td>社区着色 + 自适应阈值 + 语义缩放（复用已移植引擎，不动渲染核心）</td><td>P2</td></tr>
+    <tr><td><strong>P5 事件锚定</strong></td><td>对接「日程与事件」模块，事件作为锚点连接个股/概念/因子</td><td>P3</td></tr>
+  </table>
+
+  <div class="note"><strong>范围提醒：</strong>本方案只做设计与评估，<strong>暂不改动现有代码</strong>。上一阶段已完成的图谱渲染移植（<code>web/v2/graph-engine.js</code>）保持不变，Hermes 四层约束保持不变。确认方案后再按 P0→P5 逐步实施。</div>
+
+  <h2>附：主要参考资料</h2>
+  <ul class="small">
+    <li>AI-Hel2 本地源码：<code>D:\AI-Hel2\docs\nexus-knowledge-engine.md</code>、<code>src-tauri\migrations\002_nexus_schema.sql</code>、<code>src\types\knowledge.ts</code>、<code>data\knowledge_cache.db</code>（实测）</li>
+    <li>KGGen — <code>github.com/kg-gen/kg-gen</code>；Graphiti — <code>github.com/getzep/graphiti</code>；Mem0 — <code>github.com/mem0ai/mem0</code></li>
+    <li>PROM — <code>github.com/kazgu/PROM</code>；eventual — <code>github.com/milesgray/eventual</code>；knowledge-graph-agent — <code>github.com/rohanprichard/knowledge-graph-agent</code></li>
+    <li>FinDKG — <code>arxiv.org/abs/2407.10909</code>；FinKG-News — <code>arxiv.org/abs/2607.01023</code>；FinKario（2025）</li>
+  </ul>
+</div>
+</body>
+</html>

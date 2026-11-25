@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型接入、零训练能力栈与股民交互 v5 · 2026-11-19</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6fb;color:#1c2431;
+  font:14px/1.72 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 24px 60px}
+header{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:22px 26px;margin-bottom:18px}
+h1{font-size:25px;font-weight:800;margin:0 0 6px}
+.meta{color:#6b7893;font-size:12.5px}
+.lead{margin-top:16px;padding:14px 16px;background:#eef4ff;border:1px solid #d6e4ff;border-radius:9px;
+  color:#254a86;font-size:13.5px;line-height:1.8}
+.lead b{color:#123c86}
+section{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:20px 26px;margin-bottom:18px}
+h2{font-size:18px;font-weight:800;margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid #eef1f7}
+h3{font-size:14.5px;font-weight:700;margin:20px 0 8px}
+p{margin:8px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:5px 0}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;
+  font-size:12px;background:#f2f5fa;border:1px solid #e6ecf6;border-radius:4px;padding:1px 5px}
+pre{background:#f7f9fd;border:1px solid #e6ecf6;border-radius:9px;padding:13px 15px;overflow:auto;
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12px;line-height:1.7;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:12.8px;margin:10px 0}
+th{text-align:left;background:#f7f9fd;color:#5a6780;font-weight:700;font-size:12px;
+  padding:9px 10px;border:1px solid #e6ecf6;white-space:nowrap}
+td{padding:9px 10px;border:1px solid #e6ecf6;vertical-align:top;line-height:1.6}
+tr:nth-child(even) td{background:#fcfdff}
+.tag{display:inline-block;font-size:11px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid transparent}
+.tag.blue{background:#eef4ff;color:#254a86;border-color:#d6e4ff}
+.tag.purple{background:#f0eefe;color:#4a3fa8;border-color:#ddd7f7}
+.tag.amber{background:#fdf3e2;color:#8a5a0b;border-color:#f6e2bb}
+.tag.red{background:#fceceb;color:#a32d2d;border-color:#f3cfcd}
+.tag.green{background:#e7f5ef;color:#0f6e56;border-color:#c7e8da}
+.tag.gray{background:#f1f3f8;color:#6b7893;border-color:#e2e8f2}
+.callout{border-left:3px solid #2559c9;background:#f6f9ff;padding:11px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+.callout.warn{border-left-color:#BA7517;background:#fdf7ec}
+.callout.danger{border-left-color:#A32D2D;background:#fceceb}
+.callout.ok{border-left-color:#1D9E75;background:#edf8f3}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.box{border:1px solid #e6ecf6;border-radius:9px;padding:12px 14px;background:#fafbfe}
+.box .bt{font-weight:700;font-size:13px;margin-bottom:5px}
+.box .bm{font-size:12px;color:#5a6780;line-height:1.65}
+.src{font-size:11.5px;color:#8a95aa;margin-top:6px;line-height:1.55}
+footer{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:18px 26px;
+  font-size:12px;color:#6b7893;line-height:1.8}
+.disc{background:#fdf7ec;border:1px solid #f6e2bb;border-radius:9px;padding:12px 15px;
+  margin-top:12px;color:#7a5410;font-size:12.5px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>模型接入、零训练能力栈与股民交互 v5</h1>
+  <div class="meta">项目：GlobalMarketMonitor · 2026-11-19（周四，盘后）· 承接 v1–v4 · 状态：设计稿，未改动任何现有代码或数据文件</div>
+  <div class="lead">
+    <b>四句话回答本轮问题。</b>① <b>LangGraph 约束可接受</b>，真正要防的不是它的许可证，而是 DeepSeek 的数据条款与结构化输出稳定性。② <b>DeepSeek 可以用</b>，OpenAI 兼容、Pydantic AI 有原生 provider；但必须关思考模式、做空白返回兜底、只传脱敏事实，且模型 ID 不要硬编码。③ <b>专业能力不用训练</b>：现成 MCP 数据工具 + SKILL.md 技能包 + 通用模型即可；<b>连个人经验池也不做微调</b>，它是可改可删的账本加检索增强。④ <b>界面定位纠偏</b>：v4 的 B/C 原型是研发视角，本版改为「股民模式（默认，不展示推导）+ 研发模式（前期保留完整推导链）」双层，并给出四个面向股民的可视化方案。
+  </div>
+</header>
+
+<section>
+  <h2>一、LangGraph 这个约束到底怎么样</h2>
+  <p>结论：<b>比想象中轻，可以接受</b>。唯一真实的成本是多养一套 Python 运行时，而这恰好也是权限隔离的手段。逐条核对（2026-11-19 核实）：</p>
+  <table>
+    <thead><tr><th>约束</th><th>对本项目的影响</th><th>处置</th></tr></thead>
+    <tbody>
+      <tr><td>库 / checkpointer / CLI / SDK 为 MIT；<b>官方 Agent Server 为 Elastic License 2.0</b>，自托管生产需 LangSmith 许可密钥</td><td><span class="tag green">无影响</span></td><td>只装库，自己用 FastAPI 包一层 HTTP，<b>完全不用 Agent Server</b>；整条链路保持 MIT、无商业许可依赖</td></tr>
+      <tr><td>深度 tracing / Studio 指向 LangSmith</td><td><span class="tag green">无影响</span></td><td>用 Pydantic AI 的 OpenTelemetry 原生 trace，落到本地存储，不绑定任何托管平台</td></tr>
+      <tr><td>checkpoint 存储会增长（1.2.18 起快照写入更频繁）</td><td><span class="tag amber">轻微</span></td><td>单人使用量小；监控体积、按 thread 定期裁剪即可</td></tr>
+      <tr><td>需要 Python 3.10+，与零依赖 Node 主服务并存</td><td><span class="tag red">唯一真实成本</span></td><td>做成独立 sidecar（<code>127.0.0.1:8788</code>），只读挂载；挂掉不影响 8777 照常选股，界面可一键关闭智能体层</td></tr>
+      <tr><td>模型无关，通过 LangChain ChatModel 接口调用</td><td><span class="tag green">有利</span></td><td>可直接指向 DeepSeek 的 OpenAI 兼容端点，也可随时换本地模型</td></tr>
+      <tr><td>恢复时被打断节点会从头重跑，<b>不是 exactly-once</b></td><td><span class="tag amber">需处理</span></td><td>所有外部写入带幂等键；写库副作用放在 <code>interrupt()</code> 之后</td></tr>
+      <tr><td>学习曲线、代码量偏高</td><td><span class="tag blue">可控</span></td><td>沿用 v4 的触发条件：待审 &gt;30 条 / 需跨天恢复 / 多步依赖 / 需回放历史判断，满足任一才上；Step 0–2 不上</td></tr>
+      <tr><td>1.0 承诺到 2.0 不破坏 API</td><td><span class="tag green">有利</span></td><td>长期维护风险低于仍处 0.x 的 OpenAI Agents SDK</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn"><b>反向声音</b>：v4 把「许可证」当成主要风险，核实后发现它其实最容易规避（不用 Agent Server 即可）。<b>本轮真正的风险转移到了模型侧</b> —— DeepSeek 隐私政策第七章默认可能把 API 输入输出用于训练，以及思考模式与结构化输出的冲突。这两条如果不管，比许可证问题严重得多。</div>
+  <div class="src">来源：Geekflare《LangGraph review》、WTF Radar《LangGraph Review》、LangGraph 官方 persistence / interrupts 文档、GitHub 版本追踪，经 domain_search 于 2026-11-19 检索。第三方评测为<b>非一手来源，许可证条款需以官方 LICENSE 原文核实</b>。</div>
+</section>
+
+<section>
+  <h2>二、可以用 DeepSeek 吗：可以，但四条必须照做</h2>
+
+  <h3>2.1 接入方式</h3>
+  <p>DeepSeek API 使用 OpenAI 兼容格式，<code>base_url = https://api.deepseek.com</code>，改配置即可复用官方 SDK。LangGraph 侧通过 <code>ChatOpenAI</code> / <code>init_chat_model</code> 指定 <code>base_url</code>；Pydantic AI 侧<b>有原生一等公民 <code>DeepSeekProvider</code></b>，不需要用通用兼容写法凑合。</p>
+  <pre># Pydantic AI（推荐用于 R1 强类型抽取）
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
+from pydantic_ai.providers.deepseek import DeepSeekProvider
+
+agent = Agent(
+    OpenAIChatModel(MODEL_ID, provider=DeepSeekProvider(api_key=KEY)),
+    output_type=Claim4,                       # 主张/证据/来源/时点 四元组
+    model_settings=OpenAIChatModelSettings(thinking=False),
+)
+
+# LangGraph / LangChain 侧
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model=MODEL_ID, base_url="https://api.deepseek.com",
+                 api_key=KEY, temperature=0)</pre>
+  <div class="callout danger"><b>模型 ID 不要硬编码</b>：核实中不同来源对当前模型名表述不一致 —— 一方列出 <code>deepseek-v4-flash</code> / <code>deepseek-v4-pro</code>，Pydantic AI 官方页则建议 <code>deepseek:deepseek-flash</code> 并称 <code>deepseek-v4-flash</code> 为旧名；旧 ID <code>deepseek-chat</code> / <code>deepseek-reasoner</code> 已于 2026-07-24 退役。<b>存在口径差异，以调用当日官方模型列表为准</b>，把 MODEL_ID 写进配置项而非代码常量，升级时只改配置。<div class="src">来源：DeepSeek 官方 API 文档（api-docs.deepseek.com）、Pydantic AI 官方 DeepSeek 页，2026-11-19 检索；具体版本号与别名需核实官方当日文档。</div></div>
+
+  <h3>2.2 结构化输出的四个坑（直接决定 R1 能不能用）</h3>
+  <table>
+    <thead><tr><th>坑</th><th>后果</th><th>本项目的处置</th></tr></thead>
+    <tbody>
+      <tr><td>Chat Completions 只有 <code>response_format={"type":"json_object"}</code>，原生 <code>json_schema</code> 仅 Responses API 的 <code>text.format</code> 支持</td><td>服务端不按 Schema 强约束</td><td>Prompt 必须含字面词 <code>json</code> 并给示例；输出一律再过 Pydantic 校验，不信任服务端</td></tr>
+      <tr><td>模型输出无法识别为 JSON 时，API 把内容<b>替换为空格 U+0020</b>，而 <code>finish_reason</code> 仍是 <code>stop</code></td><td>看起来返回成功但内容是空的</td><td><b>必须做空白 content 兜底与重试</b>，不能只写 <code>json.loads</code>；网关把这类输出标为「已剔除」并在研发视图显示</td></tr>
+      <tr><td>V4 模型默认思考；思考时拒绝强制 <code>tool_choice</code>，Pydantic AI 只能发 <code>auto</code>，模型可能改用散文作答而不调输出工具</td><td>重试预算耗尽，抽取任务失败</td><td><b>结构化抽取一律 <code>thinking=False</code></b>；显式传 <code>tool_choice='required'</code> 且思考开启会在客户端抛 <code>UserError</code></td></tr>
+      <tr><td>Responses API 无状态；不支持的参数<b>静默忽略</b>；<code>previous_response_id</code> 会让历史被静默丢弃</td><td>功能失效不报错、对话丢失</td><td>本项目用 Chat Completions + <code>deepseek:</code> 前缀；多轮历史由 LangGraph checkpointer 自己保存并每次回传，不用 Responses 的会话机制</td></tr>
+    </tbody>
+  </table>
+  <p>另有两条实现细节：<code>strict</code> 模式需 <code>https://api.deepseek.com/beta</code> 且所有 object 属性必须 <code>required</code>、<code>additionalProperties:false</code>，默认 URL 上「接受但忽略」；思考请求中工具调用轮次缺 <code>reasoning_content</code> 会被拒，<code>DeepSeekProvider</code> 会补空值。这些都不需要本项目自己实现，但要在联调时确认版本已包含。</p>
+
+  <h3>2.3 数据合规：本轮最重要的红线</h3>
+  <div class="callout danger"><b>《DeepSeek开放平台隐私政策》第七章第 2 款</b>（发布 2026-11-04、生效 2026-11-11）原文：除另有书面约定外，在经安全加密技术处理和去标识化前提下，<b>可能将通过开放平台提交的输入和输出用于开发、训练、评估及改进模型、算法、安全系统</b>。这与消费级 chat 产品里那个可关闭的开关<b>不是同一机制</b>，政策未给出默认 opt-out 开关；若要求数据不进训练，须争取书面约定（企业协议 / DPA）。</div>
+  <table>
+    <thead><tr><th>允许传给模型 API</th><th>禁止传给模型 API</th></tr></thead>
+    <tbody>
+      <tr><td>股票代码、交易日期、已核实的价格 / 涨跌幅、信号名称、口径标签、脱敏后的复盘文字</td><td>券商账户、资金量、持仓市值、完整持仓明细、身份证 / 手机号、API 密钥、他人信息、任何敏感个人信息</td></tr>
+    </tbody>
+  </table>
+  <p>另外两点：① API 本身无状态、服务端不留多轮历史，这缩小了服务端累积面，但<b>历史留存责任完全落在客户端</b> —— 本地 SQLite checkpoint、OTel trace、JSONL 日志都在你自己机器上，要自己管好；② 政策称境内收集的信息存储于中国境内、「目前」不会传输至境外，措辞留有余地，若将来产品对外服务需重新审阅。个人自用时，最稳妥的兜底是把敏感字段留在本地、只发脱敏结构化事实，必要时切本地模型（Ollama 等兼容端点）。</p>
+  <div class="src">来源：《DeepSeek开放平台隐私政策》（cdn.deepseek.com，发布 2026-11-04 / 生效 2026-11-11）、DeepSeek 官方 JSON Output / Tool Calls / Responses API 文档、Pydantic AI 官方 DeepSeek 页，经 domain_search 于 2026-11-19 检索。条款细节以政策原文为准。</div>
+</section>
+
+<section>
+  <h2>三、能力从哪里来：四层栈，全部零训练</h2>
+  <p>2026 年这个赛道的格局已经清楚：<b>价值不在模型，在数据通道和流程封装</b>。数据层是 MCP server，能力/流程层是 SKILL.md，编排层是客户端 / 自有 sidecar —— 三层都是纯文本加标准协议，不需要训练、微调或 GPU。</p>
+
+  <h3>3.1 现成可直接用的 MCP（按本项目相关度）</h3>
+  <table>
+    <thead><tr><th>项目 / 服务</th><th>特点</th><th>成本 / 许可</th><th>本项目怎么用</th></tr></thead>
+    <tbody>
+      <tr><td><b>CnStock</b>（A 股数据 MCP）</td><td>免账号免密钥、多源兜底（东财 / 腾讯 / 新浪 / 同花顺）、自带 <code>health</code> 工具；<b>取不到会明写，不用 0 或旧数据冒充</b></td><td>免密钥，社区服务</td><td><span class="tag green">最契合</span> 「无出处即剔除」的设计可直接使用它的缺失语义；用于补公告、财报、板块资金与 breadth</td></tr>
+      <tr><td><b>aktools</b>（AkShare 官方）/ akshare-one-mcp / tdx-mcp / local-datasource</td><td>AkShare 官方 HTTP+MCP 稳定性好于民间封装；<code>local-datasource</code> 完全本地、不出本机</td><td>开源免费，tdx-mcp 为 MIT</td><td>作为 A 股免费兜底源；<b>必须多源冗余</b></td></tr>
+      <tr><td><b>OpenBB 5</b></td><td>Python SDK + REST + MCP 三套接口共用一套数据层，已安装的 endpoint 自动变成工具</td><td>Apache-2.0（2026-09-29 发布）</td><td>架构参考：把自有数据也包成一次接入、多处消费</td></tr>
+      <tr><td><b>iFinD MCP</b> / <b>Wind AIFin Market</b> / 东方财富妙想 Skills</td><td>2026 年 3–5 月集体开放；iFinD 覆盖 8 大类、内置 1000+ 标准化投研指标、32+ 工具</td><td>需账号订阅 / 积分</td><td>后期若需要权威口径再接；<b>连接器不含数据权益</b></td></tr>
+      <tr><td><b>FMP</b> / Alpha Vantage / EODHD</td><td>官方托管，FMP 免费 250 次/天且工具列表随套餐裁剪</td><td>免费额度 / 付费档</td><td>仅在做跨市场对照时考虑，非当前重点</td></tr>
+      <tr><td><b>长桥 / IBKR 券商 MCP</b></td><td>唯一能读到本人真实持仓的通道，OAuth 2.1 免 API Key</td><td>需券商账户</td><td><span class="tag red">只读</span> 本项目<b>禁止挂载任何交易 / 下单类工具</b>，也不自动发单</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 现成可直接用的技能包（SKILL.md）</h3>
+  <table>
+    <thead><tr><th>技能包</th><th>内容</th><th>对本项目最值得拿的一点</th></tr></thead>
+    <tbody>
+      <tr><td><b>tradermonty/claude-trading-skills</b></td><td>74 技能 / 9 个 workflow manifest，MIT；市场宽度、板块轮动、VCP、CANSLIM、仓位计算、signal-postmortem</td><td><b>最贴近本项目</b>：5 技能起步包用公开 CSV、完全免费；明确「不是信号服务、不自动下单、人工闸门」；其「每日给技能打分、低于阈值自动改写并提 PR 供人工 review」的自我维护机制值得借鉴到经验卡退役</td></tr>
+      <tr><td><b>ml4t/skills</b></td><td>61 技能，纯 Markdown、零依赖（无脚本 / hook / MCP / 网络调用）</td><td><b>防未来函数、防数据泄漏、防过拟合回测</b>的纪律卡；安全性最好，装前通读即完整审计</td></tr>
+      <tr><td><b>jwangkun/claude-for-financial-services-cn</b></td><td>Apache-2.0，188 个 SKILL.md；Wind → iFind → <b>AkShare 自动降级</b>；中国会计准则、申万 / 中信分类、中金 / 中信 / 华泰研报格式</td><td>「付费源优先、免费源兜底、口径本地化」的分层做法；中国口径适配可直接参考</td></tr>
+      <tr><td><b>anthropics/financial-services</b></td><td>Apache-2.0，10 个命名 Agent、12 个 MCP 连接器；产出均为待人工签字的草稿</td><td>机构工作流模板库；<b>注意其连接器不含数据权益</b>，FactSet / PitchBook 等仍需自有订阅</td></tr>
+      <tr><td>himself65/finance-skills / Investor Skills / Vibe-Trading</td><td>MIT 或纯文本；earnings preview / recap、流动性（Amihud）、各类投资风格封装</td><td>按需挑选流程卡，不整套搬</td></tr>
+    </tbody>
+  </table>
+  <p><b>SKILL.md 标准本身</b>：YAML frontmatter 声明 <code>name</code> / <code>description</code> + Markdown 正文，渐进式披露（先只加载 name+description，任务匹配才读全文），跨框架可移植（Claude Code / Codex / Cursor / Gemini CLI / OpenClaw / WorkBuddy 等）。有公开研究对 31,132 个技能统计发现<b>约 26.1% 至少含一个漏洞，带可执行脚本的技能风险高 2.12 倍</b> —— 因此本项目<b>只装纯 Markdown、无脚本的技能卡，安装前通读全文</b>。</p>
+
+  <h3>3.3 与现有 8777 系统的衔接（不推翻数据管道）</h3>
+  <div class="callout ok"><b>你已经有数据源了</b>：<code>server/sources.js</code> 与 7 类状态缓存（<code>market-breadth</code> / <code>market-style</code> / <code>strength-cache</code> / <code>phase-cache</code> / <code>flow-cache</code> / <code>cycle-cache</code> / <code>attribution-cache</code>）已经覆盖行情与市场状态。<b>MCP 在这里不是替换它们，而是三个补充用途</b>：① 把现有 JSONL 事实账本与缓存<b>暴露成只读 MCP server</b> 给 sidecar 调用（自己写一次，任何兼容 Agent 都能接）；② 补现有系统没覆盖的公告原文、财报、宏观序列；③ 技能包提供「怎么分析」的流程模板。这样既不破坏零依赖主服务，又让能力可移植。</div>
+
+  <h3>3.4 个人经验池：也不做训练</h3>
+  <p>你说「训练的部分主要是个人经验池」—— 这里要纠一句：<b>连经验池也不该微调模型</b>。微调会带来五个与本项目根本冲突的后果：不可审计（说不清哪条经验改了什么）、无法逐条回滚或删除、无法证伪、在现有 18/30 的小样本上必然过拟合、且与前面四版定下的「人工闸门 / 冻结基线 v0 / 失效退役 / 有界回流」全部打架。</p>
+  <div class="grid2">
+    <div class="box"><div class="bt">✅ 正确做法</div><div class="bm">经验池 = 可读可改可删的 JSONL 账本；用时按 <code>patternFamily + scope + 画像</code> 检索相关条目作为上下文给模型（检索增强），模型只负责措辞；经你审核采纳后，才以 ±2 分 / 乘数 0.8–1.25 / 不翻符号的幅度回流到评分，并冻结 v0 对照。</div></div>
+    <div class="box"><div class="bt">❌ 不做</div><div class="bm">不微调、不 LoRA、不把经验喂成权重、不让模型自己「悟」出规则。经验的价值在于可举证、可退役、可反例校正，一旦变成权重就全丢了。</div></div>
+  </div>
+  <p class="src">国金证券 2026-04-30《大模型赋能投研之二十：从金融文本数据到投研工作流》把金融 Skills 分为信息数据类 / 工具效用类 / 投研应用类，可作技能卡分类参考；该研报为非一手转述，<b>需核实原文</b>。</p>
+</section>
+
+<section>
+  <h2>四、界面定位纠偏与四个股民方案</h2>
+  <div class="callout warn"><b>先承认一个偏差</b>：v4 交付的 B 三栏工作台 / C 复盘时间线，右栏放的是证据链、并列假说、冲突标签、schema 校验 —— 那是<b>研发观察视角</b>，不是股民该看的东西。本版按你的要求重新定位：<b>股民模式是默认且最终形态</b>，推导过程只在研发期以开关形式保留。</div>
+
+  <h3>4.1 双层呈现：不是两套 UI</h3>
+  <p>同一份数据、同一渲染层，只切一个 <code>detailLevel = retail | dev</code>。股民模式：大字号、结论与提示优先、不出现「假说 / 证伪 / IC / schema / 幂等」等术语、红涨绿跌、只展示有实质变化的维度（不写「暂无变化」占位）、点一下才看「为什么提醒我」。研发模式：展开完整推导链、来源时点、样本数与反例数、网关校验与被剔除输出、参数滑块（改动不写生产）。<b>发布时只需隐藏研发入口，推导视图整体下线</b>，避免两套界面长期分叉。</p>
+
+  <h3>4.2 四个面向股民的方案</h3>
+  <table>
+    <thead><tr><th>方案</th><th>形态</th><th>最适合</th><th>弱点</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 今日三件事</b></td><td>三张大卡：大盘一句话 / 我的股池提醒 / 今天要做</td><td>盘前盘后 3 分钟扫一眼，小白零负担</td><td>信息密度低，看不了全池</td></tr>
+      <tr><td><b>② 股池看板</b><span class="tag blue">推荐主屏</span></td><td>券商自选股式表格，多一列「提醒」与「为什么提醒我」</td><td><b>学习成本最低</b>，股民最熟悉；可排序筛选、批量管理</td><td>需要 ≥1280px 宽屏</td></tr>
+      <tr><td><b>③ 复盘卡流</b></td><td>日期轴 + 每日卡片 + 常驻口语录入 +「我的经验本」</td><td>长期累积感，把经验变成看得见的成长记录</td><td>不适合做实时监控首屏</td></tr>
+      <tr><td><b>④ 问一句</b></td><td>对话入口 + 三个快捷问题，回答只用已核实事实拼装</td><td>最直觉、对小白最友好</td><td>最需防幻觉：答案必须由确定性结果拼装，模型只做措辞；无出处的问题直接拒答</td></tr>
+    </tbody>
+  </table>
+  <p><b>推荐组合不是四选一</b>：② 作日常主屏 + ① 作盘前 / 盘后首屏 + ③ 作复盘子页 + ④ 作可选入口；<b>研发模式作为全局开关覆盖在任一方案之上</b>。四个方案已在可交互原型中实现并可切换。</p>
+
+  <h3>4.3 研发期保留的推导链（六步，逐环节可点开）</h3>
+  <table>
+    <thead><tr><th>步</th><th>展示内容</th><th>你在研发期要观察什么</th></tr></thead>
+    <tbody>
+      <tr><td>1 事实输入</td><td>A/B/C 来源分级、来源时点、取数日</td><td>数字是不是从行情数据读的（<b>不能从股池列表附带字段读，那可能是振幅而非涨跌幅</b>）</td></tr>
+      <tr><td>2 确定性计算</td><td><code>gap</code> / <code>intraday</code> 公式、四象限、Flag 规则 ID、样本与反例数</td><td>口径是否一致；形态与当日涨跌是否分开存</td></tr>
+      <tr><td>3 智能体输出</td><td>R1 四元组 JSON、R2 假说卡、R3 冲突标签、R4 提示语、<code>thinking=False</code> 标记</td><td>模型有没有补数字、有没有写「因为 X 所以涨」</td></tr>
+      <tr><td>4 确定性网关</td><td>schema / 出处 / 幂等校验结果，<b>被剔除的输出及原因</b></td><td>AI 稿件的 PE 等数字是否被置 null、空白 JSON 返回是否触发重试</td></tr>
+      <tr><td>5 人工闸门</td><td>待审队列状态、<code>interrupt/resume</code>、采纳边界</td><td>有没有绕过人工审核直接写 <code>rules.json</code></td></tr>
+      <tr><td>6 回填校准</td><td>T+1/5/20 回填、假警报率、反例计数</td><td>风险回避价值与假警报率是否并列看</td></tr>
+    </tbody>
+  </table>
+  <p>研发面板还带三个参数滑块（提示阈值 / 样本门槛 n / 每日 Flag 上限），<b>只改本地预览、不写生产配置</b>。等口径稳定后，股民模式只保留「为什么提醒我」这一层事实说明即可。</p>
+
+  <h3>4.4 PC 使用习惯与内容纪律</h3>
+  <ul>
+    <li>≥1440px 宽屏为主；窄屏时研发面板自动移到下方，不横向滚动；字号比 v4 原型放大一档。</li>
+    <li><code>/</code> 聚焦录入 / 提问，<code>Esc</code> 关闭研发视图；审核用就地二次确认，不弹模态。</li>
+    <li>红涨绿跌（A 股习惯）；提醒色与涨跌色分开，避免误读为买卖信号；零 CDN、离线可用。</li>
+    <li><b>不做每日涨跌方向预测</b>，只给「观察重点 + 风险/机会框架」；不写「无变化」占位；不推荐超出认知范围的标的；不用绝对语言。</li>
+    <li>常见误导信号要在提示里体现：<b>利好消息发布 ≠ 股价必涨</b>、单日跌幅大 ≠ 趋势反转、跌停打开 ≠ 恐慌盘出清 —— 这正是通化金马案例给出的教训。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>五、路线更新（延续 Step 0–4）</h2>
+  <table>
+    <thead><tr><th>阶段</th><th>本版新增内容</th><th>是否引入 LLM</th></tr></thead>
+    <tbody>
+      <tr><td><b>Step 0</b></td><td>不变：4 条 pending 标「需复核」、修 <code>statsOf()</code> 口径、建 <code>market-state.jsonl</code> 与 11-17 冲突样本、建空账本、手写 3–5 条 precommit</td><td>否</td></tr>
+      <tr><td><b>Step 1</b></td><td>只读 Flag 规则表 + 确定性因子 + T+1/5/20 回填；把现有 JSONL 包成<b>只读 MCP server</b>（先不接外部数据）</td><td>否</td></tr>
+      <tr><td><b>Step 2</b></td><td><b>新增</b>：上线股民模式四方案 + 研发模式开关；Node 薄适配器；来源分级 A/B/C 落地</td><td>受限（可一键关闭）</td></tr>
+      <tr><td><b>Step 3</b></td><td><b>新增</b>：满足触发条件后上 LangGraph + Pydantic AI sidecar；接 DeepSeek（<code>thinking=False</code>、空白兜底、脱敏字段白名单、MODEL_ID 配置化）；按需引入纯 Markdown 技能卡与 1–2 个只读 MCP 数据源</td><td>是，仅复盘链路</td></tr>
+      <tr><td><b>发布前检查</b></td><td><b>新增</b>：隐藏研发入口、确认脱敏白名单生效、确认无交易类 MCP 工具、确认 <code>rules.json</code> 仍受人工闸门控制</td><td>—</td></tr>
+      <tr><td><b>Step 4</b></td><td>明确不做自动下单</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>六、风险与合规边界</h2>
+  <ul>
+    <li><b>程序化交易</b>：不自动下达委托单则不落入程序化交易定义、无需报备；脚本自动发单即进入「先报告、后交易」框架（证监会《证券市场程序化交易管理规定（试行）》，2024-10-08 施行）。高频认定阈值媒体口径与正式文本有分歧，<b>以交易所正式细则为准，本文不采信任一数字作结论</b>。</li>
+    <li><b>模型数据</b>：默认可能用于训练的条款见 2.3；只传脱敏结构化事实，密钥走环境变量不进 prompt；本地 checkpoint / OTel trace / JSONL 日志的历史留存责任在自己。</li>
+    <li><b>MCP 与技能安全</b>：优先只读、禁止交易类工具；免费 A 股数据源依赖公开网页接口，改版即失效（有评测称部分工具可用率约 60–70%），必须多源冗余并显式标注数据源与日期；连接器不含数据权益；只装纯 Markdown 技能、装前通读。2026-03-10 国家互联网应急中心曾就常驻 Agent 框架发布「信任边界模糊」风险提示。</li>
+    <li><b>能力边界</b>：所有现成项目（Anthropic 官方、claude-trading-skills、iFinD、OpenBB 等）都明确「产出是供人审阅的草稿或数据、不做投资建议、不下单」。这也是本项目能作为个人助手而非代客理财存在的前提。</li>
+    <li><b>反过拟合纪律不变</b>：n≥30、IC&gt;0.03、IR&gt;0.5、样本外不劣化、一次只登记一个主假说、冻结基线 v0、失效即退役；好经验与踩坑同门槛，无 precommit 的「成功经验」不采信。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>七、来源清单</h2>
+  <h4>本地项目文件（2026-11-19 核验，一手）</h4>
+  <ul>
+    <li><code>server/sources.js</code>、<code>server/journal.js</code>、<code>data/journal/lessons.jsonl</code>（4 条 pending）、<code>outcomes.jsonl</code>（18 条）、<code>rules.json</code>（count=0）、7 类状态缓存、<code>web/shell.js</code> / <code>interaction.css</code></li>
+    <li>项目内已有文档：<code>选股方法论规格与程序覆盖矩阵.md</code>、<code>系统现状诊断</code>、<code>设计方案：因子池与智能体复盘经验池</code>，以及 <code>docs/</code> 下 v1 / v2 / v3 / v4 四份设计文档与 B/C 交互原型</li>
+  </ul>
+  <h4>模型与框架（2026-11-19 检索）</h4>
+  <ul>
+    <li>DeepSeek 官方 API 文档：<code>api-docs.deepseek.com/guides/json_mode</code>、<code>/guides/tool_calls</code>、<code>/guides/responses_api</code>；《DeepSeek开放平台隐私政策》（cdn.deepseek.com，发布 2026-11-04 / 生效 2026-11-11）—— <b>一手</b></li>
+    <li>Pydantic AI 官方 DeepSeek 模型页（pydantic.dev/docs/ai/models/deepseek）—— <b>一手</b>；LangGraph / LangChain 官方文档与 Geekflare / WTF Radar 评测 —— <b>非一手，需核实原文</b></li>
+    <li>版本、star 数、下载量、免费额度均为检索当日快照，随时间变化，<b>不作为结论依据</b>；模型 ID 存在口径差异，见 2.1</li>
+  </ul>
+  <h4>MCP 与技能生态（2026-11-19 检索，多为非一手转述，需核实原仓库）</h4>
+  <ul>
+    <li>Geekflare《12 Best MCP Servers for Financial Data in 2026》、长桥证券《2026 年股票行情 MCP Server 全面对比》、mcpworld CnStock 条目、OpenBB 5 发布说明、Anthropic <code>financial-services</code> 仓库与第三方评测、<code>claude-for-financial-services-cn</code> 安装指南、<code>claude-trading-skills</code> 教程、国金证券 2026-04-30 金融 Skills 体系研报摘要</li>
+    <li>东吴证券 / 中国能源网关于 iFinD MCP、Wind AIFin Market、东方财富妙想 Skills 于 2026 年 3–5 月开放的报道 —— <b>媒体报道，需核实官方公告</b></li>
+  </ul>
+  <h4>行情与公告（前序轮次已核实，本版沿用并标注时点）</h4>
+  <ul>
+    <li>深交所公告 2026-40（000766，2026-11-15 16:11），上海证券报 2026-11-16 全文转载；公告 2026-41 据中国证券报 2026-11-19 报道，<b>需以交易所原文为准</b></li>
+    <li>westock-data 日 K（000766 与 sh000001），取数 2026-11-19；上证 11-17 前收 3602.57 / 开 3585.67 / 收 3584.58</li>
+    <li>三季报具体数字、龙虎榜、融资余额、PE(TTM) 来自 AI 异动稿件，<b>未核对原文，本版一律不引用</b></li>
+  </ul>
+</section>
+
+<footer>
+  <b>交付物</b>：本文档 <code>docs/模型接入与股民交互v5-20261119.html</code>；可交互原型 <code>docs/交互原型v5-股民四方案与研发推导视图-20261119.html</code>（可切换四个股民方案、一键开关研发推导视图、点击行查看「为什么提醒我」、快捷提问、复盘录入、研发参数滑块）。<b>两者均为设计稿，未改动任何现有代码或数据文件</b>。<br>
+  <b>校验</b>：原型 JS 语法通过、标签配对 0 错、裸尖括号 0、元素 ID 无重复、事件处理器齐全、外部资源 0；本文档为零 JS 静态页。<br>
+  <div class="disc"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</footer>
+
+</div>
+</body>
+</html>

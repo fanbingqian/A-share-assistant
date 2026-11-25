@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>事件·选股·行情改造验收 · 2026-11-22</title>
+<style>
+:root{--bg:#f7f8fb;--card:#fff;--ink:#1b2333;--ink2:#4a5468;--ink3:#8a92a3;--line:#e3e7ef;--brand:#3b6fe0;--ok:#1e8449;--warn:#c0392b;--bg2:#f2f5fb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Microsoft YaHei",Segoe UI,sans-serif;line-height:1.7;font-size:14px}
+.wrap{max-width:1080px;margin:0 auto;padding:30px 22px 60px}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:18px;margin:34px 0 14px;padding-left:10px;border-left:4px solid var(--brand)}
+.sub{color:var(--ink3);font-size:13px;margin-bottom:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.card h3{font-size:15px;margin:0 0 10px;color:var(--brand)}
+.up{color:var(--warn)}.down{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}
+th{background:var(--bg2);color:var(--ink2);font-weight:600}
+code{background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:12px;color:#2c5bb8}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#eaf2ff;color:var(--brand);margin-right:5px}
+.badge.ok{background:#e7f6ed;color:var(--ok)}
+.note{background:var(--bg2);border-radius:6px;padding:9px 12px;color:var(--ink2);font-size:12.5px;margin-top:8px}
+.quote{background:#f5f8ff;border-left:3px solid var(--brand);border-radius:4px;padding:10px 14px;font-size:12.5px;color:var(--ink2);white-space:pre-wrap;margin:8px 0}
+ul{margin:6px 0;padding-left:20px}li{margin:4px 0}
+.kv{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.kv span{background:var(--bg2);border-radius:5px;padding:5px 10px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>事件 · 选股 · 行情改造验收报告</h1>
+  <div class="sub">2026-11-22 · 针对本轮 6 项诉求的落地与实测结果 · 智能体后端：官方 Hermes（hermes-official）</div>
+
+  <h2>一、日程与事件：近两年 + 未来已确定会议</h2>
+  <div class="card">
+    <h3>事件库从 15 条扩到 38 条规则 + 5 条已核实具体日期事件</h3>
+    <div class="kv">
+      <span><b>中国指标</b> PMI / CPI-PPI / 社融 / LPR / GDP / 进出口</span>
+      <span><b>国际会议峰会</b> 达沃斯 / CES / MWC / G20 / APEC / 金砖 / 博鳌 / COP / OPEC</span>
+      <span><b>国内展会</b> 进博会 / 广交会 / WAIC / 陆家嘴 / 金融街</span>
+      <span><b>财报季</b> 美股 Q1-Q4 + A股四大披露窗口</span>
+    </div>
+    <table>
+      <tr><th>已核实事件</th><th>日期</th><th>来源</th></tr>
+      <tr><td>APEC 第三十三次领导人会议（深圳）</td><td>2026-11-18 ~ 19</td><td>央视/新华社（官方）</td></tr>
+      <tr><td>CES 2027 国际消费电子展</td><td>2027-01-06 ~ 09</td><td>CES 官网</td></tr>
+      <tr><td>中美部分关税暂停到期</td><td>2027-01-10</td><td>公开政策日历</td></tr>
+      <tr><td>达沃斯世界经济论坛 2027</td><td>2027-01-18 ~ 22</td><td>WEF 官网</td></tr>
+      <tr><td>中央经济工作会议（窗口）</td><td>2026-12 中下旬</td><td>政策窗口推算，日期待官方确认</td></tr>
+    </table>
+    <div class="note">诚实分级：A=官方已公布具体日期；B=制度性规律/已公开举办月份、具体日待确认；C=季节性规律。已确认事件按 ruleId+日期覆盖同日推算事件。近 90 天可列出 40 条事件。</div>
+  </div>
+
+  <h2>二、事件解读：从简短量化改为详细解释 + 涨跌百分比</h2>
+  <div class="card">
+    <h3>智能体现在按固定 4 段输出，全部引用真实统计数字</h3>
+    <ul>
+      <li><b>事件之前</b>：T-5 / T-3 平均涨跌百分比、事件前 5 日上涨占比（是否提前交易预期）</li>
+      <li><b>事件之后</b>：T+1 / T+3 / T+5 平均涨跌、相对上证超额、上涨概率、涨跌分布</li>
+      <li><b>分板块明细</b>：逐个 ETF 代理列出事件前后百分比与上涨概率</li>
+      <li><b>原因机制</b>：20+ 规则预设因果链条（如两会=政府工作报告定调财政与产业政策 → 板块盈利预期）</li>
+      <li><b>本次推测 + 证伪条件</b>：明确区分历史样本与推测，样本&lt;8 标注不可外推，不给买卖建议</li>
+    </ul>
+    <div class="quote">实测（全国两会 · backend=hermes-official）：
+【事件之前】相关板块 T-5 平均 -2.82%、T-3 平均 -1.16%，事件前 5 日上涨占比 25%
+【事件之后】T+1 +1.62%、T+3 +1.44%、T+5 +1.36%；相对上证超额 +0.66%，T+5 上涨概率 75%（上涨 75%/下跌 25%）
+【分板块】消费ETF T+5 +3.04%、上涨概率 100%；科技ETF T+5 -0.32%、上涨概率 50%
+智能体还主动指出「会后上涨 ≠ 会后跑赢上证」（超额为正概率仅 50%）与低样本限制。</div>
+    <div class="note">引擎重算结果：近 2 年 231 次事件 / 468 次板块观测 / 29 类规则有样本；前端弹框与「智能体解读」按钮均改为结构化展示。</div>
+  </div>
+
+  <h2>三、选股：量化评分 + 重点股票 + 板块解释 + 条状卡片</h2>
+  <div class="card">
+    <h3>三类选股均给出 0–100 量化评分、分项、逐股理由与重点关注前 5</h3>
+    <table>
+      <tr><th>类别</th><th>评分维度（权重）</th><th>重点关注示例</th></tr>
+      <tr><td>热度/独立行情牛股</td><td>独立超额40% / 近5日收益20% / 热度30% / 独立性强10%</td><td>中京电子 96 分（独立超额+17.91%）</td></tr>
+      <tr><td>趋势股</td><td>规则强度30% / 不破MA5天数20% / 创新高幅度20% / 近5日收益20% / 量能10%</td><td>华胜天成 100 分（规则A+B，创新高+28.67%）</td></tr>
+      <tr><td>超跌长下影反弹股</td><td>超跌幅度30% / 下影长度30% / 收盘位置25% / 量能15%</td><td>本轮 0 只（是筛选结果，非数据缺失）</td></tr>
+    </table>
+    <div class="note">口径说明：评分是筛选排序的相对强弱，不是涨跌预测。前端卡片已由表格改为条状布局（评分环 + 进度条 + 关键指标 + 入选理由 + 消息面 + 重点关注条）。全量实测：候选 120 只，成功 120、失败 0，趋势 41 / 热度 19 / 反弹 0。</div>
+  </div>
+
+  <h2>四、每小时新闻搜索更新</h2>
+  <div class="card">
+    <h3>新增每小时消息面脉冲，自动刷新选股卡片</h3>
+    <ul>
+      <li>新闻本身每 60 秒轮询（现有能力），新增<b>每小时整点聚合成板块消息面</b>（news-pulse）</li>
+      <li>经 analysis.sectorBias 做「新闻主题 → 板块」映射，给出消息偏多/偏空与情绪分</li>
+      <li>叠加到每只选股：<code>newsBias</code> / <code>newsReason</code>，消息面仅±5分温和调整，不主导量化评分</li>
+      <li>落盘 <code>data/news-pulse.json</code> + 24 小时历史；SSE <code>news-pulse</code> 推送前端自动重绘</li>
+      <li>接口：<code>GET /api/v2/news-pulse[/status]</code>、<code>POST /refresh</code></li>
+    </ul>
+    <div class="note">实测刷新：120 条新闻 → 16 个板块消息面；选股字段已带消息面解释。</div>
+  </div>
+
+  <h2>五、能否获取整个大盘的股票信息</h2>
+  <div class="card">
+    <h3><span class="badge ok">已解决</span>全市场列表现在可以完整获取</h3>
+    <ul>
+      <li>此前答「不能」指的是：选股只用候选池（≤120），且 <code>health.stocks.items=0</code>（内存未回填，非数据缺失）</li>
+      <li>新增 <code>server/universe.js</code>，用新浪行情中心 hs_a 分页拉取：<b>实测 5579 只、100% 覆盖、56 页零失败</b></li>
+      <li>含代码/名称/价格/涨跌幅/成交额/市值/换手，落盘 <code>data/universe-all.json</code>，30 分钟缓存</li>
+      <li>接口：<code>GET /api/v2/universe[/status]</code>、<code>POST /refresh</code></li>
+    </ul>
+    <div class="note">边界（诚实说明）：<b>列表级快照可全量</b>；但按用户规则逐股算日线（MA5 / 下影 / ATR）需对每只拉 K 线，5500+ 只在免费源限流下不现实。因此选股默认在候选池内进行，可用 <code>SCREEN_UNIVERSE=all</code> 切到全市场扩大池（会显著变慢）。东财 clist 在本机 VPN 下不可用，故全市场源用新浪。</div>
+  </div>
+
+  <h2>六、智能体对话与数据流</h2>
+  <div class="card">
+    <p>实测对话返回 <code>backend=hermes-official</code>，数据流为官方标准路径：</p>
+    <div class="note">Node 8777 → Windows 桥接 8765 → wsl.exe → Hermes CLI → DeepSeek；Hermes 的技能（market-modules）与 MCP 工具（market_snapshot / event_history）在 WSL 内加载。事件详细解读、复盘报告、选股解释均由同一官方后端生成。</div>
+    <div class="kv">
+      <span><b>后端 8777</b> 正常</span><span><b>桥接 8765</b> 正常</span><span><b>官方 Hermes</b> online</span>
+      <span><b>全量选股</b> 120/120</span><span><b>事件规则</b> 38 + 5</span><span><b>全市场</b> 5579</span>
+    </div>
+  </div>
+
+  <h2>七、涉及文件</h2>
+  <div class="card">
+    <ul>
+      <li>新增：<code>server/news-pulse.js</code>、<code>server/universe.js</code></li>
+      <li>改造：<code>server/calendar.js</code>、<code>server/event-study.js</code>、<code>server/screener.js</code>、<code>server/daily.js</code>、<code>server/server.js</code></li>
+      <li>前端：<code>web/v2/v2.js</code>、<code>web/v2/v2.css</code></li>
+      <li>数据：<code>data/calendar/event-study.json</code>、<code>data/{trend,rebound,hot}-screen.json</code>、<code>data/news-pulse.json</code>、<code>data/universe-all.json</code></li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

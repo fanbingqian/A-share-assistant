@@ -1,0 +1,104 @@
+/* technical.css — P0 技术因子只读标注层（纯增量；不改 styles.css 一个字节）
+ * 复用 styles.css 的 --up/--down/--warn 等变量，与主界面风格一致。
+ * 方向配色遵循 A 股习惯：偏多=红(--up)，偏空=绿(--down)，中性=蓝。
+ */
+
+.tech-box{margin-top:14px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);
+  padding:12px 13px 13px;min-width:0}
+.tech-box.tech-empty{border-style:dashed}
+
+.tech-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.tech-title{font-size:13px;font-weight:800;color:var(--text);letter-spacing:.2px}
+.tech-badge{font-size:9.5px;font-weight:700;border-radius:4px;padding:2.5px 7px;white-space:nowrap}
+.tech-badge.ro{color:#2563eb;background:#eaf1ff;border:1px solid #c9dcff}
+.tech-badge.calc{color:var(--text-2);background:var(--surface);border:1px solid var(--line)}
+.tech-sp{flex:1}
+.tech-btn{font-size:11px;border:1px solid var(--line);background:var(--surface);color:var(--text-2);
+  border-radius:6px;padding:5px 10px;cursor:pointer;transition:.15s}
+.tech-btn:hover{border-color:#9db6e8;color:#2563eb;background:#f4f8ff}
+.tech-btn:disabled{opacity:.5;cursor:wait}
+
+.tech-status{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.tech-status span{font-size:10.5px;color:var(--text-2);background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:3px 9px}
+.tech-status span b{color:var(--text);font-weight:700}
+.tech-status span.warn{color:var(--warn);border-color:#f2d9b8;background:var(--warn-soft)}
+.tech-status span.bad{color:var(--up);border-color:#f3c7c2;background:var(--up-soft)}
+
+.tech-alert{border:1px solid #f2d9b8;background:var(--warn-soft);color:var(--warn);
+  border-radius:7px;padding:10px 12px;font-size:11.5px;line-height:1.7;margin-bottom:9px}
+.tech-alert b{font-weight:800}
+.tech-alert ul{margin:5px 0 0 16px;padding:0}
+
+.tech-sec-t{font-size:11px;font-weight:800;color:var(--text-2);margin:11px 0 7px;
+  letter-spacing:.3px;display:flex;align-items:center;gap:6px}
+.tech-sec-t:before{content:"";width:3px;height:11px;background:#2563eb;border-radius:2px}
+
+.tech-rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px}
+.tech-rule{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:6px;
+  background:var(--surface);padding:6px 9px;font-size:10.5px;color:var(--text-2)}
+.tech-rule .tr-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tech-rule .tr-s{font-size:10px;font-weight:700;white-space:nowrap;color:var(--text-3)}
+.tech-rule .tr-s.hit{color:var(--up)}
+.tech-rule .tr-s.na{color:var(--warn)}
+.tech-rule .tr-spec{font-size:9px;color:var(--text-3);white-space:nowrap}
+
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:9px}
+.tech-card{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:9px 10px 10px;min-width:0}
+.tech-card.fail{opacity:.8;border-style:dashed}
+.tech-chead{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+.tech-code{font:600 10px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--text-3);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:2.5px 5px}
+.tech-name{font-size:12px;font-weight:700;color:var(--text)}
+.tech-from{font-size:9px;color:var(--text-3);border:1px solid var(--line);border-radius:4px;padding:1.5px 5px}
+.tech-csp{flex:1}
+.tech-bars{font-size:9.5px;color:var(--text-3)}
+.tech-kv{display:flex;flex-wrap:wrap;gap:3px 11px;font-size:10px;color:var(--text-2);margin-bottom:8px}
+.tech-kv i{font-style:normal;color:var(--text-3);margin-right:3px}
+.tech-kv b{font-weight:700;color:var(--text)}
+
+.tech-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:5px}
+.tech-f{border:1px solid var(--line);border-radius:6px;background:var(--surface-2);
+  padding:6px 7px;cursor:pointer;min-width:0;transition:.15s}
+.tech-f:hover{border-color:#9db6e8}
+.tech-f .tf-l{font-size:9.5px;color:var(--text-3);line-height:1.35;margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tech-f .tf-v{font-size:10.5px;font-weight:700;color:var(--text-2);line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tech-f .tf-s{font-size:9px;font-weight:800;margin-top:3px;display:inline-block}
+.tech-f.tf-miss{opacity:.72}
+.tech-f.tf-miss .tf-s{color:var(--text-3)}
+.tech-f.tf-na{background:var(--warn-soft);border-color:#f0d49a}
+.tech-f.tf-na .tf-s{color:var(--warn)}
+.tech-f.tf-bull{background:var(--up-soft);border-color:#f3c7c2}
+.tech-f.tf-bull .tf-s{color:var(--up)}
+.tech-f.tf-bear{background:var(--down-soft);border-color:#bfe3cd}
+.tech-f.tf-bear .tf-s{color:var(--down)}
+.tech-f.tf-neutral{background:#eaf1ff;border-color:#c9dcff}
+.tech-f.tf-neutral .tf-s{color:#2563eb}
+
+.tech-trace{margin-top:6px;border-top:1px dashed var(--line);padding-top:6px;font-size:9.5px;
+  color:var(--text-2);line-height:1.6;display:none}
+.tech-f.open .tech-trace{display:block}
+.tech-trace code{font:9.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--text-3);
+  word-break:break-all}
+.tech-trace .tt-note{display:block;margin-bottom:3px}
+
+.tech-disc{margin-top:11px;border-top:1px solid var(--line);padding-top:8px;
+  font-size:10px;color:var(--text-3);line-height:1.75}
+.tech-disc b{color:var(--text-2)}
+.tech-disc ul{margin:3px 0 0 15px;padding:0}
+
+/* 深色主题：与 shell.css 的 body.gm-dark 保持一致 */
+body.gm-dark .tech-box{background:#1a2233;border-color:#2b3750}
+body.gm-dark .tech-card,body.gm-dark .tech-rule,body.gm-dark .tech-btn,
+body.gm-dark .tech-status span,body.gm-dark .tech-code,body.gm-dark .tech-from{background:#202b40;border-color:#39496a;color:#c8d3e8}
+body.gm-dark .tech-f{background:#202b40;border-color:#39496a}
+body.gm-dark .tech-title,body.gm-dark .tech-name,body.gm-dark .tech-kv b,
+body.gm-dark .tech-status span b{color:#e6ebf5}
+body.gm-dark .tech-f.tf-bull{background:#3a1f26;border-color:#6b3540}
+body.gm-dark .tech-f.tf-bear{background:#1c3328;border-color:#2f5a42}
+body.gm-dark .tech-f.tf-neutral{background:#202f4c;border-color:#2d4670}
+body.gm-dark .tech-f.tf-na{background:#3a2f18;border-color:#6b5528}
+body.gm-dark .tech-alert{background:#3a2f18;border-color:#6b5528;color:#e6c98a}
+body.gm-dark .tech-badge.ro{background:#202f4c;border-color:#2d4670;color:#9dc0ff}

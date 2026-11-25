@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>股民界面原型 v5 · 四方案 + 研发推导视图</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef1f7;color:#1c2431;
+  font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12px}
+
+.proto{background:#26215C;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.proto .tt{font-weight:700;font-size:14px;white-space:nowrap}
+.proto .desc{font-size:12px;opacity:.8;flex:1 1 320px;line-height:1.5}
+.proto .sw{display:flex;gap:5px;background:rgba(255,255,255,.12);padding:4px;border-radius:9px;flex-wrap:wrap}
+.proto .sw button{border:0;background:transparent;color:#d9d5f5;border-radius:6px;padding:6px 11px;
+  cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+.proto .sw button.on{background:#fff;color:#26215C}
+.proto .devsw{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;
+  border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+.proto .devsw.on{background:#FAC775;color:#412402;border-color:#FAC775}
+
+.frame{margin:16px;background:#fff;border:1px solid #d9e1ef;border-radius:12px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(20,35,70,.06)}
+.topbar{height:52px;background:#fff;border-bottom:1px solid #e2e8f2;display:flex;align-items:center;
+  gap:12px;padding:0 20px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:15px;white-space:nowrap}
+.brand small{font-weight:500;color:#8a95aa;margin-left:8px;font-size:12px}
+.badge{font-size:11.5px;background:#eef4ff;color:#254a86;border:1px solid #d6e4ff;
+  border-radius:20px;padding:3px 10px;white-space:nowrap}
+.sp{flex:1}
+.mode-tip{font-size:11.5px;color:#8a95aa;white-space:nowrap}
+.devflag{display:none;font-size:11.5px;background:#FAEEDA;color:#854F0B;border:1px solid #FAC775;
+  border-radius:20px;padding:3px 10px;white-space:nowrap;font-weight:700}
+body.dev-on .devflag{display:inline-block}
+
+.ws{display:grid;grid-template-columns:minmax(0,1fr) 0;min-height:640px;transition:grid-template-columns .18s}
+.ws.dev-on{grid-template-columns:minmax(0,1fr) 390px}
+.main{padding:22px 26px 40px;min-width:0;overflow:auto}
+.dev{background:#fbf9f4;border-left:1px solid #e6d9bc;overflow:auto;display:none;padding:16px 16px 40px}
+.ws.dev-on .dev{display:block}
+
+.plan{display:none}
+.plan.on{display:block}
+.h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:.2px}
+.greet{font-size:13px;color:#6b7893;margin:0 0 20px}
+.card{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card.big{border-left:4px solid #2559c9}
+.card.warn{border-left:4px solid #A32D2D;background:#fffafa}
+.card.soft{border-left:4px solid #BA7517;background:#fffdf8}
+.card h3{margin:0 0 8px;font-size:17px;font-weight:800}
+.card p{margin:6px 0;font-size:14px}
+.src{font-size:11px;color:#98a2b5;margin-top:9px;border-top:1px dashed #e6ecf6;padding-top:6px}
+.big3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.big3 .card{margin:0}
+.kpinline{font-size:28px;font-weight:800;line-height:1.3;margin:6px 0}
+.up{color:#c0392b}
+.down{color:#1b8a5a}
+.flat{color:#6b7893}
+.tag{display:inline-block;font-size:11.5px;border-radius:6px;padding:3px 9px;white-space:nowrap;border:1px solid transparent;font-weight:600}
+.tag.blue{background:#eef4ff;color:#254a86;border-color:#d6e4ff}
+.tag.amber{background:#fdf3e2;color:#8a5a0b;border-color:#f6e2bb}
+.tag.red{background:#fceceb;color:#a32d2d;border-color:#f3cfcd}
+.tag.green{background:#e7f5ef;color:#0f6e56;border-color:#c7e8da}
+.tag.gray{background:#f1f3f8;color:#6b7893;border-color:#e2e8f2}
+.btn{border:1px solid #d3dceb;background:#fff;color:#25304a;border-radius:8px;padding:8px 14px;
+  cursor:pointer;font-size:13px;white-space:nowrap;font-weight:600}
+.btn:hover{border-color:#8fa8d4;background:#f6f9ff}
+.btn.pri{background:#2559c9;border-color:#2559c9;color:#fff}
+.btn.pri:hover{background:#1c49ab}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:#7c88a0;font-weight:600;font-size:12px;padding:10px 10px;border-bottom:1px solid #e6ecf6;white-space:nowrap}
+td{padding:12px 10px;border-bottom:1px solid #f0f3f9;vertical-align:middle}
+tr.clk{cursor:pointer}
+tr.clk:hover{background:#f6f9ff}
+tr.sel{background:#eef4ff}
+.why{display:none;margin-top:12px;border:1px solid #d6e4ff;background:#f6f9ff;border-radius:10px;padding:14px 16px}
+.why.show{display:block}
+.why h4{margin:0 0 8px;font-size:14px;font-weight:800}
+.why ul{margin:8px 0;padding-left:20px;font-size:13px}
+.why li{margin:5px 0}
+.demo{font-size:10.5px;color:#8a5a0b;background:#fdf3e2;border:1px solid #f6e2bb;border-radius:4px;padding:1px 5px;margin-left:5px;font-weight:500}
+
+.tl{display:grid;grid-template-columns:86px minmax(0,1fr);gap:0}
+.tl-d{border-right:2px solid #dfe6f2;padding:14px 12px 0 0;text-align:right;position:relative}
+.tl-d b{display:block;font-size:13px}
+.tl-d span{font-size:11px;color:#8a95aa}
+.tl-d .n{position:absolute;right:-6px;top:18px;width:10px;height:10px;border-radius:50%;background:#2559c9;border:2px solid #fff}
+.tl-d.g .n{background:#aab5c9}
+.tl-b{padding:10px 0 10px 16px}
+.tl-c{background:#fff;border:1px solid #e2e8f2;border-radius:10px;padding:12px 15px;margin-bottom:9px}
+.tl-c .th{font-size:14px;font-weight:800;margin-bottom:5px}
+.tl-c .tb{font-size:13px;color:#33405c}
+textarea.tx,input.tx{width:100%;border:1px solid #d3dceb;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;background:#fff;resize:vertical}
+textarea.tx{min-height:62px}
+label.lb{display:block;font-size:12px;color:#6b7893;margin:10px 0 5px}
+.status{margin-top:9px;font-size:12.5px;border-radius:8px;padding:8px 11px;display:none}
+.status.show{display:block}
+.status.ok{background:#e7f5ef;color:#0f6e56;border:1px solid #c7e8da}
+.status.warn{background:#fdf3e2;color:#8a5a0b;border:1px solid #f6e2bb}
+
+.chat{max-width:760px}
+.bubble{border-radius:12px;padding:12px 15px;margin-bottom:12px;font-size:13.5px;line-height:1.7}
+.bubble.q{background:#f1f3f8;border:1px solid #e2e8f2;max-width:78%}
+.bubble.a{background:#eef4ff;border:1px solid #d6e4ff;max-width:88%;margin-left:auto}
+.bubble .bs{font-size:11px;color:#8a95aa;margin-top:7px;border-top:1px dashed #d6e4ff;padding-top:5px}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+
+.dev-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.dev-h b{font-size:14px;font-weight:800;color:#854F0B}
+.dev-sub{font-size:11.5px;color:#8a7a5c;margin:0 0 14px;line-height:1.6}
+.steps{display:flex;flex-direction:column;gap:0}
+.step{border-left:2px solid #e0d3b6;padding:0 0 0 14px;position:relative;margin-bottom:2px}
+.step .sh{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;font-size:12.5px;font-weight:700;color:#5a4a2a}
+.step .sn{width:19px;height:19px;line-height:19px;text-align:center;border-radius:50%;background:#FAEEDA;
+  color:#854F0B;font-size:10.5px;font-weight:800;flex:0 0 auto}
+.step .sb{display:none;background:#fff;border:1px solid #eadfc7;border-radius:8px;padding:10px 12px;
+  margin-bottom:9px;font-size:11.5px;color:#4a4030;line-height:1.7}
+.step.open .sb{display:block}
+.step .sb b{color:#8a5a0b}
+.kv{display:grid;grid-template-columns:78px minmax(0,1fr);gap:3px 8px;margin:6px 0}
+.kv .k{color:#9a8a6c}
+pre.dv{background:#f7f5ef;border:1px solid #eadfc7;border-radius:7px;padding:9px 10px;margin:7px 0;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.8px;line-height:1.6;overflow:auto;white-space:pre-wrap}
+.reject{background:#fceceb;border:1px solid #f3cfcd;border-radius:7px;padding:8px 10px;margin:7px 0;color:#a32d2d;font-size:11.5px}
+.pass{background:#e7f5ef;border:1px solid #c7e8da;border-radius:7px;padding:8px 10px;margin:7px 0;color:#0f6e56;font-size:11.5px}
+.slider{margin:8px 0 14px}
+.slider label{display:flex;justify-content:space-between;font-size:11.5px;color:#6b5a3a;margin-bottom:3px}
+.slider input{width:100%}
+.devnote{font-size:11px;color:#8a7a5c;background:#f7f2e6;border:1px dashed #e0d3b6;
+  border-radius:8px;padding:9px 11px;margin-top:14px;line-height:1.65}
+
+.foot{background:#fafbfe;border-top:1px solid #e2e8f2;padding:12px 20px;font-size:11.5px;color:#8a95aa;line-height:1.7}
+@media(max-width:1100px){
+  .ws.dev-on{grid-template-columns:minmax(0,1fr)}
+  .dev{border-left:0;border-top:1px solid #e6d9bc}
+  .big3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="proto">
+  <div class="tt">股民界面原型 v5 · 四方案对照</div>
+  <div class="desc">纯前端演示，零 CDN 离线可用。默认「股民模式」不展示推导过程；打开右侧开关进入「研发模式」，完整推导链会保留并可视化，便于你观察调整。仅已核实事实带来源时点，其余字段一律 <b>--</b> 占位。</div>
+  <div class="sw">
+    <button id="b1" class="on" onclick="switchPlan(1)">① 今日三件事</button>
+    <button id="b2" onclick="switchPlan(2)">② 股池看板</button>
+    <button id="b3" onclick="switchPlan(3)">③ 复盘卡流</button>
+    <button id="b4" onclick="switchPlan(4)">④ 问一句</button>
+  </div>
+  <button class="devsw" id="devBtn" onclick="toggleDev()">研发模式：关</button>
+</div>
+
+<div class="frame">
+  <div class="topbar">
+    <div class="brand">我的选股助手 <small>个人自用</small></div>
+    <span class="badge">2026-11-19 周四 · 盘后</span>
+    <span class="devflag">研发视图已开启 · 不面向最终用户</span>
+    <div class="sp"></div>
+    <span class="mode-tip" id="modeTip">股民模式</span>
+  </div>
+
+  <div class="ws" id="ws">
+    <div class="main">
+
+      <div class="plan on" id="p1">
+        <h1 class="h1">晚上好，今天收盘了</h1>
+        <p class="greet">只挑有变化的三件事说，三分钟看完。想看细节，点每张卡里的按钮。</p>
+        <div class="big3">
+          <div class="card big">
+            <h3>今天大盘</h3>
+            <div class="kpinline flat">沪指低开低走</div>
+            <p>两市走势分化，市场整体偏谨慎。深市形态数据尚未接入，暂不判断。</p>
+            <div class="src">数据：westock-data sh000001 日 K · 取数 2026-11-19</div>
+          </div>
+          <div class="card warn">
+            <h3>我的股池</h3>
+            <div class="kpinline" style="color:#a32d2d">1 只要留意</div>
+            <p><b>通化金马（000766）</b> 收 11.07 元，<span class="down">-7.98%</span>。近期同类事件已第二次出现，建议先看看再说。</p>
+            <div class="btn-row"><button class="btn sm" onclick="jump(2)">去股池看看</button><button class="btn sm" onclick="showWhy()">为什么提醒我</button></div>
+            <div class="src">数据：westock-data 日 K · 取数 2026-11-19；公告 2026-40 · 深交所 2026-11-15</div>
+          </div>
+          <div class="card soft">
+            <h3>今天要做</h3>
+            <div class="kpinline" style="color:#BA7517">4 条待确认</div>
+            <p>有 4 条经验想请你确认。系统不会自己采纳，也不会因为某条经验就改选股结果。</p>
+            <div class="btn-row"><button class="btn sm" onclick="jump(3)">去复盘</button></div>
+            <div class="src">状态：data/journal/lessons.jsonl，4 条 pending · 核验 2026-11-19</div>
+          </div>
+        </div>
+        <div class="card" id="whyCard" style="display:none">
+          <h3>为什么提醒我</h3>
+          <p>不是判断它会涨会跌，只是把买入前就该看见的事实摆出来：</p>
+          <ul style="font-size:13.5px;line-height:1.9;margin:8px 0;padding-left:22px">
+            <li>11-15 公告确认纳入医保目录，但<b>支付标准尚未公布</b>，协议期从 2027-01-01 才开始。</li>
+            <li>近 6 个月内，同一只票在类似「事件落地」前后已出现过一次连续下跌。</li>
+            <li>11-19 跌停打开、成交放大，但当日仍收跌 —— 单日打开不等于风险解除。</li>
+          </ul>
+          <p style="font-size:12px;color:#6b7893">这条提醒后续会由真实行情继续检验；如果同类信号之后经常上涨，系统会记为一次「误报」并自动降级。</p>
+          <div class="src">来源：公司公告 2026-40（深交所 2026-11-15 16:11，上海证券报 2026-11-16 全文转载）；westock-data 日 K，取数 2026-11-19。三季报 / 龙虎榜 / 融资 / PE 数字来自 AI 稿件，未核实原文，一律不展示。</div>
+        </div>
+      </div>
+
+      <div class="plan" id="p2">
+        <h1 class="h1">我的股池</h1>
+        <p class="greet">像券商自选股一样看，只是多了一列提醒。点任意一行看「为什么提醒我」。</p>
+        <div class="card" style="padding:6px 16px 14px">
+          <table>
+            <thead><tr><th>代码</th><th>名称</th><th>最新价</th><th>涨跌</th><th>提醒</th><th>上次复盘</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr class="clk" id="row1" onclick="pickRow('row1','w1')">
+                <td class="mono">000766</td><td><b>通化金马</b></td><td class="mono">11.07</td>
+                <td class="mono down">-7.98%</td><td><span class="tag red">需留意</span></td><td>11-19</td>
+                <td><button class="btn sm" onclick="event.stopPropagation();pickRow('row1','w1')">查看</button></td>
+              </tr>
+              <tr class="clk" id="row2" onclick="pickRow('row2','w2')">
+                <td class="mono">--</td><td>候选 A<span class="demo">界面占位</span></td><td class="mono">--</td>
+                <td class="mono">--</td><td><span class="tag amber">留意</span></td><td>--</td>
+                <td><button class="btn sm" onclick="event.stopPropagation();pickRow('row2','w2')">查看</button></td>
+              </tr>
+              <tr class="clk" id="row3" onclick="pickRow('row3','w2')">
+                <td class="mono">--</td><td>候选 B<span class="demo">界面占位</span></td><td class="mono">--</td>
+                <td class="mono">--</td><td><span class="tag gray">无</span></td><td>--</td>
+                <td><button class="btn sm" onclick="event.stopPropagation();pickRow('row3','w2')">查看</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="src">涨跌幅取自行情数据（westock-data 日 K，取数 2026-11-19），不从股池列表字段读取；候选 A/B 为界面占位，非真实标的，未核实字段一律 --。</div>
+        </div>
+        <div class="why" id="w1">
+          <h4>通化金马 · 为什么提醒我</h4>
+          <ul>
+            <li>公告：纳入 2026 版国家医保目录（乙类），协议期 2027-01-01 至 2028-12-31，<b>支付标准未公布</b>。</li>
+            <li>行情：11-16 / 17 / 18 三连跌停（-10.00% / -9.97% / -10.02%），收盘 14.85 / 13.37 / 12.03 元；11-19 收 11.07 元（-7.98%）。</li>
+            <li>公告 2026-41：公司确认无应披露未披露重大事项、经营未发生重大变化 —— 事件落地后没有新增基本面利空。</li>
+          </ul>
+          <p style="font-size:12px;color:#6b7893">这类提醒不是买卖判断。它会被后续行情检验：若同类信号之后经常上涨，记为误报并降级。</p>
+          <div class="src">来源：公告 2026-40 / 2026-41（深交所，2026-11-15 / 11-18；后者据中国证券报 2026-11-19 报道，需以交易所原文为准）；westock-data 日 K，取数 2026-11-19。</div>
+        </div>
+        <div class="why" id="w2">
+          <h4>暂无可展示的事实</h4>
+          <p style="font-size:13px">该行为界面占位，没有真实标的数据。系统不会为了填界面而补数字。</p>
+        </div>
+        <div class="card soft" style="margin-top:14px">
+          <h3>关于「提醒」</h3>
+          <p style="font-size:13.5px">提醒只陈述已经发生的事实和它的来源，不预测涨跌、不给买卖建议。它默认不改变选股结果；只有在你确认之后，才可能带来很小的调整。</p>
+        </div>
+      </div>
+
+      <div class="plan" id="p3">
+        <h1 class="h1">这周的复盘</h1>
+        <p class="greet">把每次「当时怎么想、后来怎么样」记下来，慢慢就成了你自己的经验。</p>
+        <div class="big3" style="margin-bottom:16px">
+          <div class="card" style="margin:0"><h3>待你确认</h3><div class="kpinline" style="color:#BA7517">4 条</div><p style="font-size:12px;color:#6b7893">需复核，暂不采纳</p></div>
+          <div class="card" style="margin:0"><h3>本周新增经验</h3><div class="kpinline flat">--</div><p style="font-size:12px;color:#6b7893">录入后才计数</p></div>
+          <div class="card" style="margin:0"><h3>已验证</h3><div class="kpinline flat">--</div><p style="font-size:12px;color:#6b7893">样本 18/30，未达门槛</p></div>
+        </div>
+        <div class="card">
+          <h3>今天记一笔</h3>
+          <p style="font-size:12.5px;color:#6b7893">用你自己的话写就行。写下来的内容会先存成待确认，不会自己变成规则。</p>
+          <textarea class="tx" id="noteText" placeholder="今天看到了什么，当时我是怎么想的……"></textarea>
+          <div class="btn-row"><button class="btn pri" onclick="submitNote()">记下来</button></div>
+          <div class="status" id="noteStatus"></div>
+        </div>
+        <div class="card" style="padding:14px 18px">
+          <div class="tl">
+            <div class="tl-d g"><b>11-13</b><span>事前</span><div class="n"></div></div>
+            <div class="tl-b"><div class="tl-c"><div class="th">事前写下的预判 <span class="demo">原型演示 · 非真实记录</span></div>
+              <div class="tb">如果公告落地后价格仍未公布，我判断事件后几天可能跑输大盘；<b>若价格公布前已收复事件前高点，就算我判断错</b>。事前写清楚，事后只做对照。</div></div></div>
+            <div class="tl-d"><b>11-15</b><span>公告</span><div class="n"></div></div>
+            <div class="tl-b"><div class="tl-c"><div class="th">新药纳入医保目录</div>
+              <div class="tb">公司公告确认纳入 2026 版国家医保目录（乙类），协议期 2027-01-01 起，支付标准尚未公布。</div>
+              <div class="src">公告 2026-40 · 深交所 2026-11-15 16:11 · 上海证券报 2026-11-16 全文转载</div></div></div>
+            <div class="tl-d"><b>11-16</b><span>至 18</span><div class="n"></div></div>
+            <div class="tl-b"><div class="tl-c"><div class="th">后来发生了什么</div>
+              <div class="tb">三连跌停，收盘 14.85 / 13.37 / <span class="down">12.03</span> 元。公司异动公告确认：无未披露重大事项、经营未发生重大变化。</div>
+              <div class="src">westock-data 日 K，取数 2026-11-19；公告 2026-41 据中国证券报 2026-11-19 报道，需以交易所原文为准</div></div></div>
+            <div class="tl-d"><b>11-19</b><span>今天</span><div class="n"></div></div>
+            <div class="tl-b"><div class="tl-c"><div class="th">对照一下</div>
+              <div class="tb">收 11.07 元（<span class="down">-7.98%</span>）。跌停打开、成交放大，但当日仍收跌。<b>事先写下的证伪条件尚未出现，这条预判继续留着观察，不写成结论。</b></div>
+              <div class="src">westock-data 日 K，取数 2026-11-19</div></div></div>
+          </div>
+        </div>
+        <div class="card soft">
+          <h3>我的经验本</h3>
+          <p style="font-size:13.5px"><span class="tag red">踩过的坑</span> 事件前抢跑、关键信息还没落地就买入 —— 待确认，样本 2。<br>
+            <span class="tag green">做得好的</span> 事前写下「什么算我错」 —— 待确认，样本 1。</p>
+          <p style="font-size:12px;color:#6b7893">无论好经验还是踩坑，都要等样本够多、并经你确认，才会影响提示；在此之前只是记录。</p>
+        </div>
+      </div>
+
+      <div class="plan" id="p4">
+        <h1 class="h1">有话就问</h1>
+        <p class="greet">不用记菜单，直接问。回答只用已经核实的事实拼出来，不预测、不推荐买卖。</p>
+        <div class="quick">
+          <button class="btn sm" onclick="ask(1)">我持有的票今天有啥要注意？</button>
+          <button class="btn sm" onclick="ask(2)">为什么提醒我通化金马？</button>
+          <button class="btn sm" onclick="ask(3)">这周我学到了什么？</button>
+        </div>
+        <div class="card chat" id="chatBox">
+          <div class="bubble a">你好。我能回答的是「已经发生了什么、依据在哪」，不回答「该不该买」。</div>
+        </div>
+        <div class="card">
+          <input class="tx" id="askText" placeholder="输入你的问题，按回车或点发送" aria-label="提问">
+          <div class="btn-row"><button class="btn pri" onclick="sendAsk()">发送</button></div>
+          <div class="status" id="askStatus"></div>
+        </div>
+        <div class="card soft">
+          <h3>回答的边界</h3>
+          <p style="font-size:13px">回答由确定性结果拼装，模型只负责把话说顺；不生成新数字、不补没核实的财务数据、不给操作建议。每个答案都带来源和取数日期，可在研发模式里逐条查。</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="dev" id="devPanel">
+      <div class="dev-h"><b>推导过程 · 研发视图</b><span class="tag amber">前期保留</span></div>
+      <p class="dev-sub">同一份数据、同一渲染层，仅因 <code>detailLevel=dev</code> 展开。发布时隐藏入口即可整体下线，不做两套 UI。点每一步看细节。</p>
+
+      <div class="steps">
+        <div class="step open" id="s1"><div class="sh" onclick="devStep(1)"><span class="sn">1</span>事实输入 · 来源分级</div>
+          <div class="sb">
+            <div class="kv"><span class="k">A 级</span><span>公告 2026-40（深交所 2026-11-15 16:11）；westock-data 日 K（取数 2026-11-19）</span></div>
+            <div class="kv"><span class="k">B 级</span><span>用户亲历，标 <code>user_note</code>，只进行为账本</span></div>
+            <div class="kv"><span class="k">C 级</span><span>AI 稿件 / 自媒体 → 只进待核实队列，数字置 null</span></div>
+            <div class="pass">校验通过：涨跌幅从行情数据读取，未使用股池列表附带字段（该字段可能是振幅而非涨跌幅）。</div>
+          </div></div>
+
+        <div class="step" id="s2"><div class="sh" onclick="devStep(2)"><span class="sn">2</span>确定性计算 · 无 LLM</div>
+          <div class="sb">
+            <p><b>四象限</b>：<code>gap = open/prevClose - 1</code>；<code>intraday = close/open - 1</code>；形态与当日涨跌分开存。</p>
+            <pre class="dv">11-17 sh000001
+prevClose 3602.57 / open 3585.67 / close 3584.58
+=&gt; gap &lt; 0, intraday &lt; 0  =&gt;  low_open_low_close
+叙述层写「低开高走」 =&gt; narrative_conflict（重算裁定）</pre>
+            <p><b>Flag 规则</b>：<code>repeat_pattern_6m</code>，级别 strong，<code>affectsScore=false</code>，sampleN 2 / counterN 0。</p>
+            <p><b>因子</b>：Gate / Score / Flag / Explain 四用途；仅 Score 允许改分。</p>
+          </div></div>
+
+        <div class="step" id="s3"><div class="sh" onclick="devStep(3)"><span class="sn">3</span>智能体输出 · 四个受限角色</div>
+          <div class="sb">
+            <p><b>R1 四元组</b>（Pydantic 强类型，缺字段即拒绝）：</p>
+            <pre class="dv">{"claim":"支付标准未公布",
+ "evidence":"公告2026-40 原文",
+ "source":"深交所 / 2026-11-15",
+ "asOf":"SYSTEM_TS"}</pre>
+            <p><b>R2 假说卡</b>：必带证伪条件；每日最多一条主假说；supportN / contradictN 必填。</p>
+            <p><b>R3 冲突标签</b>：<code>fact_scope_conflict</code> → 交确定性重算；解释类并列不合成。</p>
+            <p><b>R4 提示语</b>：白名单模板，输出「建议先看看再说」，不含操作判断。</p>
+            <div class="reject">模型配置：<code>thinking=False</code>。V4 模型默认思考时拒绝强制 tool_choice，可能改用散文作答而不调用输出工具，耗尽重试预算；结构化抽取必须关思考。</div>
+          </div></div>
+
+        <div class="step" id="s4"><div class="sh" onclick="devStep(4)"><span class="sn">4</span>确定性网关 · schema / 出处 / 幂等</div>
+          <div class="sb">
+            <div class="pass">schema 校验通过；出处核对通过；幂等键 <code>date+symbol+ruleId+version</code> 命中，未产生重复记录。</div>
+            <div class="reject"><b>已剔除 1 条</b>：模型输出中引用「PE(TTM) 约 1029 倍」，来源为 AI 异动稿件、未与三季报及交易所原文核对 → 无出处即剔除，字段置 null，界面显示 --。</div>
+            <div class="reject"><b>已剔除 1 条</b>：JSON Output 返回纯空格 content（DeepSeek 会把无法识别为 JSON 的内容替换为 U+0020）→ 空白兜底触发重试。</div>
+          </div></div>
+
+        <div class="step" id="s5"><div class="sh" onclick="devStep(5)"><span class="sn">5</span>人工闸门 · 跨天可恢复</div>
+          <div class="sb">
+            <p><b>待审队列</b>：4 条 pending，全部标记「需复核、暂不采纳」。<code>rules.json count=0</code>，回流闸门关闭。</p>
+            <p><b>状态机</b>：<code>precommit → 影子验证 → 待审 → interrupt() → Command(resume) → 有界回流 → 失效退役</code>；checkpoint 存本地 SQLite，OTel trace 落自有存储。</p>
+            <p><b>采纳边界</b>：±2 分 / 乘数 0.8–1.25 / 不翻符号，冻结基线 v0 永久对照。</p>
+          </div></div>
+
+        <div class="step" id="s6"><div class="sh" onclick="devStep(6)"><span class="sn">6</span>回填校准 · 真实行情反馈</div>
+          <div class="sb">
+            <p>复用 <code>barOf()</code> / <code>benchRet()</code> 回填 T+1 / T+5 / T+20、20 日最大回撤、超额收益。当前样本 18/30，指标一律 --。</p>
+            <p><b>并列指标</b>：风险回避价值 与 假警报率必须一起看；反例库 <code>counterexamples.jsonl</code> 当前 0 条。</p>
+            <div class="pass">本条提醒的后续检验已排入队列：T+1 = 2026-11-20（交易日，以实际交易日历为准）。</div>
+          </div></div>
+      </div>
+
+      <div style="font-size:12.5px;font-weight:800;color:#854F0B;margin:18px 0 4px">研发参数（仅本地预览）</div>
+      <p class="dev-sub" style="margin-bottom:8px">滑块只改本次预览，<b>不写生产配置</b>，也不影响已生成的事实账本。</p>
+      <div class="slider"><label><span>提示触发阈值</span><span id="v1">中</span></label><input type="range" min="1" max="3" value="2" oninput="slide(1,this.value)"></div>
+      <div class="slider"><label><span>经验采纳样本门槛 n</span><span id="v2">30</span></label><input type="range" min="10" max="60" step="5" value="30" oninput="slide(2,this.value)"></div>
+      <div class="slider"><label><span>Flag 上限（每日）</span><span id="v3">3 条</span></label><input type="range" min="1" max="8" value="3" oninput="slide(3,this.value)"></div>
+
+      <div class="devnote"><b>为什么前期要保留这个视图</b>：研发期需要逐环节观察「事实是否取对、计算口径是否一致、模型有没有补数字、网关剔除得对不对、闸门有没有被绕过」。等口径稳定后，股民模式保留「为什么提醒我」这一层即可，推导链整体隐藏。<br><b>注意</b>：本视图含术语、字段与内部状态，<b>不面向最终用户</b>。</div>
+    </div>
+  </div>
+
+  <div class="foot"><b>数据口径</b>：本原型仅含前序轮次已核实并标注来源与时点的事实；所有 <code>--</code> 为字段占位，非估算值；候选 A/B 为界面占位，非真实标的。红涨绿跌按 A 股习惯。<b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+
+<script>
+var devOn = false;
+var currentPlan = 1;
+
+function switchPlan(n) {
+  currentPlan = n;
+  var plans = document.querySelectorAll('.plan');
+  for (var i = 0; i < plans.length; i++) { plans[i].classList.remove('on'); }
+  var target = document.getElementById('p' + n);
+  if (target) { target.classList.add('on'); }
+  var btns = document.querySelectorAll('.sw button');
+  for (var j = 0; j < btns.length; j++) {
+    btns[j].classList.toggle('on', btns[j].id === 'b' + n);
+  }
+}
+
+function jump(n) { switchPlan(n); }
+
+function toggleDev() {
+  devOn = !devOn;
+  var ws = document.getElementById('ws');
+  var btn = document.getElementById('devBtn');
+  var tip = document.getElementById('modeTip');
+  ws.classList.toggle('dev-on', devOn);
+  document.body.classList.toggle('dev-on', devOn);
+  btn.classList.toggle('on', devOn);
+  btn.textContent = devOn ? '研发模式：开' : '研发模式：关';
+  tip.textContent = devOn ? '股民模式 + 研发视图' : '股民模式';
+}
+
+function devStep(n) {
+  var s = document.getElementById('s' + n);
+  if (s) { s.classList.toggle('open'); }
+}
+
+function pickRow(rowId, whyId) {
+  var rows = document.querySelectorAll('tr.clk');
+  for (var i = 0; i < rows.length; i++) { rows[i].classList.remove('sel'); }
+  var r = document.getElementById(rowId);
+  if (r) { r.classList.add('sel'); }
+  var whys = document.querySelectorAll('.why');
+  for (var j = 0; j < whys.length; j++) { whys[j].classList.remove('show'); }
+  var w = document.getElementById(whyId);
+  if (w) { w.classList.add('show'); }
+}
+
+function showWhy() {
+  var c = document.getElementById('whyCard');
+  if (c) { c.style.display = 'block'; }
+}
+
+function submitNote() {
+  var v = document.getElementById('noteText').value.trim();
+  var s = document.getElementById('noteStatus');
+  s.className = 'status show';
+  if (!v) {
+    s.classList.add('warn');
+    s.textContent = '还没写内容。系统不会替你补写复盘。';
+    return;
+  }
+  s.classList.remove('warn');
+  s.classList.add('ok');
+  s.textContent = '已记为待确认（原型演示，未写入文件）。内容不会自己变成规则，需经你确认。';
+  document.getElementById('noteText').value = '';
+}
+
+var answerMap = {
+  1: '<b>你股池里今天有 1 只需要留意：通化金马（000766）。</b><br>它不是判断涨跌，只是三件已核实的事实：公告确认纳入医保目录但支付标准未公布、协议期 2027 年才开始；11-16 至 11-18 三连跌停；11-19 收 11.07 元（-7.98%）。公司异动公告确认无未披露重大事项。<div class="bs">来源：公告 2026-40 / 2026-41（深交所，2026-11-15 / 11-18）；westock-data 日 K，取数 2026-11-19。以上不构成投资建议。</div>',
+  2: '<b>因为买入前就能看见两件事，系统把它标成了「需留意」。</b><br>一是关键价格没公布、执行要等 2027 年；二是近 6 个月同一只票在类似事件前后已出现过一次连续下跌。这两条都可以事前查、可以计数，也可以被后续行情推翻。<div class="bs">来源：公告 2026-40（深交所 2026-11-15 16:11，上海证券报 2026-11-16 全文转载）；westock-data 日 K，取数 2026-11-19。提醒不是买卖判断，也不改变选股结果。</div>',
+  3: '<b>这周暂时还没有可以确认的经验。</b><br>目前有 4 条待你确认，样本累计 18/30，还没到系统设定的门槛，所以不计算胜率、也不说「你学到了什么」。先确认那 4 条，再积累几周，经验本才有内容。<div class="bs">状态来源：data/journal/lessons.jsonl、rules.json，核验 2026-11-19。系统目标是把该看见的摆出来，不承诺提高判断准确率。</div>'
+};
+
+function addBubble(kind, html) {
+  var box = document.getElementById('chatBox');
+  if (!box) { return; }
+  var d = document.createElement('div');
+  d.className = 'bubble ' + kind;
+  d.innerHTML = html;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function ask(n) {
+  var q = ['', '我持有的票今天有啥要注意？', '为什么提醒我通化金马？', '这周我学到了什么？'];
+  addBubble('q', q[n]);
+  addBubble('a', answerMap[n]);
+}
+
+function sendAsk() {
+  var el = document.getElementById('askText');
+  var v = el.value.trim();
+  var s = document.getElementById('askStatus');
+  s.className = 'status show';
+  if (!v) {
+    s.classList.add('warn');
+    s.textContent = '请输入问题，或点上面的快捷问题。';
+    return;
+  }
+  s.classList.remove('warn');
+  s.classList.add('ok');
+  s.textContent = '原型演示：仅三个预设问题有已核实的答案；其他问题不会被模型即兴回答。';
+  addBubble('q', v);
+  addBubble('a', '这个问题还没有对应的已核实事实，我不编答案。可以试试上面的三个快捷问题，或打开研发模式看数据来源。<div class="bs">原型演示 · 无出处即剔除</div>');
+  el.value = '';
+}
+
+function slide(n, val) {
+  var out = document.getElementById('v' + n);
+  if (!out) { return; }
+  if (n === 1) { out.textContent = val === '1' ? '低' : (val === '2' ? '中' : '高'); }
+  if (n === 2) { out.textContent = val; }
+  if (n === 3) { out.textContent = val + ' 条'; }
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && devOn) { toggleDev(); }
+  if (e.key === 'Enter' && document.activeElement.id === 'askText') { sendAsk(); }
+});
+</script>
+</body>
+</html>

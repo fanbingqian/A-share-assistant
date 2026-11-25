@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>统一界面外壳 v8 — 今日重点 · 股池 · 复盘 · 经验库（2026-11-20）</title>
+<style>
+  :root { --ink:#1c1e21; --mut:#6b6f76; --line:#dcdde0; --bg:#f6f7f9; --blue:#185fa5; --bluebg:#e6f1fb; --teal:#0f6e56; --tealbg:#e1f5ee; --amber:#854f0b; --amberbg:#faeeda; --red:#c0392b; --redbg:#fcebeb; --green:#1b8a5a; --greenbg:#eaf3de; --purple:#534ab7; --purplebg:#eeedfe; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; color:var(--ink); background:#fff; font-size:14px; line-height:1.6; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:10px 22px; border-bottom:2px solid var(--ink); flex-wrap:wrap; }
+  .brand { font-size:16px; font-weight:600; }
+  .session { font-size:12.5px; color:var(--mut); border:1px solid var(--line); border-radius:10px; padding:2px 10px; }
+  .spacer { flex:1; }
+  .mbtn { border:1px solid var(--line); background:#fff; padding:5px 14px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .mbtn.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .shell { display:flex; max-width:1280px; margin:0 auto; min-height:620px; }
+  nav.side { width:190px; border-right:1px solid var(--line); padding:14px 0; flex-shrink:0; }
+  nav.side .ng { font-size:11.5px; color:var(--mut); padding:10px 20px 4px; }
+  nav.side button { display:block; width:100%; text-align:left; background:none; border:none; padding:9px 20px; font-size:14px; cursor:pointer; color:var(--ink); border-left:3px solid transparent; }
+  nav.side button.on { background:var(--bluebg); color:var(--blue); border-left-color:var(--blue); font-weight:600; }
+  nav.side button:hover { background:var(--bg); }
+  main.c { flex:1; padding:20px 26px 50px; min-width:0; }
+  h2.pg { font-size:18px; margin-bottom:4px; }
+  .pgsub { font-size:12.5px; color:var(--mut); margin-bottom:16px; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h3 { font-size:14px; margin-bottom:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .lv { font-size:11.5px; padding:1px 8px; border-radius:9px; white-space:nowrap; }
+  .lv.strong { background:var(--redbg); color:var(--red); border:1px solid #f7c1c1; }
+  .lv.warn { background:var(--amberbg); color:var(--amber); border:1px solid #fac775; }
+  .lv.tip { background:var(--bg); color:var(--mut); border:1px solid var(--line); }
+  .lv.ok { background:var(--greenbg); color:var(--green); border:1px solid #c0dd97; }
+  .src-line { font-size:12px; color:var(--mut); margin-top:6px; }
+  .stat { font-size:12px; color:var(--mut); margin-top:4px; }
+  .say { background:var(--bg); border-left:3px solid var(--blue); padding:8px 12px; border-radius:0 6px 6px 0; font-size:13px; margin-top:8px; }
+  .note { font-size:12px; color:var(--mut); margin-top:10px; }
+  .placeholder-tag { color:var(--mut); font-size:12px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  .pool { width:100%; border-collapse:collapse; font-size:13px; }
+  .pool th, .pool td { border:1px solid var(--line); padding:6px 10px; text-align:left; }
+  .pool th { background:var(--bg); font-weight:600; white-space:nowrap; }
+  .pool tbody tr { cursor:pointer; }
+  .pool tbody tr.sel { background:var(--bluebg); }
+  .up { color:var(--red); } .down { color:var(--green); }
+  .bdg { display:inline-block; font-size:11.5px; padding:0 7px; border-radius:9px; margin-right:4px; white-space:nowrap; }
+  .bdg.f { background:var(--bluebg); color:var(--blue); border:1px solid #b5d4f4; }
+  .bdg.e { background:var(--tealbg); color:var(--teal); border:1px solid #9fe1cb; }
+  .bdg.l { background:var(--amberbg); color:var(--amber); border:1px solid #fac775; }
+  .bdg.none { background:var(--bg); color:var(--mut); border:1px solid var(--line); }
+  .cal { display:flex; gap:10px; align-items:flex-start; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .cal .date { flex-shrink:0; width:74px; text-align:center; background:var(--bg); border-radius:6px; padding:6px 4px; }
+  .cal .date b { display:block; font-size:15px; }
+  .cal .date span { font-size:11px; color:var(--mut); }
+  .cal .what { font-size:13px; }
+  .cal .why { font-size:12px; color:var(--mut); margin-top:3px; }
+  .tl { border-left:2px solid var(--line); margin-left:10px; padding-left:18px; }
+  .tl .day { position:relative; margin-bottom:16px; }
+  .tl .day:before { content:""; position:absolute; left:-24px; top:6px; width:10px; height:10px; border-radius:50%; background:var(--blue); }
+  .tl .day h3 { font-size:14px; margin-bottom:6px; }
+  textarea { width:100%; min-height:70px; border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:13px; font-family:inherit; resize:vertical; }
+  textarea.big { min-height:100px; }
+  .btn { background:var(--blue); color:#fff; border:none; padding:7px 18px; border-radius:6px; cursor:pointer; font-size:13px; margin-top:8px; }
+  .btn.gray { background:var(--mut); }
+  .steps { display:flex; gap:6px; margin:12px 0; flex-wrap:wrap; }
+  .step { flex:1; min-width:110px; border:1px solid var(--line); border-radius:6px; padding:7px 9px; font-size:12px; color:var(--mut); background:var(--bg); }
+  .step.done { border-color:var(--blue); color:var(--blue); background:var(--bluebg); }
+  .buckets { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:6px; }
+  .bucket { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .bucket h4 { font-size:12.5px; padding:7px 11px; color:#fff; font-weight:600; }
+  .bucket ul { list-style:none; padding:7px 11px; }
+  .bucket li { font-size:12px; padding:4px 0; border-bottom:1px dashed var(--line); }
+  .bucket li:last-child { border-bottom:none; }
+  .b1 h4 { background:var(--green); } .b2 h4 { background:var(--teal); } .b3 h4 { background:var(--purple); } .b4 h4 { background:var(--red); }
+  .itag { font-size:11px; padding:0 6px; border-radius:8px; margin-left:6px; white-space:nowrap; }
+  .itag.ok { background:var(--greenbg); color:var(--green); }
+  .itag.check { background:var(--redbg); color:var(--red); }
+  .prefrow { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .pref { border:1px solid var(--line); background:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .pref.default { background:var(--tealbg); border-color:var(--teal); color:var(--teal); }
+  .mat-item { border:1px solid var(--line); border-radius:6px; padding:8px 12px; margin:8px 0; font-size:12.5px; }
+  .bindrow { display:flex; gap:8px; margin-top:10px; }
+  .bindrow input { flex:1; border:1px solid var(--line); border-radius:6px; padding:7px 10px; font-size:13px; }
+  footer { border-top:1px solid var(--line); padding:14px 24px 20px; font-size:12px; color:var(--mut); max-width:1280px; margin:0 auto; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">股池助手</span>
+  <span class="session">2026-11-20 · 盘前（演示时点）</span>
+  <span class="spacer"></span>
+  <button class="mbtn" id="agentBtn" onclick="toggleAgent()">智能体：关</button>
+  <button class="mbtn on" id="mR" onclick="switchMode('r')">股民模式</button>
+  <button class="mbtn" id="mD" onclick="switchMode('d')">研发模式</button>
+</header>
+
+<div class="shell">
+  <nav class="side">
+    <div class="ng">日常</div>
+    <button data-p="today" class="on" onclick="go('today')">今日重点</button>
+    <button data-p="pool" onclick="go('pool')">股池看板</button>
+    <button data-p="review" onclick="go('review')">复盘时间线</button>
+    <div class="ng">知识</div>
+    <button data-p="exp" onclick="go('exp')">经验库</button>
+    <button data-p="mat" onclick="go('mat')">素材库</button>
+    <div class="ng dev-only" hidden>研发</div>
+    <button data-p="pipe" class="dev-only" hidden onclick="go('pipe')">拆解流水线</button>
+    <button data-p="verdict" class="dev-only" hidden onclick="go('verdict')">裁决台</button>
+    <button data-p="derive" class="dev-only" hidden onclick="go('derive')">推导视图</button>
+  </nav>
+
+  <main class="c">
+
+    <!-- ============ 今日重点 ============ -->
+    <section id="pg-today">
+      <h2 class="pg">今日重点</h2>
+      <p class="pgsub">回答三个问题：该盯什么（等待项 + 触发条件）· 有什么新消息（分级）· 接下来有什么（日历）。已发生的事只作背景，不复述。</p>
+
+      <div class="card">
+        <h3>盯 000766：医保支付标准落地 <span class="lv strong">等待中</span></h3>
+        <p style="font-size:13px">公告 2026-40 已确认纳入目录，但支付标准未公布（公告原文明确"以国家医保局及各省公示为准"）。价格落地前，"以价换量"能否补回利润无法评估。</p>
+        <p class="src-line">来源：公告 2026-40 @ 深交所 2026-11-15（A 级已核实）· 触发方式：医保局/各省挂网价公示后本卡自动更新</p>
+        <div class="say">盯"价格公布"这个事件本身，而不是盯分时涨跌——价格公布前，任何反弹的依据都不完整。</div>
+      </div>
+      <div class="card">
+        <h3>盯 000766：流动性是否恢复 <span class="lv warn">观察</span></h3>
+        <p style="font-size:13px">11-19 盘中触及跌停价 10.83 未封住、换手 4.98%、成交 5.36 亿——恐慌盘开始有承接但未确认出清。后续盯量能与换手是否持续放大。</p>
+        <p class="src-line">来源：日 K @ westock-data（A 级，取数 2026-11-19，可复算）</p>
+        <div class="say">背景（11-16/17/18 三连跌停，收 14.85/13.37/12.03）。此卡只报告可复算事实，不判断"能不能抄"。</div>
+      </div>
+      <div class="card">
+        <h3><span class="placeholder-tag">股池其余标的的等待项</span> <span class="lv tip">界面占位</span></h3>
+        <p style="font-size:12.5px" class="placeholder-tag">真实系统中：股池每只票若有"等待中的事件"（公告要素缺失、解禁、业绩预约披露）都会在此生成一张盯卡；没有等待项的票不出现在本区，避免凑数。</p>
+      </div>
+
+      <h3 style="font-size:15px;margin:18px 0 10px">重要消息</h3>
+      <div class="card">
+        <h3>000766 异常波动公告：无应披露未披露事项 <span class="lv ok">A 级</span></h3>
+        <p style="font-size:13px">公告 2026-41 确认经营与内外部环境未发生重大变化——即事件落地后没有新增基本面利空，当前下跌主要是预期差与交易结构。</p>
+        <p class="src-line">来源：中国证券报 2026-11-19 转载公告</p>
+      </div>
+      <div class="card">
+        <h3><span class="placeholder-tag">市场级消息示例</span> <span class="lv tip">界面占位</span></h3>
+        <p style="font-size:12.5px" class="placeholder-tag">真实系统按来源分级展示：A级（公告/交易所）直接显示；C级（自媒体/稿件）标"需核实原文"且数字置空；每条带影响范围（与我股池相关 / 全市场）。</p>
+      </div>
+
+      <h3 style="font-size:15px;margin:18px 0 10px">事件日历</h3>
+      <div class="cal">
+        <div class="date"><b>待定</b><span>以官方公示</span></div>
+        <div><div class="what"><strong>000766 医保支付标准 / 各省挂网价公布</strong> <span class="lv strong">与股池相关</span></div>
+        <div class="why">触发源：国家医保局及各省公示 · 公布后自动生成"降价幅度 vs 利润弹性"评估卡</div></div>
+      </div>
+      <div class="cal">
+        <div class="date"><b>每月20日</b><span>遇节假日顺延</span></div>
+        <div><div class="what"><strong>LPR 报价</strong> <span class="lv tip">全市场</span></div>
+        <div class="why">固定日程（每月 20 日）· 结果出来后自动归档到市场状态账本，供复盘引用</div></div>
+      </div>
+      <div class="cal">
+        <div class="date"><b>12月</b><span>日期以官方通知</span></div>
+        <div><div class="what"><strong>中央经济工作会议（示例）</strong> <span class="lv tip">全市场 · 需核实</span></div>
+        <div class="why">每年 12 月召开、无固定日期，会议公告发布后由系统抓取确切日期并提醒——日历条目同样必须带来源，不预填猜测日期</div></div>
+      </div>
+      <div class="cal">
+        <div class="date"><b>待定</b><span>以预约表为准</span></div>
+        <div><div class="what"><strong>000766 年报预约披露日</strong> <span class="lv warn">与股池相关 · 界面占位</span></div>
+        <div class="why">真实系统从巨潮预约表读取；预约变更时自动更新并提示</div></div>
+      </div>
+      <p class="note">日历设计原则：确定性日程（LPR、披露预约表）自动抓取；不确定性日程（会议）先占位、以官方来源确-date 后才填具体日期——日历条目同样走"无来源不生效"。</p>
+    </section>
+
+    <!-- ============ 股池看板 ============ -->
+    <section id="pg-pool" hidden>
+      <h2 class="pg">股池看板</h2>
+      <p class="pgsub">F/E/L 徽标 = 各层生效信号数。点行查看右侧事前信号卡；来源分级：A 已核实 · C 需核实原文。</p>
+      <div class="cols">
+        <div>
+          <table class="pool">
+            <thead><tr><th>代码</th><th>名称</th><th>F</th><th>E</th><th>L</th><th>涨跌</th></tr></thead>
+            <tbody>
+              <tr class="sel" id="row000766" onclick="pickStock('000766')">
+                <td>000766</td><td>通化金马</td>
+                <td><span class="bdg f">1</span></td><td><span class="bdg e">3</span></td><td><span class="bdg l">1</span></td>
+                <td class="down">-7.98%（11-19）</td>
+              </tr>
+              <tr onclick="pickStock('p1')"><td>--</td><td class="placeholder-tag">界面占位 A</td><td><span class="bdg none">--</span></td><td><span class="bdg none">--</span></td><td><span class="bdg none">--</span></td><td class="placeholder-tag">--</td></tr>
+              <tr onclick="pickStock('p2')"><td>--</td><td class="placeholder-tag">界面占位 B</td><td><span class="bdg none">--</span></td><td><span class="bdg none">--</span></td><td><span class="bdg none">--</span></td><td class="placeholder-tag">--</td></tr>
+            </tbody>
+          </table>
+          <p class="note">手动加入的票与系统筛出的票同一张表展示（来源标签区分）；AI 不能自行往池里塞票。</p>
+        </div>
+        <div id="poolDetail">
+          <div class="card"><h3>F1 · 估值业绩背离 <span class="lv warn">警示</span></h3>
+            <p style="font-size:12.5px">稿件称 PE(TTM)≈1029 倍、Q3 归母转亏。</p>
+            <p class="src-line">来源：C 级稿件 → 需核实原文，核实前不生效</p>
+            <div class="say">估值与业绩方向相反，这类组合在利好兑现后波动更大。此为背景提示，不是买卖判断。</div></div>
+          <div class="card"><h3>E1 · 支付标准未公布 <span class="lv strong">强警示</span></h3>
+            <p style="font-size:12.5px">关键数字（价格）未落地，协议期 2027 年起才执行。</p>
+            <p class="src-line">来源：公告 2026-40（A 级已核实）</p>
+            <div class="say">利好"含金量"无法评估，执行最早在 2027 年。</div></div>
+          <div class="card"><h3>E2 · 公告前抢跑 <span class="lv tip">提示</span></h3>
+            <p style="font-size:12.5px">公告前 2 个交易日（11-13）出现涨停。</p>
+            <p class="src-line">来源：日 K（A 级可复算）</p>
+            <div class="say">公告之前股价已经先动过，事件落地日常见获利了结。</div></div>
+          <div class="card"><h3>L1 · 6 个月重复模式 <span class="lv strong">强警示</span></h3>
+            <p style="font-size:12.5px">6/25 获批后 6/26–6/30 三连跌停（26.61→19.40），本次结构相似，为第二次。</p>
+            <p class="src-line">来源：公告时间线 + 日 K（A 级）· 样本 2 · 反例 0</p>
+            <div class="say">同一剧本演过一次。样本太少不是规律，但值得知道。</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 复盘时间线 ============ -->
+    <section id="pg-review" hidden>
+      <h2 class="pg">复盘时间线</h2>
+      <p class="pgsub">按「事前怎么想 → 事实是什么 → 事后怎么对照」组织。precommit（事前预判）只能在结果出来前登记。</p>
+      <div class="tl">
+        <div class="day">
+          <h3>2026-11-19</h3>
+          <div class="card">
+            <h3>事实 <span class="lv ok">A 级可复算</span></h3>
+            <p style="font-size:13px">000766 收 11.07（-7.98%），盘中触及跌停价 10.83 未封住，换手 4.98%、成交 5.36 亿。</p>
+            <p class="src-line">来源：日 K @ westock-data（取数 2026-11-19）</p>
+          </div>
+          <div class="card">
+            <h3>对照</h3>
+            <p style="font-size:13px">前一日外部稿件称"明天可能打开跌停博弈"——11-19 确实未封死跌停，但当日仍收跌 7.98%：单日打开 ≠ 出清，提示由行情回填判定，不由叙事判定。</p>
+            <p class="src-line">该稿件为 C 级，其复盘内容仅作对照背景</p>
+          </div>
+          <div class="card">
+            <h3>我的 precommit（事前预判）</h3>
+            <p style="font-size:12.5px" class="placeholder-tag">此处录入"我在结果出来前怎么想 + 什么现象算我错"。演示表单：</p>
+            <textarea id="pcBox" placeholder="例：我认为医保落地后放量就能企稳；如果 5 日内缩量再创新低，算我看错。"></textarea>
+            <button class="btn" onclick="savePc()">登记预判（演示）</button>
+            <p class="note" id="pcMsg">登记后进入待审区，事件回贴时自动对照；没有事前登记的复盘不会进入经验晋升流程。</p>
+          </div>
+        </div>
+        <div class="day">
+          <h3>2026-11-15</h3>
+          <div class="card"><p style="font-size:13px"><strong>事件：</strong>公告 2026-40 纳入医保目录（A 级）。<span class="placeholder-tag">真实系统中此日卡的行情对照由 15:10 回填任务自动写入。</span></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 经验库 ============ -->
+    <section id="pg-exp" hidden>
+      <h2 class="pg">经验库</h2>
+      <p class="pgsub">双向（踩坑 / 得益）· 四层作用域（市场 / 板块 / 个股 / 自身）· 同一套晋升闸门。当前全部待审，系统默认动作恒为"不改任何东西"。</p>
+      <div class="card">
+        <h3>待审经验（来自系统自动统计） <span class="lv warn">需复核</span></h3>
+        <p style="font-size:12.5px">现有 4 条 pending（样本 n=14/16/17/14，其中 3 条 avgExcess≈1.96%）：同一批 18 条复盘样本按 7 个维度切分所得，非独立证据；口径问题（命中率与超额不同源）修复前建议全部保持待审。</p>
+        <p class="src-line">来源：journal.js buildLessons()（系统自动生成）· 审核语义见 v6：默认「以后再说」</p>
+      </div>
+      <div class="card">
+        <h3>录入我自己的经验</h3>
+        <p style="font-size:12.5px" class="placeholder-tag">四要素：① 主张 ② 证伪条件 ③ 适用范围 ④ 结果前的预判。口语可照常写，智能体只做抽取，原文永久保留。</p>
+        <textarea id="expBox" placeholder="例：我发现我总在利好消息当天追高买入，之后三天回调的概率看起来很大——但我没统计过，想让它帮我验证。"></textarea>
+        <button class="btn" onclick="saveExp()">提交（演示）</button>
+        <p class="note" id="expMsg">提交后进待审区并自动归类（polarity/scope/patternFamily）；是否可证伪、样本够不够由系统判定，不由你判别。</p>
+      </div>
+    </section>
+
+    <!-- ============ 素材库 ============ -->
+    <section id="pg-mat" hidden>
+      <h2 class="pg">素材库</h2>
+      <p class="pgsub">无标的的题材卡在此等待绑定；绑定后逐条核实，无来源不生效。</p>
+      <div class="card">
+        <h3>液冷算力 + 华为 + 多媒体视讯 <span class="lv tip">未绑定标的</span></h3>
+        <div class="mat-item">泵驱两相冷板液冷 / PUE 约 1.1 / 联合研发 8 卡液冷服务器<br><span class="src-line">2026-08-27 半年报 · A 候选（须核对原文"深度联动/联合研发"表述）</span></div>
+        <div class="mat-item">公司是华为的金牌经销商<br><span class="src-line">2023-03-02 互动易 · 需核实（公司回复口径；资质查华为官方认证；距今近 3 年须确认现时有效）</span></div>
+        <div class="mat-item">签约马栏山智算等用户，部分已交付验收<br><span class="src-line">2026-05-18 互动易 · 需核实（签约 ≠ 收入，无验收证明）</span></div>
+        <div class="mat-item">主营多媒体视讯，支持国产化，服务部委及央企<br><span class="src-line">2026-04-09 年报 · A 候选</span></div>
+        <div class="bindrow">
+          <input id="bindInput" placeholder="输入标的代码（6 位数字）绑定，留空不绑定" aria-label="标的代码">
+          <button class="btn gray" onclick="bindMat()">绑定（演示）</button>
+        </div>
+        <p class="note" id="bindMsg">系统不自行猜测这是哪只票。绑定后与财报数据矛盾时自动生成冲突条目走裁决台。</p>
+      </div>
+    </section>
+
+    <!-- ============ 研发：拆解流水线 ============ -->
+    <section id="pg-pipe" hidden>
+      <h2 class="pg">拆解流水线 <span class="lv tip">研发专用 · 不面向最终用户</span></h2>
+      <p class="pgsub">粘贴复盘稿 / 题材卡文字，演示五步拆解（示例数据，非真实调用）。</p>
+      <textarea class="big" id="pasteBox">通化金马这轮连续跌停，原因是"利好兑现、医保降价不确定、三季报转亏、创新药板块退潮、杠杆资金踩踏"五重因素共同作用。现价12.04元（-9.95%），已是第三个跌停。操作上：不接飞刀，持有的不补仓。</textarea>
+      <button class="btn" onclick="runParse()">运行拆解</button>
+      <div class="steps">
+        <div class="step" id="s1">1 绑定检查</div><div class="step" id="s2">2 R1 抽取四元组</div>
+        <div class="step" id="s3">3 确定性网关</div><div class="step" id="s4">4 四路分流</div><div class="step" id="s5">5 反馈回填</div>
+      </div>
+      <div class="buckets" id="buckets" hidden>
+        <div class="bucket b1"><h4>① L0 事实账本</h4><ul>
+          <li>医保目录公告：乙类 / 协议期 2027-2028 / 支付标准未公布<span class="itag ok">A 已核实</span></li>
+          <li>三季报数字<span class="itag check">需核实原文</span></li></ul></div>
+        <div class="bucket b2"><h4>② Flag 风险提示（不改分）</h4><ul>
+          <li>支付标准未公布<span class="itag ok">A · 强警示</span></li>
+          <li>估值业绩背离<span class="itag check">核实后生效</span></li>
+          <li>6 个月重复模式<span class="itag ok">A · 样本 2</span></li></ul></div>
+        <div class="bucket b3"><h4>③ 假说卡待审</h4><ul>
+          <li>"利好兑现 → 资金撤退"<span class="itag check">待审 · 影子</span></li>
+          <li>证伪条件：同类样本事件后 20 日相对行业超额为正占比 &gt; 40%</li></ul></div>
+        <div class="bucket b4"><h4>④ 丢弃区（永不生效）</h4><ul>
+          <li>"不接飞刀 / 不补仓" → 操作结论</li>
+          <li>"12.04 现价" → 已过期（11-18 收盘 12.03）</li></ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 研发：裁决台 ============ -->
+    <section id="pg-verdict" hidden>
+      <h2 class="pg">裁决台 <span class="lv tip">研发专用 · 不面向最终用户</span></h2>
+      <p class="pgsub">冲突四类处置：事实/口径确定性重算 · 解释类并列不裁决 · 时点类标过期 · 价值类交给你。默认动作恒为「以后再说」。</p>
+      <div class="card">
+        <h3>示例：叙述 vs 行情（000766 相关，11-17 大盘形态）</h3>
+        <p style="font-size:13px"><strong>叙述层（C 级）：</strong>"11-17 低开高走"<br>
+        <strong>行情层（A 级可复算）：</strong>前收 3602.57 / 开 3585.67 / 收 3584.58 → 低开低走</p>
+        <p class="src-line">处置：确定性重算已裁定（模型不参与）→ 叙述标 narrative_conflict。你只需决定这条冲突提醒要不要继续看：</p>
+        <div class="prefrow">
+          <button class="pref" onclick="prefPick('保留提醒（演示）')">保留提醒</button>
+          <button class="pref" onclick="prefPick('关闭这条（演示）')">关闭这条</button>
+          <button class="pref default" onclick="prefPick('以后再说（默认，演示）')">以后再说</button>
+        </div>
+        <p class="note" id="prefMsg">默认「以后再说」：不点任何按钮，系统什么都不改，不会有任何坏影响。</p>
+      </div>
+    </section>
+
+    <!-- ============ 研发：推导视图 ============ -->
+    <section id="pg-derive" hidden>
+      <h2 class="pg">推导视图 <span class="lv tip">研发专用 · 发布时整体隐藏</span></h2>
+      <p class="pgsub">六步链（以 000766 医保事件为例）。前期研发观察用，同一渲染层，发布时隐藏入口即可下线。</p>
+      <div class="card">
+        <p style="font-size:13px;line-height:2">
+        ① 事实输入：公告 2026-40 / 日 K（A 级）<br>
+        ② 确定性计算：抢跑检测（11-13 涨停）· 重复模式检测（6/25 同构）· 要素缺失检测（支付标准）<br>
+        ③ 智能体输出：事件卡四元组 + 假说卡草稿（禁补数字）<br>
+        ④ 网关校验：schema / 出处 / 幂等 / C 级数字复算比对<br>
+        ⑤ 人工闸门：本例无需人工——全部为确定性 Flag；假说卡留待审<br>
+        ⑥ 回填校准：T+1/5/20 行情回填 + 反例计数 + 假警报率</p>
+        <p class="note">参数滑块（Flag 阈值 / 提示等级）在真实系统中只改本地预览，动主服务需走配置评审。</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <p><strong>免责声明：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</strong></p>
+  <p>统一外壳演示：仅 000766 时间线与公告经前次核实（深交所公告 2026-40/2026-41、westock-data 日 K、上证 11-17 日 K），日历与消息中的示例条目均已标注占位/需核实。前期以静态网页打开使用，后续接 8777 服务时替换演示数据为 API 数据，外壳与导航不变。</p>
+</footer>
+
+<script>
+var DETAILS = {
+  p1: '<div class="card"><h3>界面占位 A</h3><p style="font-size:12.5px">真实系统中渲染该标的的 F/E/L 信号卡。</p></div>',
+  p2: '<div class="card"><h3>界面占位 B</h3><p style="font-size:12.5px">信号卡数据来源：fundamentals / event-cards / hypotheses 三个 JSONL 账本。</p></div>'
+};
+var mode = 'r', agentOn = false, cur = 'today';
+function go(p) {
+  cur = p;
+  var i, secs = document.querySelectorAll('main.c > section');
+  for (i = 0; i < secs.length; i++) secs[i].hidden = true;
+  document.getElementById('pg-' + p).hidden = false;
+  var btns = document.querySelectorAll('nav.side button');
+  for (i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-p') === p);
+}
+function switchMode(m) {
+  mode = m;
+  var r = m === 'r';
+  document.getElementById('mR').className = 'mbtn' + (r ? ' on' : '');
+  document.getElementById('mD').className = 'mbtn' + (r ? '' : ' on');
+  var devs = document.querySelectorAll('.dev-only');
+  for (var i = 0; i < devs.length; i++) devs[i].hidden = r;
+  if (r && (cur === 'pipe' || cur === 'verdict' || cur === 'derive')) go('today');
+}
+function toggleAgent() {
+  agentOn = !agentOn;
+  document.getElementById('agentBtn').textContent = '智能体：' + (agentOn ? '开' : '关');
+}
+function pickStock(sym) {
+  var i, rows = document.querySelectorAll('.pool tbody tr');
+  for (i = 0; i < rows.length; i++) rows[i].classList.remove('sel');
+  if (sym === '000766') {
+    document.getElementById('row000766').classList.add('sel');
+    document.getElementById('poolDetail').innerHTML =
+      '<div class="card"><h3>F1 · 估值业绩背离 <span class="lv warn">警示</span></h3><p style="font-size:12.5px">稿件称 PE(TTM)≈1029 倍、Q3 归母转亏。</p><p class="src-line">来源：C 级稿件 → 需核实原文，核实前不生效</p><div class="say">估值与业绩方向相反，这类组合在利好兑现后波动更大。此为背景提示，不是买卖判断。</div></div>' +
+      '<div class="card"><h3>E1 · 支付标准未公布 <span class="lv strong">强警示</span></h3><p style="font-size:12.5px">关键数字（价格）未落地，协议期 2027 年起才执行。</p><p class="src-line">来源：公告 2026-40（A 级已核实）</p><div class="say">利好"含金量"无法评估，执行最早在 2027 年。</div></div>' +
+      '<div class="card"><h3>E2 · 公告前抢跑 <span class="lv tip">提示</span></h3><p style="font-size:12.5px">公告前 2 个交易日（11-13）出现涨停。</p><p class="src-line">来源：日 K（A 级可复算）</p><div class="say">公告之前股价已经先动过，事件落地日常见获利了结。</div></div>' +
+      '<div class="card"><h3>L1 · 6 个月重复模式 <span class="lv strong">强警示</span></h3><p style="font-size:12.5px">6/25 获批后 6/26–6/30 三连跌停（26.61→19.40），本次结构相似，为第二次。</p><p class="src-line">来源：公告时间线 + 日 K（A 级）· 样本 2 · 反例 0</p><div class="say">同一剧本演过一次。样本太少不是规律，但值得知道。</div></div>';
+    return;
+  }
+  for (i = 0; i < rows.length; i++) {
+    if (rows[i].getAttribute('onclick') && rows[i].getAttribute('onclick').indexOf("'" + sym + "'") >= 0) rows[i].classList.add('sel');
+  }
+  document.getElementById('poolDetail').innerHTML = DETAILS[sym];
+}
+function runParse() {
+  var i;
+  for (i = 1; i <= 5; i++) document.getElementById('s' + i).classList.remove('done');
+  document.getElementById('buckets').hidden = true;
+  var n = 1;
+  var timer = setInterval(function () {
+    if (n > 5) { clearInterval(timer); document.getElementById('buckets').hidden = false; return; }
+    document.getElementById('s' + n).classList.add('done');
+    n = n + 1;
+  }, 320);
+}
+function bindMat() {
+  var v = document.getElementById('bindInput').value.trim();
+  var msg = document.getElementById('bindMsg');
+  if (!v) { msg.textContent = '未填写代码：保持「未绑定标的」状态，不参与任何验证。'; return; }
+  if (!/^\d{6}$/.test(v)) { msg.textContent = '代码格式应为 6 位数字（演示校验）。未绑定，请重新输入。'; return; }
+  msg.textContent = '演示：已绑定至 ' + v + '。三条主张进入待核实队列，逐条核对后升级来源等级；与财报矛盾时生成冲突条目。';
+}
+function savePc() {
+  var v = document.getElementById('pcBox').value.trim();
+  document.getElementById('pcMsg').textContent = v ? '演示：预判已登记（真实系统写入 precommit 字段并进入待审区）。' : '请先填写预判内容。';
+}
+function saveExp() {
+  var v = document.getElementById('expBox').value.trim();
+  document.getElementById('expMsg').textContent = v ? '演示：已进入待审区。智能体抽取四要素 + 自动归类（polarity/scope）；证伪性、样本量由系统判定。' : '请先填写经验内容。';
+}
+function prefPick(t) {
+  document.getElementById('prefMsg').textContent = '已选择：' + t + '。真实系统中仅写入偏好字段，不改动任何评分与账本。';
+}
+</script>
+</body>
+</html>

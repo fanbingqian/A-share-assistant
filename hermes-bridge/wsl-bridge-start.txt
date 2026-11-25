@@ -1,0 +1,7 @@
+=== 清理旧桥接 ===
+=== 启动桥接 ===
+PID=502
+=== health ===
+{"ok": true, "service": "hermes-bridge", "hermes": "hermes"}
+=== bridge.log ===
+[bridge] "GET /health HTTP/1.1" 200 -

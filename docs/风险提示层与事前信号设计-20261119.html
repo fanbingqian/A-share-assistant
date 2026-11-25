@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>风险提示层（Flag）与事前信号设计 · 2026-11-19</title>
+<style>
+:root{--ink:#1f2328;--ink2:#4a5158;--ink3:#78818a;--line:#d9dee3;--bg:#f7f8fa;--card:#fff;--blue:#185fa5;--blue-bg:#eef5fc;--amber:#8a5a00;--amber-bg:#fdf6e8;--red:#a32d2d;--red-bg:#fdeeee;--green:#0f6e56;--green-bg:#eaf6f1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.7;font-size:14px}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 28px 64px}
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px}
+h1{font-size:25px;font-weight:600;margin:0 0 8px}
+.meta{color:var(--ink3);font-size:12.5px}
+h2{font-size:19px;font-weight:600;margin:38px 0 14px;padding-left:11px;border-left:4px solid var(--blue)}
+h3{font-size:15.5px;font-weight:600;margin:24px 0 10px}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+small{font-size:12px;color:var(--ink3)}
+code{font-family:"SFMono-Regular",Consolas,monospace;background:#eef1f4;padding:1px 5px;border-radius:3px;font-size:12.5px}
+pre{background:#f2f5f8;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;line-height:1.6;color:#243038;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0 18px;background:var(--card);font-size:13px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:#eef2f6;font-weight:600;color:var(--ink2)}
+tbody tr:nth-child(even){background:#fbfcfd}
+.lead{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:0 0 26px}
+.lead h2{margin:0 0 12px;border:none;padding:0;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 18px}
+.card .t{font-weight:600;font-size:14px;margin-bottom:6px}
+.card p{margin:6px 0;font-size:13px;color:var(--ink2)}
+.tag{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:10px;margin-right:5px;font-weight:600}
+.t-blue{background:var(--blue-bg);color:var(--blue)}
+.t-green{background:var(--green-bg);color:var(--green)}
+.t-amber{background:var(--amber-bg);color:var(--amber)}
+.t-red{background:var(--red-bg);color:var(--red)}
+.t-gray{background:#eceff2;color:var(--ink2)}
+.warn{background:var(--red-bg);border-left:4px solid var(--red);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+.note{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+.ok{background:var(--green-bg);border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+ul,ol{margin:10px 0 10px 22px;padding:0}
+li{margin:5px 0}
+.src{font-size:12px;color:var(--ink3);margin-top:-10px;margin-bottom:16px}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--ink2)}
+.disc{background:#f0f2f5;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-top:18px;font-size:12.5px;color:var(--ink2)}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>风险提示层（Flag）与事前信号设计</h1>
+<div class="meta">GlobalMarketMonitor 设计文档 v2 · 2026-11-19（盘后）｜以通化金马（000766）医保目录事件为原型案例｜性质：架构设计 + 事实对账，不含投资建议</div>
+</header>
+
+<div class="lead">
+<h2>结论先行：你这句话改了架构</h2>
+<p>你澄清「知识库不是为了 100% 判断，而是提醒 / 风险提示；风险不是绝对判定；需要真实市场数据反馈和分析」——这正好是上一版框架的缺口。上一版我把因素分成 <strong>Gate（剔除）/ Score（评分）/ Explain（解释）</strong> 三类，并把「利好出货」放进 Explain。这偏保守了：Explain 只解释、不统计、不验证，无法承担你要的「选股重点 + 数据反馈」。因此需要新增第四类 <strong>Flag（风险提示）</strong>。</p>
+<div class="grid">
+<div class="card"><div class="t">1 · 这条案例不能按「五个原因」入库</div><p>「利好兑现 / 医保降价 / 三季报转亏 / 板块退潮 / 杠杆踩踏」是跌完之后组织出的叙事，事后永远成立、不可证伪、反例极多。写进选股会退化成「永远看空」。</p></div>
+<div class="card"><div class="t">2 · 能入库的是「买入前可算」的信号</div><p>公告前抢跑涨停、支付标准未公布、协议期 2027 才执行、同标的 6 个月内重复模式、估值业绩背离、资金结构分歧——这些在你下单之前就存在，且每条都能被真实行情回填验证。</p></div>
+<div class="card"><div class="t">3 · Flag 只提示，不否决</div><p>三级「提示 / 警示 / 强警示」，默认不改分、不剔除、不自动下单；每条必须同时显示历史反例数。要从 Flag 晋升到 Score，仍须过上一版的影子验证 + 人工闸门。</p></div>
+<div class="card"><div class="t">4 · 反馈指标不是「预测准不准」</div><p>而是「触发后回避了多少回撤」与「误报率（触发后仍上涨）」并列统计。没有反例计数的风险提示，和事后归因一样不可信。</p></div>
+</div>
+<div class="warn"><strong>最值钱的一条信号不是「医保利好会跌」：</strong>同一标的在 2026-06-25 药品注册证公告后，已经演过一次「公告前抢跑 → 公告后连续跌停」，并在 06-30 发过异常波动公告。四个月内同一剧本第二次上演——这是可事前计算、可计数、可证伪的重复模式，比任何因果解释都可靠。<span class="tag t-amber">来源：深交所公告列表 2026-06-25 / 2026-06-30，见文末来源 [2]</span></div>
+</div>
+
+<h2>一、事实对账：你手上那份复盘要修三处</h2>
+<p>按金融数据纪律，先把「一手来源可核实的事实」与「AI 稿件里未核实的数字」分开。核验方式：domain_search 多源检索，含交易所公告、指定媒体公告全文与日 K 行情数据。</p>
+<table>
+<thead><tr><th style="width:24%">项</th><th style="width:34%">核实结果</th><th style="width:22%">来源与时点</th><th style="width:20%">等级</th></tr></thead>
+<tbody>
+<tr><td>医保目录公告</td><td>属实。公告编号 2026-40，2026-11-15 16:11 深交所挂网，11-16 见报；琥珀酸安维吖啶片首次纳入《国家医保目录（2026 版）》，乙类，协议期 <strong>2027-01-01 至 2028-12-31</strong>；<strong>支付标准未披露</strong></td><td><a href="https://paper.cnstock.com/html/2026-11/16/content_2290756.htm">上海证券报公告全文</a>，2026-11-16；公告列表 2026-11-15</td><td><span class="tag t-green">一手</span></td></tr>
+<tr><td>三连跌停</td><td>属实。11-16 / 11-17 / 11-18 分别 -10.00% / -9.97% / -10.02%，收盘 14.85 / 13.37 / <strong>12.03</strong> 元</td><td>westock-data 日 K（sz000766），取数 2026-11-19</td><td><span class="tag t-blue">行情数据</span></td></tr>
+<tr><td>「12.04 元是现价」</td><td><strong>口径错误</strong>：12.04 是 11-18 的<strong>开盘价</strong>，收盘为 12.03 元</td><td>同上，11-18 open=12.04 / close=12.03</td><td><span class="tag t-blue">行情数据</span></td></tr>
+<tr><td>「今天（11/18）」</td><td><strong>日期过期一天</strong>。本对话时点为 2026-11-19 19:13（北京时间，A 股盘后）。11-19 收 11.07 元（-7.98%），盘中触及跌停价 10.83 但<strong>未封住</strong>，换手 4.98%、成交 5.36 亿元</td><td>westock-data 日 K，2026-11-19 收盘</td><td><span class="tag t-blue">行情数据</span></td></tr>
+<tr><td>异常波动公告</td><td>编号 2026-41（11-18）：公司核查确认<strong>无应披露未披露事项</strong>、经营与内外部环境未发生重大变化；另有编号 2026-42 董事长增持计划 1000–2000 万元</td><td><a href="https://epaper.cs.com.cn/zgzqb/html/2026-11/19/nw.D110000zgzqb_20261119_6-B023.htm">中国证券报</a>，2026-11-19</td><td><span class="tag t-green">一手</span></td></tr>
+<tr><td>三季报具体数字 / 11-13 龙虎榜 / 融资余额 / PE 约 1029 倍</td><td><strong>未核实</strong>。检索结果明确标注此类数据来自 AI 异动分析稿件，未与 2026-10-26 披露的《2026 年三季度报告》原文逐项核对；医保降价幅度、峰值销售额均为第三方测算，非公司披露</td><td>检索提示；三季报原文见公告列表 2026-10-26</td><td><span class="tag t-red">非一手 · 需核实原文</span></td></tr>
+</tbody>
+</table>
+<div class="src">来源 [1] westock-data 日 K sz000766（15 根，取数 2026-11-19）；[2] westock-data 公告列表 sz000766（含 06-25 注册证、06-30 异动、10-26 三季报、11-15 医保目录、11-18 异动与增持公告）；[3] 上海证券报 2026-11-16 公告 2026-40 全文；[4] 中国证券报 2026-11-19 公告 2026-41 / 2026-42 全文；[5] 证券之星 2026-11-19 龙虎榜报道（非一手，需核实原文）；[6] 网易号 / 财富号自媒体与 AI 异动分析稿件（非一手，需核实原文）。</div>
+
+<div class="note"><strong>三处修正带来的教训，比案例本身更重要：</strong><br>① <strong>日期口径必须先对齐</strong>：如果经验库把 11-18 当作「今天」，<code>precommit</code> 与 outcome 会错位一天，反馈台账全错。<br>② <strong>你复盘中列的「跌停打开 + 放量换手」这个真信号，11-19 其实已经出现</strong>（盘中触及跌停未封、换手由 2.08% 升至 4.98%、成交由 2.43 亿升至 5.36 亿），但当日仍收跌 7.98%。按日度简报纪律，单日「打开跌停」不等于恐慌盘出清，需多日确认——若系统把这条写成买入信号，11-19 就会误判。这正是「提示必须由真实行情反馈、而不是由叙事判定」的现成例子。<br>③ <strong>事件落地后公司层面没有新增利空</strong>（异动公告已确认）。所以「五个原因」里多数是事前已公开的静态背景，不是事件后的新信息。</div>
+
+<h2>二、把案例改写成事前可观测信号</h2>
+<p>下面每条都满足三个条件：<strong>买入前可取得</strong>、<strong>可用确定性规则判定</strong>、<strong>事后能用行情回填验证</strong>。凡需核实原文的，一律先标「待核实」，不填数值。</p>
+<table>
+<thead><tr><th style="width:6%">#</th><th style="width:24%">信号</th><th style="width:28%">确定性判定方式</th><th style="width:22%">项目现有能力 / 数据源</th><th style="width:20%">来源等级</th></tr></thead>
+<tbody>
+<tr><td>S1</td><td>公告前抢跑</td><td>重大公告披露前 1 个交易日涨停，或近 10 日累计涨幅处于高位分位</td><td>日 K 可算；<code>events-cache.json</code> 有事件时点；公告列表可对齐</td><td><span class="tag t-blue">行情 + 一手公告</span></td></tr>
+<tr><td>S2</td><td>关键变量落地时仍未知</td><td>公告全文含「支付标准以……公示为准」等未定表述 → 布尔标记 <code>keyVariableUnknown=true</code></td><td>公告 2026-40 原文；可由规则/受限适配器提取，不生成数字</td><td><span class="tag t-green">一手</span></td></tr>
+<tr><td>S3</td><td>兑现时点远</td><td>协议生效日 - 公告披露日 &gt; 180 天 → 标记「当年无增量收入」</td><td>公告结构化字段（协议期 2027-01-01）</td><td><span class="tag t-green">一手</span></td></tr>
+<tr><td>S4</td><td><strong>同标的重复模式</strong></td><td>近 6 个月内，同一 <code>code</code> 曾出现「重大利好公告 + 公告前涨停 + 公告后 3 日内连续跌停」→ 计数 +1</td><td>公告列表 + 日 K 纯计算；06-25 注册证公告 / 06-30 异动公告为现存样本</td><td><span class="tag t-green">一手 + 行情</span></td></tr>
+<tr><td>S5</td><td>估值与业绩背离</td><td>PE(TTM) 极值分位 + 最近一期归母净利同比转负；<strong>数值待三季报原文核实后填入</strong></td><td><code>valuation.js</code> 有 PE；需补一手财报字段</td><td><span class="tag t-red">待核实原文</span></td></tr>
+<tr><td>S6</td><td>资金结构分歧</td><td>龙虎榜机构净卖 / 游资净买、融资余额环比转负；<strong>数值待交易所公开信息核实</strong></td><td><code>flow.js</code> 资金主体画像；需补龙虎榜一手来源</td><td><span class="tag t-red">待核实原文</span></td></tr>
+<tr><td>S7</td><td>所属板块阶段</td><td>板块处于「高位 / 退潮」阶段</td><td><code>phase.js</code> 五阶段、<code>strength.js</code>、<code>marketStyle.js</code> 已有</td><td><span class="tag t-blue">行情数据</span></td></tr>
+</tbody>
+</table>
+<div class="src">方法论依据：<code>event-catalyst.md</code>（催化级别、预期差、「预期已充分定价的利好反而是兑现风险」、不把单一新闻上升为长期逻辑）、<code>abnormal-detection.md</code>（事件催化常在发布前已被提前反应；高位放量可能是出货；下跌放量反映流动性枯竭）、<code>daily-briefing.md</code>（单日跌幅不等于趋势反转、利好发布不等于股价必涨）。</div>
+
+<div class="ok"><strong>关键在于触发时点。</strong>这 7 条在 11-13（公告前最后一个交易日，涨停当天）到 11-15 晚公告披露之间就已可计算。系统的价值不是 11-18 告诉你「为什么跌了」，而是在你下单前弹出一条带来源、带样本数、带反例数的提醒——并且明确写「这不是卖出建议」。</div>
+
+<h2>三、Flag 风险提示层：四类用途的第四类</h2>
+<table>
+<thead><tr><th style="width:14%">用途</th><th style="width:24%">作用</th><th style="width:22%">能否改分 / 剔除</th><th style="width:40%">显示给用户的东西</th></tr></thead>
+<tbody>
+<tr><td><span class="tag t-gray">Gate</span></td><td>硬性准入过滤</td><td>剔除，不排序</td><td>被剔除原因 + 可复算依据</td></tr>
+<tr><td><span class="tag t-blue">Score</span></td><td>参与排序</td><td>是，唯一允许改分</td><td>分数构成与权重版本</td></tr>
+<tr><td><span class="tag t-amber">Flag</span><br><small>本次新增</small></td><td><strong>风险提示与事后统计</strong></td><td><strong>默认都不</strong>；要进 Score 须过晋升阶梯</td><td>提示等级、触发信号、来源+时点、<strong>历史样本数与反例数</strong>、以及「仅供参考，不构成卖出建议」</td></tr>
+<tr><td><span class="tag t-green">Explain</span></td><td>解释与案例教学</td><td>永不</td><td>文字说明、案例对照</td></tr>
+</tbody>
+</table>
+
+<h3>Flag 的六条硬规则</h3>
+<ol>
+<li><strong>三级而非二元</strong>：<code>提示 / 警示 / 强警示</code>。避免「有风险 = 有问题」的绝对判定，这是你明确要求保留的空间。</li>
+<li><strong>默认不改分、不剔除、不自动下单</strong>：只做显示与记账。要影响评分，必须走上一版的五级晋升阶梯（事前登记 → 单一主假说 → 影子验证 → 人工采纳 → 失效检测）。</li>
+<li><strong>必须带反例计数</strong>：同一信号组合历史上「触发后 T+5 仍上涨」的次数，与命中次数并列展示。没有反例计数的 Flag 不允许升级为强警示。</li>
+<li><strong>必须带来源与时点</strong>：每条信号指向公告编号 / 行情日期 / 数据源；来自 AI 稿件的字段一律标「需核实原文」，不得写入事实账本。</li>
+<li><strong>必须可关闭</strong>：适配器与 Flag 层都能一键关掉，关闭后主服务照常运行。</li>
+<li><strong>提示语不得含操作指令</strong>：只陈述可验证事实与历史统计，不写「别买」「不接飞刀」「等打开跌停」这类判断。</li>
+</ol>
+
+<h3>数据契约：<code>data/journal/flag-events.jsonl</code></h3>
+<pre>{
+  "flagId": "F-20261113-000766",
+  "code": "000766",
+  "triggerDate": "2026-11-13",
+  "triggerTs": null,
+  "level": "强警示",
+  "signals": [
+    { "id": "S1", "value": true, "source": "kline:sz000766:2026-11-13" },
+    { "id": "S2", "value": true, "source": "announcement:2026-40:2026-11-15" },
+    { "id": "S3", "value": true, "source": "announcement:2026-40:2027-01-01" },
+    { "id": "S4", "value": 1, "source": "announcement:2026-30:2026-06-25" },
+    { "id": "S5", "value": null, "source": "pending:三季报原文核实" },
+    { "id": "S6", "value": null, "source": "pending:交易所公开信息核实" }
+  ],
+  "sources": ["exchange:2026-40", "exchange:2026-30", "westock-data:kline:sz000766"],
+  "sampleCount": 0,
+  "counterexampleCount": 0,
+  "action": "none",
+  "feedback": { "t1": null, "t5": null, "t20": null, "maxDrawdown20d": null, "excess": null },
+  "verdict": "pending",
+  "note": "规则型提示，尚未通过统计验证；不作为卖出依据"
+}</pre>
+<p><small>说明：<code>value: null</code> 表示该信号当前数据源未覆盖或需核实原文，<strong>不填任何推测数值</strong>；<code>triggerDate</code> 必须是下单前的日期，不能用复盘日回填；<code>feedback</code> 全部为 null，等待真实行情回填。用户未提供具体买入时刻，<code>triggerTs</code> 因此留 null 由系统写入，<strong>不得推测一个时点</strong>。</small></p>
+
+<h2>四、真实市场数据反馈：提示有效性台账</h2>
+<p>你说的「需要真实的市场数据来进行反馈和分析」，落到系统里就是这张台账。它可以复用项目已有的 <code>journal.js</code> 能力：<code>barOf(code, date)</code> 取日线、<code>benchRet(bucket, date)</code> 取同市值层基准，无需引入新依赖。</p>
+<table>
+<thead><tr><th style="width:22%">回填字段</th><th style="width:34%">计算口径</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>t1 / t5 / t20</code></td><td>触发日后 1 / 5 / 20 个交易日收盘相对触发日收盘的涨跌幅</td><td>衡量提示后短期与中期走势</td></tr>
+<tr><td><code>maxDrawdown20d</code></td><td>触发后 20 个交易日内，相对触发日收盘的最大回撤</td><td><strong>核心指标</strong>：这条提示帮用户「看见」了多大风险</td></tr>
+<tr><td><code>excess</code></td><td>同期收益 - 同市值层基准收益（基准缺失则记 null 并从统计中剔除）</td><td>剔除大盘整体影响，沿用上一版的口径修正</td></tr>
+<tr><td><code>verdict</code></td><td><code>useful / false_alarm / inconclusive</code>，由确定性阈值判定，不由 LLM 判定</td><td>形成样本，供晋升阶梯使用</td></tr>
+</tbody>
+</table>
+<h3>两个必须并列看的统计指标</h3>
+<ul>
+<li><strong>风险回避价值</strong>：被标为警示的样本，其后 20 日平均最大回撤 vs 同期全池平均最大回撤。</li>
+<li><strong>假警报率</strong>：触发后 T+5 仍跑赢基准的比例。<strong>这个数字必须和上一个一起显示</strong>，否则系统会越来越保守，最后对所有票都报警，等于没有提示。</li>
+</ul>
+<div class="warn"><strong>防止重蹈上一版的覆辙：</strong>上一版已发现 <code>journal.js</code> 在 18 条样本上按 7 个维度切分生成经验、无多重比较校正。Flag 台账必须吸取同一教训：一次只登记一个主信号组合，探索性切分只标「待复现」；样本 <code>n ≥ 30</code> 且样本外不劣化前，不得把任何 Flag 晋升为评分规则。</div>
+
+<h3>反例库：<code>data/journal/counterexamples.jsonl</code></h3>
+<p>专门记录「同样信号组合触发、但后续上涨或跑赢基准」的样本。它的作用是给每条提示配一个「这句话也可能错」的可见计数。用户要的不是 100% 判断，这个库就是该定位的技术实现——<strong>没有反例库的经验库，本质上只是确认偏误的放大器</strong>。</p>
+
+<h2>五、「从其他智能体查来的消息」怎么进系统</h2>
+<p>你这次的输入恰好是三类信息的混合体，正好用来定来源分级规则。</p>
+<table>
+<thead><tr><th style="width:22%">层级</th><th style="width:30%">本案例对应内容</th><th style="width:24%">能否写入事实账本</th><th style="width:24%">处理方式</th></tr></thead>
+<tbody>
+<tr><td><span class="tag t-green">A 一手事实</span></td><td>交易所公告 2026-40 / 41 / 42 / 30 / 异动公告；日 K 行情</td><td>可以直接写入</td><td>带公告编号、披露时点、数据源</td></tr>
+<tr><td><span class="tag t-blue">B 用户亲历</span></td><td>「我看到纳入医保的消息后买了，之后连续跌停」</td><td>可写入，标 <code>source=user_note</code></td><td>作为行为账本与复盘入口，<strong>不作为市场事实</strong></td></tr>
+<tr><td><span class="tag t-red">C AI 生成 / 自媒体</span></td><td>「五重因素」归因、三季报具体降幅、龙虎榜与融资余额数字、PE 约 1029 倍、降价幅度测算</td><td><strong>不能</strong></td><td>进「待核实线索队列」，标「AI 生成 / 非一手来源，需核实原文」；数字字段一律置 null</td></tr>
+</tbody>
+</table>
+<p>由此得到一条系统级规则：<strong>智能体输出永远是线索，不是事实</strong>。它只能做三件事——把用户的口语经历归类成信号标签、生成待验证假说、把确定性结果翻译成人话；所有数字必须来自 L0 事实账本。这条规则上一版已定，本案例是它第一次遇到真实压力测试。</p>
+
+<h2>六、当时「本来能弹出」的提示长什么样</h2>
+<div class="note">
+<p><strong>⚠️ 风险提示 · 强警示（规则型，样本数 0，尚未统计验证）</strong></p>
+<p>通化金马（000766）在本次重大公告前后出现以下事前可观测信号：</p>
+<ul>
+<li>公告披露前 1 个交易日（11-13）涨停收 16.50 元；<span class="tag t-blue">来源：日 K 2026-11-13</span></li>
+<li>公告 2026-40 未披露医保支付标准，协议期自 2027-01-01 起，当年不产生增量销售；<span class="tag t-green">来源：公告 2026-40，2026-11-15</span></li>
+<li>同一标的在 2026-06-25 药品注册证公告后已出现过一次「公告前抢跑 → 公告后连续跌停」，并于 06-30 发布异常波动公告；<span class="tag t-green">来源：公告 2026-30 / 06-30 异动公告</span></li>
+</ul>
+<p>该信号组合历史样本 0 条、反例 0 条，<strong>仅作规则型提示，不构成对后市的判断，也不构成买入或卖出建议</strong>。是否纳入评分需经过影子验证与人工审核。请结合真实市场数据独立判断。</p>
+</div>
+<p>注意它和那份 AI 复盘的区别：<strong>不解释为什么跌、不排重要性、不给价位、不写「不接飞刀」</strong>，只列可核实、可复算、可事后回填的事实，并主动说明自己还没被验证过。这才是「提醒」而不是「替你判断」。</p>
+
+<h2>七、落地路线（承接前两版）</h2>
+<table>
+<thead><tr><th style="width:12%">阶段</th><th style="width:42%">做什么</th><th style="width:30%">验收标准</th><th style="width:16%">改动面</th></tr></thead>
+<tbody>
+<tr><td><strong>Step 0</strong></td><td>把本案例按第 2 节拆成 7 条事前信号，写成一份只读 YAML / JSON 规则表；AI 稿件的数字全部留 null</td><td>任一信号都能说出「哪天、从哪个来源、怎么算」；零编造数值</td><td>新增文件，零破坏</td></tr>
+<tr><td><strong>Step 1</strong></td><td>新增 <code>flag-events.jsonl</code> 与 <code>counterexamples.jsonl</code>；复用 <code>barOf / benchRet</code> 做 T+1/5/20 回填</td><td>触发一条 Flag 后能自动回填真实行情，且与冻结基线输出并列可见</td><td>新增模块</td></tr>
+<tr><td><strong>Step 2</strong></td><td>补 S5 / S6 的一手数据源（三季报原文、交易所龙虎榜）；在此之前这两条不参与等级判定</td><td>每个非 null 数值都能追到公告编号 / 日期</td><td>数据源补齐</td></tr>
+<tr><td><strong>Step 3</strong></td><td>样本 ≥30 后，按上一版晋升阶梯评估是否让某个信号进入 Score；同时监控假警报率</td><td>影子验证报告可回放、可一键回滚</td><td>晋升闸门</td></tr>
+<tr><td><strong>不做</strong></td><td>自动下单、把 Flag 当硬性剔除、用 AI 稿件数字直接评分</td><td>系统只出提示与事实，委托由人完成</td><td>合规边界</td></tr>
+</tbody>
+</table>
+<div class="ok"><strong>与前两版的关系：</strong>本文是《个人经验工程与因素体系设计-20261119.html》的 v2 修订，只新增 Flag 层与事前信号，前一版的四层账本、五级晋升阶梯、知识卡三动作、行为账本、冻结基线 v0 全部继续有效。<strong>本次仍未改动任何现有代码或数据文件。</strong></div>
+
+<h2>八、合规与风险边界</h2>
+<ul>
+<li>系统只输出风险提示、事实与历史统计，不输出买卖 / 价位 / 仓位判断；不自动下达委托单，则不落入程序化交易定义、无需报备（依据：证监会《证券市场程序化交易管理规定（试行）》相关口径，2024-10-08 施行；具体适用以证监会及交易所正式细则为准，本文不构成法律意见）。</li>
+<li>个股「异常波动」「增持计划」等公告信息属公开披露内容，界面须保留免责声明，不做收益承诺、不对外提供投顾服务。</li>
+<li>行情数据保持个人自用、注明来源与时点、不对外分发；媒体与 AI 稿件属非一手来源，需标「需核实原文」，不与交易所公告同等处理。</li>
+<li>A 股语境红涨绿跌；风险提示必须同时显示样本数、反例数与「尚未验证」状态。</li>
+<li>本案例中的「投资者质疑资金操纵 / 举报」属市场单方说法，检索结果明确提示<strong>暂无监管认定</strong>，系统不得作为事实记录。</li>
+</ul>
+
+<footer>
+<p><strong>来源清单</strong>（核验时点 2026-11-19 盘后）：</p>
+<ol>
+<li>westock-data 日 K <code>sz000766</code>，15 根日线，取数 2026-11-19（含 11-13 至 11-19 开高低收、涨跌幅、换手率、成交额）</li>
+<li>westock-data 公告列表 <code>sz000766</code>：2026-06-25 注册证公告、06-30 异常波动公告、10-26 三季报、11-15 医保目录公告、11-18 异常波动与增持公告</li>
+<li><a href="https://paper.cnstock.com/html/2026-11/16/content_2290756.htm">上海证券报：关于琥珀酸安维吖啶片纳入国家医保目录的公告（2026-40）全文</a>，2026-11-16</li>
+<li><a href="https://epaper.cs.com.cn/zgzqb/html/2026-11/19/nw.D110000zgzqb_20261119_6-B023.htm">中国证券报：股票交易异常波动公告（2026-41）、董事长增持计划公告（2026-42）全文</a>，2026-11-19</li>
+<li><a href="https://stock.stockstar.com/RB2026111900000338.shtml">证券之星：11-18 龙虎榜报道</a>，2026-11-19（非一手，需核实原文）</li>
+<li>网易号「药圈观察局」、东方财富财富号「芝麻 AI 异动分析」等自媒体 / AI 稿件（非一手，需核实原文；其中财务与估值数字未与三季报原文核对）</li>
+<li>项目内文件：<code>server/journal.js</code>（<code>barOf</code> / <code>benchRet</code> / <code>statsOf</code>）、<code>server/phase.js</code>、<code>server/flow.js</code>、<code>server/valuation.js</code>、<code>server/events.js</code></li>
+<li>方法论：<code>event-catalyst.md</code>、<code>abnormal-detection.md</code>、<code>daily-briefing.md</code>、<code>quant-factor-research.md</code>、<code>portfolio-checkup.md</code>、<code>html-report-style.md</code></li>
+<li>前序设计：<code>docs/智能体选型与三闭环补齐方案-20261119.html</code>、<code>docs/个人经验工程与因素体系设计-20261119.html</code></li>
+</ol>
+<p><strong>本文不改动任何现有代码或数据文件</strong>，仅新增设计文档；所有行情与公告数字均标注来源与时点，未核实数字一律标注「需核实原文」且不进入建议值。</p>
+<div class="disc"><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</footer>
+
+</div>
+</body>
+</html>

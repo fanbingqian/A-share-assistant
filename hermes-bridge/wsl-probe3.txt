@@ -1,0 +1,132 @@
+=== providers.deepseek 配置段 ===
+providers:
+  deepseek:
+    api_key: sk-REDACTED
+    base_url: https://api.deepseek.com/v1
+    default_model: deepseek-v4-flash
+  ollama:
+    api: http://localhost:11435/v1
+    default_model: gemma4:e4b
+    models:
+      coding: gemma4:e4b
+      vision: qwen3-vl:4b
+security:
+  redact_secrets: true
+  website_blocklist:
+    domains: []
+    enabled: false
+    shared_files: []
+session_reset:
+  at_hour: 4
+  idle_minutes: 1440
+  mode: none
+skills:
+  creation_nudge_interval: 15
+  external_dirs: []
+smart_model_routing:
+  cheap_model: {}
+  enabled: false
+  max_simple_chars: 160
+  max_simple_words: 28
+streaming:
+  enabled: false
+stt:
+  enabled: true
+  local:
+    language: ''
+    model: base
+  mistral:
+    model: voxtral-mini-latest
+  openai:
+    model: whisper-1
+  provider: local
+terminal:
+  backend: local
+  container_cpu: 1
+=== model 配置段 ===
+model:
+  default: deepseek-v4-flash
+  provider: deepseek
+network:
+  force_ipv4: false
+platform_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - connections
+    - cronjob
+    - delegation
+    - file
+    - image_gen
+    - memory
+    - session_search
+    - skills
+=== 最新日志 ===
+total 11916
+-rw-rw-r--  1 freddy19871122 freddy19871122  375313 Nov 21 16:03 agent.log
+drwxr-xr-x  2 freddy19871122 freddy19871122    4096 Nov 21 15:57 update_receipts
+-rw-rw-r--  1 freddy19871122 freddy19871122  420700 Nov 21 15:44 gateway.log
+-rw-r--r--  1 freddy19871122 freddy19871122  787238 Nov 21 15:44 errors.log
+-rw-r--r--  1 freddy19871122 freddy19871122   55468 Nov 21 15:44 mcp-stderr.log
+-rw-rw-r--  1 freddy19871122 freddy19871122    4622 Nov 21 15:44 gateway-exit-diag.log
+-rw-r--r--  1 freddy19871122 freddy19871122   27378 Oct 19 21:19 gateway-shutdown-diag.log
+=== gateway 日志尾 ===
+--- /home/freddy19871122/.hermes/logs/gateway-exit-diag.log
+{"ts": "2026-05-19T11:23:58.042053+00:00", "tag": "gateway.start", "pid": 53874, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-05-25T11:29:04.128913+00:00", "tag": "gateway.start", "pid": 284, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-06-03T16:06:41.776867+00:00", "tag": "gateway.start", "pid": 301, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-06-19T05:58:04.165977+00:00", "tag": "gateway.start", "pid": 302, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-06-19T08:45:08.017245+00:00", "tag": "gateway.start", "pid": 285, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-06-29T09:11:46.556445+00:00", "tag": "gateway.start", "pid": 291, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-02T16:03:53.595085+00:00", "tag": "gateway.start", "pid": 301, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-02T21:26:34.301556+00:00", "tag": "gateway.start", "pid": 291, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-03T02:34:05.639023+00:00", "tag": "gateway.start", "pid": 289, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-07T10:26:05.422670+00:00", "tag": "gateway.start", "pid": 365, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-12T06:46:49.528636+00:00", "tag": "gateway.start", "pid": 312, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-15T07:48:07.216000+00:00", "tag": "gateway.start", "pid": 274, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-07-16T01:02:28.884474+00:00", "tag": "gateway.start", "pid": 285, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-10-15T12:11:23.269387+00:00", "tag": "gateway.start", "pid": 308, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+{"ts": "2026-11-21T07:44:39.340469+00:00", "tag": "gateway.start", "pid": 295, "python": "3.11.15", "platform": "linux", "replace": true, "argv": ["/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"], "stdin_is_tty": false, "absorb_windows_console_controls": false}
+--- /home/freddy19871122/.hermes/logs/mcp-stderr.log
+UNC ·������֧�֡�Ĭ��ֵ��Ϊ Windows Ŀ¼��
+ϵͳ�Ҳ���ָ����·����
+
+===== [2026-11-21 15:44:41] starting MCP server 'autocad-mcp' =====
+'\\wsl.localhost\Ubuntu\home\freddy19871122\.hermes\hermes-agent'
+����Ϊ��ǰĿ¼������·�������� CMD.EXE��
+UNC ·������֧�֡�Ĭ��ֵ��Ϊ Windows Ŀ¼��
+ϵͳ�Ҳ���ָ����·����
+
+===== [2026-11-21 15:44:43] starting MCP server 'autocad-mcp' =====
+'\\wsl.localhost\Ubuntu\home\freddy19871122\.hermes\hermes-agent'
+����Ϊ��ǰĿ¼������·�������� CMD.EXE��
+UNC ·������֧�֡�Ĭ��ֵ��Ϊ Windows Ŀ¼��
+ϵͳ�Ҳ���ָ����·����
+
+===== [2026-11-21 15:44:48] starting MCP server 'autocad-mcp' =====
+'\\wsl.localhost\Ubuntu\home\freddy19871122\.hermes\hermes-agent'
+����Ϊ��ǰĿ¼������·�������� CMD.EXE��
+UNC ·������֧�֡�Ĭ��ֵ��Ϊ Windows Ŀ¼��
+ϵͳ�Ҳ���ָ����·����
+--- /home/freddy19871122/.hermes/logs/gateway.log
+2026-10-19 21:19:45,773 WARNING gateway.platforms.weixin: [Weixin] rate limited for o9cq80yb; backing off 3.0s before retry
+2026-10-19 21:19:49,053 WARNING gateway.platforms.weixin: [Weixin] rate limited for o9cq80yb; backing off 3.0s before retry
+2026-11-21 15:44:48,216 INFO gateway.run: Starting Hermes Gateway...
+2026-11-21 15:44:48,225 INFO gateway.run: Session storage: /home/freddy19871122/.hermes/sessions
+2026-11-21 15:44:48,426 INFO gateway.run: Agent budget: max_iterations=90 (agent.max_turns from config.yaml, or HERMES_MAX_ITERATIONS from .env, or default 90)
+2026-11-21 15:44:48,426 INFO gateway.run: Secret redaction: ENABLED (tool output, logs, and chat responses are scrubbed before delivery)
+2026-11-21 15:44:48,440 WARNING gateway.run: No user allowlists configured. All unauthorized users will be denied. Set GATEWAY_ALLOW_ALL_USERS=true in ~/.hermes/.env to allow open access, or configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id).
+2026-11-21 15:44:48,486 INFO gateway.run: Connecting to weixin...
+2026-11-21 15:44:48,515 INFO gateway.platforms.weixin: weixin: restored 1 context token(s) for 5a555ed7
+2026-11-21 15:44:48,521 INFO gateway.platforms.weixin: [Weixin] Connected account=5a555ed7 base=https://ilinkai.weixin.qq.com
+2026-11-21 15:44:48,528 INFO gateway.run: ✓ weixin connected
+2026-11-21 15:44:48,712 INFO gateway.run: Connecting to api_server...
+2026-11-21 15:44:48,724 WARNING gateway.platforms.api_server: [Api_Server] ⚠️  No API key configured (API_SERVER_KEY / platforms.api_server.key). All requests will be accepted without authentication. Set an API key for production deployments to prevent unauthorized access to sessions, responses, and cron jobs.
+2026-11-21 15:44:48,725 INFO gateway.platforms.api_server: [Api_Server] API server listening on http://127.0.0.1:8642 (model: hermes-agent)
+2026-11-21 15:44:48,730 INFO gateway.run: ✓ api_server connected
+2026-11-21 15:44:48,735 INFO gateway.run: Gateway running with 2 platform(s)
+2026-11-21 15:44:48,742 INFO gateway.run: Channel directory built: 0 target(s)
+2026-11-21 15:44:49,745 INFO gateway.run: Press Ctrl+C to stop
+2026-11-21 15:44:49,749 INFO gateway.run: Cron ticker started (interval=60s)
+2026-11-21 15:44:54,751 INFO gateway.run: kanban dispatcher: embedded in gateway (interval=60.0s)

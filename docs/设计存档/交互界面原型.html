@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交互界面原型 · 原有监控选股 + 智能体增量</title>
+<style>
+:root[data-theme="light"]{
+  --bg:#f4f6fa; --surface:#ffffff; --surface2:#f8fafc; --border:#e2e8f0;
+  --text:#1e293b; --muted:#64748b; --faint:#94a3b8;
+  --primary:#2563eb; --primary-soft:#eff6ff;
+  --violet:#7c3aed; --violet-soft:#f5f3ff;
+  --amber:#b45309; --amber-soft:#fffbeb; --amber-border:#fcd34d;
+  --red:#dc2626; --red-soft:#fef2f2;
+  --green:#059669; --green-soft:#ecfdf5;
+  --shadow:0 1px 3px rgba(15,23,42,.07),0 6px 20px rgba(15,23,42,.04);
+}
+:root[data-theme="dark"]{
+  --bg:#0d1220; --surface:#151d2e; --surface2:#1b2437; --border:#2b374d;
+  --text:#e6ebf5; --muted:#94a3b8; --faint:#64748b;
+  --primary:#60a5fa; --primary-soft:#152a47;
+  --violet:#a78bfa; --violet-soft:#251d3f;
+  --amber:#fbbf24; --amber-soft:#33280f; --amber-border:#78591a;
+  --red:#f87171; --red-soft:#331a1a;
+  --green:#34d399; --green-soft:#123027;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.2);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:flex;flex-direction:column;height:100vh}
+header{height:62px;flex:0 0 62px;display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{font-weight:700;font-size:15px;letter-spacing:.2px;white-space:nowrap}
+.logo span{color:var(--primary)}
+.hstat{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--muted);white-space:nowrap}
+.pill.on{background:var(--green-soft);color:var(--green);border-color:transparent}
+.pill.warn{background:var(--amber-soft);color:var(--amber);border-color:var(--amber-border)}
+.pill.blue{background:var(--primary-soft);color:var(--primary);border-color:transparent}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+.spacer{flex:1}
+.ghost{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
+.ghost:hover{border-color:var(--primary)}
+.body{display:flex;flex:1;min-height:0}
+nav{width:214px;flex:0 0 214px;background:var(--surface);border-right:1px solid var(--border);padding:14px 10px;overflow:auto}
+.nav-label{font-size:10.5px;color:var(--faint);padding:8px 10px 8px;letter-spacing:.6px;font-weight:700;line-height:1.4}
+.nav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;background:transparent;color:var(--muted);padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13px;margin-bottom:3px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.nav-item .n{font-size:15px;width:18px;text-align:center;flex:0 0 18px}
+.nav-item .cnt,.nav-item .bdg{margin-left:auto;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;white-space:nowrap}
+.nav-item .cnt{background:var(--amber-soft);color:var(--amber)}
+.bdg-origin{background:var(--green-soft);color:var(--green)}
+.bdg-inc{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-border)}
+.bdg-set{background:var(--surface2);color:var(--faint)}
+main{flex:1;overflow:auto;padding:22px 26px 34px}
+.view{display:none;max-width:1160px;margin:0 auto}
+.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h1{font-size:20px;margin:0 0 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+.card h3{margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3 .tag{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:1px 7px;border-radius:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}nav{width:158px;flex-basis:158px}.nav-item .bdg{display:none}}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.b-blue{background:var(--primary-soft);color:var(--primary)}
+.b-violet{background:var(--violet-soft);color:var(--violet)}
+.b-green{background:var(--green-soft);color:var(--green)}
+.b-amber{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-border)}
+.b-red{background:var(--red-soft);color:var(--red)}
+.unapplied{display:inline-flex;align-items:center;gap:5px;background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-border);padding:3px 9px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:.3px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.up{color:var(--red);font-weight:700}
+.down{color:var(--green);font-weight:700}
+.hr{height:1px;background:var(--border);margin:14px 0}
+.btn{border:0;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn.ok{background:var(--green);color:#fff}
+.btn.no{background:var(--red-soft);color:var(--red);border:1px solid var(--red-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.src{font:600 10.5px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--primary);background:var(--primary-soft);padding:1px 6px;border-radius:5px;white-space:nowrap}
+/* 监控/行情 */
+.quote-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:1000px){.quote-strip{grid-template-columns:repeat(3,1fr)}}
+.q{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+.q .l{font-size:11px;color:var(--muted)}
+.q .v{font-size:17px;font-weight:800;line-height:1.35;margin-top:2px}
+.q .c{font-size:11.5px;font-weight:700}
+.alert{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:9px;padding:10px 11px;margin-bottom:9px;background:var(--surface2)}
+.alert.hi{border-left-color:var(--red)}
+.alert.lo{border-left-color:var(--primary)}
+.alert .t{flex:1;font-size:12.5px}
+.alert .tm{font-size:10.5px;color:var(--faint);white-space:nowrap}
+.kv2{display:grid;grid-template-columns:112px 1fr;gap:6px 10px;font-size:12.5px}
+.kv2 .k{color:var(--muted)}
+.linkrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;color:var(--muted);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--border);font-size:11.5px;white-space:nowrap}
+.tbl td{padding:9px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr:hover td{background:var(--surface2)}
+.tbl .qline{font:11px ui-monospace,Consolas,monospace;color:var(--muted);line-height:1.5}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.step{padding:5px 11px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--muted)}
+.step.cur{background:var(--primary);color:#fff;border-color:transparent;font-weight:700}
+.arrow{color:var(--faint);font-size:12px}
+.bar{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden;min-width:70px}
+.bar>i{display:block;height:100%;background:var(--primary)}
+.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;min-width:110px}
+.stat .v{font-size:20px;font-weight:800;line-height:1.2}
+.stat .l{font-size:11px;color:var(--muted)}
+/* chat */
+.chat-stream{min-height:240px;max-height:360px;overflow:auto;padding:4px 2px 10px}
+.msg{display:flex;margin:10px 0;gap:10px}
+.msg .av{width:28px;height:28px;flex:0 0 28px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center;font-size:13px}
+.msg .bubble{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;max-width:78%;font-size:13px}
+.msg.me{flex-direction:row-reverse}
+.msg.me .bubble{background:var(--primary-soft);border-color:transparent;color:var(--text)}
+.msg.sys .bubble{background:transparent;border-style:dashed;color:var(--muted);font-size:12px}
+.composer{display:flex;gap:8px;margin-top:12px}
+.composer input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 12px;font-size:13px;outline:none}
+.composer input:focus{border-color:var(--primary)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--muted);cursor:pointer}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+.proposal{border:1px solid var(--amber-border);background:var(--amber-soft);border-radius:10px;padding:12px;margin:10px 0 4px 38px}
+.proposal .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px}
+.kv{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;font-size:12.5px}
+.kv .k{color:var(--muted)}
+.proposal .acts{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+/* skills */
+.skill-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+@media(max-width:1000px){.skill-grid{grid-template-columns:repeat(2,1fr)}}
+.skill{border:1px solid var(--border);background:var(--surface2);border-radius:9px;padding:10px;position:relative;transition:.25s}
+.skill .sid{font:600 11.5px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--primary)}
+.skill .sname{font-size:12.5px;font-weight:600;margin:3px 0 5px}
+.skill .smeta{font-size:11px;color:var(--muted);line-height:1.5}
+.skill.done{border-color:var(--green);background:var(--green-soft)}
+.skill.running{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+.skill .flag{position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px}
+.f-det{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.f-quick{background:var(--primary-soft);color:var(--primary)}
+.f-deep{background:var(--violet-soft);color:var(--violet)}
+.f-audit{background:var(--red-soft);color:var(--red)}
+.debate{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.debate{grid-template-columns:1fr}}
+.dcard{border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface2)}
+.dcard.bull{border-left:3px solid var(--red)}
+.dcard.bear{border-left:3px solid var(--green)}
+.dcard h4{margin:0 0 8px;font-size:12.5px}
+.fid{display:inline-block;font:600 10px ui-monospace,Consolas,monospace;color:var(--primary);background:var(--primary-soft);padding:1px 5px;border-radius:4px;margin-right:4px}
+.audit-box{background:var(--red-soft);border:1px solid var(--red-soft);border-radius:9px;padding:11px;font-size:12.5px;color:var(--red)}
+.rev-item{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface)}
+.rev-item .rh{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:7px}
+.rev-item .rb{font-size:13px;margin-bottom:9px}
+.rev-item .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* settings */
+.form-grid{display:grid;grid-template-columns:190px 1fr;gap:10px 14px;align-items:center;font-size:12.5px}
+.form-grid label{color:var(--muted);text-align:right}
+.form-grid input[type=text],.form-grid input[type=number],.form-grid select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 9px;font-size:12.5px;outline:none;font-family:inherit}
+.form-grid input:focus,.form-grid select:focus{border-color:var(--primary)}
+.form-grid .hint{grid-column:2;color:var(--faint);font-size:11px;margin-top:-4px}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.switch input{appearance:none;width:34px;height:19px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;transition:.2s;margin:0}
+.switch input:checked{background:var(--primary)}
+.switch input:after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked:after{left:17px}
+.warnbox{background:var(--amber-soft);border:1px solid var(--amber-border);color:var(--amber);border-radius:9px;padding:11px;font-size:12.5px;margin-bottom:14px}
+pre.code{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font:11.5px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text);overflow:auto;max-height:230px}
+footer{flex:0 0 auto;background:var(--surface);border-top:1px solid var(--border);padding:8px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+footer .map{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px}
+#toast{position:fixed;right:22px;bottom:26px;z-index:99;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--primary);box-shadow:var(--shadow);border-radius:9px;padding:10px 14px;font-size:12.5px;max-width:340px;animation:fade .2s ease}
+.toast.ok{border-left-color:var(--green)}
+.toast.warn{border-left-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">全球市场监测 <span>· 交互原型</span></div>
+    <div class="hstat">
+      <span class="pill on"><span class="dot"></span>原有系统 21 模块 · 在线</span>
+      <span class="pill blue">智能体 L1 · 设计态未落地</span>
+      <span class="pill">形态 TradingAgents / 技能排布 / DeepSeek</span>
+      <span class="pill on">隐私：不外发持仓</span>
+      <span class="pill warn"><span class="dot"></span>设计原型 · 未接入真实数据</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="ghost" id="themeBtn">切换深浅色</button>
+  </header>
+
+  <!-- 2026-11-18 融合声明：本文件已降级为设计存档，不再是独立程序 -->
+  <div style="margin:10px 16px 0;padding:10px 14px;border:1px solid #fcd34d;background:#fffbeb;color:#92400e;border-radius:10px;font-size:13px;line-height:1.65">
+    <b>📦 设计存档（2026-11-18 融合）</b>：本文件是早期可点击设计稿，<b>已不是运行中的程序</b>。交互能力已融入主程序
+    <code>http://127.0.0.1:8777</code> 的「交互工作区」（<code>web/interaction.js</code>），与全球新闻舆情监测共用
+    <b>同一个服务、同一份 data/config.json、同一套 SSE、同一个启动脚本</b>。本文所有数值均为演示数据，请以运行界面为准。
+  </div>
+
+  <div class="body">
+    <nav>
+      <div class="nav-label">① 原有系统 · 已上线<br><span style="font-weight:400">交互方案的主体，每日在跑</span></div>
+      <button class="nav-item active" data-v="monitor"><span class="n">📡</span>监控总览<span class="bdg bdg-origin">已上线</span></button>
+      <button class="nav-item" data-v="pick"><span class="n">🎯</span>自动选股<span class="bdg bdg-origin">已上线</span></button>
+      <button class="nav-item" data-v="hold"><span class="n">💼</span>我的持仓<span class="bdg bdg-origin">已上线</span></button>
+      <button class="nav-item" data-v="research"><span class="n">🧭</span>研究看板<span class="bdg bdg-origin">已上线</span></button>
+
+      <div class="nav-label" style="margin-top:16px">② 智能体增量 · 设计<br><span style="font-weight:400">挂在原有系统之上的增加</span></div>
+      <button class="nav-item" data-v="chat"><span class="n">💬</span>对话入口<span class="bdg bdg-inc">增量</span></button>
+      <button class="nav-item" data-v="factor"><span class="n">🧮</span>因子池<span class="bdg bdg-inc">增量</span></button>
+      <button class="nav-item" data-v="exp"><span class="n">📚</span>经验池<span class="bdg bdg-inc">增量</span></button>
+      <button class="nav-item" data-v="review"><span class="n">🔍</span>今日复盘<span class="bdg bdg-inc">增量</span></button>
+      <button class="nav-item" data-v="audit"><span class="n">✅</span>审核台<span class="cnt" id="navCnt">3</span></button>
+
+      <div class="nav-label" style="margin-top:16px">③ 设置</div>
+      <button class="nav-item" data-v="setting"><span class="n">⚙️</span>智能体设置<span class="bdg bdg-set">设计</span></button>
+    </nav>
+
+    <main>
+      <!-- ========== 组 ① 原有系统 ========== -->
+
+      <!-- 1 监控总览 -->
+      <section class="view active" id="v-monitor">
+        <h1>监控总览 <span class="badge b-green">原有 · 已上线</span></h1>
+        <p class="sub">来自现有 21 模块的实时能力（服务在线 8777 / SSE 推送）。<b>这是交互方案的主体</b>，智能体增量挂在它之上。以下数值为演示数据。</p>
+
+        <div class="quote-strip">
+          <div class="q"><div class="l">上证指数</div><div class="v">3,412.68</div><div class="c up">+0.31%</div></div>
+          <div class="q"><div class="l">深证成指</div><div class="v">10,884.2</div><div class="c down">−0.18%</div></div>
+          <div class="q"><div class="l">创业板指</div><div class="v">2,216.4</div><div class="c down">−0.42%</div></div>
+          <div class="q"><div class="l">沪深300</div><div class="v">3,982.1</div><div class="c down">−0.42%</div></div>
+          <div class="q"><div class="l">纳斯达克（隔夜）</div><div class="v">19,840.5</div><div class="c up">+1.20%</div></div>
+          <div class="q"><div class="l">恒生指数（早盘）</div><div class="v">19,612.3</div><div class="c down">−0.55%</div></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>实时告警流 <span class="tag">alerts.js · /api/alerts</span></h3>
+            <div class="alert hi"><div class="t"><b>持仓预警</b>：600519 跌破 ATR14×2 止损价 1,398.00，当前 1,392.50。<br><span class="small muted">确定性规则触发，非模型判断</span></div><div class="tm">14:52</div></div>
+            <div class="alert"><div class="t"><b>量能异动</b>：两市成交额 1.38 万亿，低于 1.5 万亿阈值，微盘连板风险提示。</div><div class="tm">14:30</div></div>
+            <div class="alert lo"><div class="t"><b>外围市况</b>：美股隔夜三大指数均值 +0.94%，已纳入 09:05 定格存证。</div><div class="tm">09:05</div></div>
+            <div class="linkrow">
+              <button class="btn sec" data-go="chat" data-msg="已把告警事实带入对话，事实账本 factId 可回查">让智能体解释这条告警</button>
+              <button class="btn sec" data-go="review" data-msg="复盘对象已带入：持仓 ∪ 09:05 定格 ∪ 实时池 ∪ 观察池">运行一次今日复盘</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>市场状态 <span class="tag">analysis / marketStyle / riskoff</span></h3>
+            <div class="kv2">
+              <div class="k">风格判定</div><div><span class="badge b-blue">大盘占优</span> 微盘 −7.65% vs 沪深300 −2.04%</div>
+              <div class="k">量能分位</div><div>8.7%（承接不足）</div>
+              <div class="k">两融口径</div><div>月度抽样 + 当前按日聚合（无市场汇总数，明示口径）</div>
+              <div class="k">避险形态</div><div><span class="badge b-amber">L2 风格避险 + L1 板块轮动</span> → 钱没走，场内搬家</div>
+              <div class="k">涨停池</div><div>42 家 · 连板 9 家（非交易时段缓存复用，不发请求）</div>
+              <div class="k">北向</div><div class="muted">已停止逐日披露 → 不估算、不代填</div>
+            </div>
+            <div class="hr"></div>
+            <p class="small muted" style="margin:0">反幻觉约束：数据过期标灰、未取到显式标「暂无」、外围指数按真实字段匹配，不编造。</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>监控链路与刷新节奏 <span class="tag">来自 server.js 真实定时器</span></h3>
+          <div class="flow">
+            <span class="step">行情 15 秒</span><span class="arrow">·</span>
+            <span class="step">新闻 60 秒</span><span class="arrow">·</span>
+            <span class="step">持仓 30 秒</span><span class="arrow">·</span>
+            <span class="step">涨停 3 分钟</span><span class="arrow">·</span>
+            <span class="step">风格/事件 5 分钟</span><span class="arrow">·</span>
+            <span class="step">避险 10 分钟</span><span class="arrow">·</span>
+            <span class="step cur">edge 叠加 10 分钟</span>
+          </div>
+          <p class="small muted" style="margin:0">SSE 通道：quotes / news / analysis / attention / style / events / limitup / stocks / ic / journal / cycle / flow / riskoff / holdings / edge（另有 25 秒心跳）。</p>
+        </div>
+
+        <div class="card">
+          <h3>智能体增量在这里帮上什么 <span class="unapplied">增量 · 设计</span></h3>
+          <p class="small muted" style="margin:0 0 10px">原有监控照常跑、一行不改；增量只做两件事：<b>把告警/名单说成人话</b>、<b>把已发生的事实拿去复盘</b>。所有 AI 内容标「AI 提案·未生效」，不进评分链路。</p>
+          <div class="flow">
+            <span class="step">原有系统（已在跑）</span><span class="arrow">→</span>
+            <span class="step">事实账本冻结</span><span class="arrow">→</span>
+            <span class="step">增量：对话 / 复盘</span><span class="arrow">→</span>
+            <span class="step">审核台</span><span class="arrow">→</span>
+            <span class="step">有界回流到原有评分</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🛡️ 现有功能保全清单 <span class="tag">真实界面已落地 · 零删改</span></h3>
+          <p class="small muted" style="margin:0 0 10px">真实运行界面 <code>web/index.html</code> 已按本方案改造：顶栏加「交互方案」入口 + 状态带 + 三组导航抽屉。<b>新增能力是增量，原有监控与自动选股仍是主体。</b></p>
+          <div class="kv2">
+            <div class="k">零改动</div><div><code>web/app.js</code>（2,182 行）、<code>web/styles.css</code>（714 行）、<code>server/server.js</code> —— 一行未改</div>
+            <div class="k">原样保留</div><div>全部现有 panel、<code>#settings</code> 抽屉、<code>renderAll()</code> 21 项调用、SSE 全通道、全部 <code>/api/*</code> 拉取与配置读写</div>
+            <div class="k">纯增量</div><div>新增 <code>web/navplan.css</code> / <code>web/navplan.js</code>；<code>index.html</code> 仅追加 5 处节点，未删除或修改任何原有 <code>id</code> 与按钮</div>
+            <div class="k">导航行为</div><div>「原有系统」项平滑滚动到现有面板并临时高亮；「智能体增量」项只显示「AI 提案 · 未生效」说明，<b>不发任何请求、不写配置、不改评分</b></div>
+            <div class="k">反幻觉</div><div>状态带常驻区分「原有系统·已上线」与「智能体增量·设计态未接入」；抽屉内置「智能体选型结论」与保全清单</div>
+            <div class="k">备份</div><div><code>web/_backup_20261118_1849/</code>（改造前三件套）</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 自动选股 -->
+      <section class="view" id="v-pick">
+        <h1>自动选股 <span class="badge b-green">原有 · 已上线</span></h1>
+        <p class="sub">量化评分名单来自 <code>stocks.js</code>（`/api/stocks`）。每条看多理由都有<b>两类</b>：量化指标行 + 一句可证伪的人话。以下为演示数据。</p>
+
+        <div class="stat-row">
+          <div class="stat"><div class="v">18</div><div class="l">今日评分名单</div></div>
+          <div class="stat"><div class="v">18</div><div class="l">09:05 定格（存证）</div></div>
+          <div class="stat"><div class="v">12</div><div class="l">实时观察池 Top12</div></div>
+          <div class="stat"><div class="v" style="color:var(--green)">±22</div><div class="l">五项修正合计上限</div></div>
+        </div>
+
+        <div class="grid3">
+          <div class="card"><h3>09:05 开盘档 <span class="tag">复盘基准</span></h3><p class="small muted">冻结存证，含美股隔夜 / 亚太早盘外围市况。仅 09:05–09:25 有效，盘后启动不补建。</p><span class="src">/api/journal/picks</span></div>
+          <div class="card"><h3>22:00 收盘档 <span class="tag">复盘基准</span></h3><p class="small muted">15:05 后有效；与开盘档同（日期,档位）幂等，只存一次。</p><span class="src">/api/journal/snapshot</span></div>
+          <div class="card"><h3>实时观察池 <span class="tag">仅供看盘</span></h3><p class="small muted">盘中每分钟随评分滚动 Top12。<b>不作复盘基准</b>，避免参考价漂移造成事后自评。</p><span class="src">/api/journal/live</span></div>
+        </div>
+
+        <div class="card">
+          <h3>今日评分名单 <span class="tag">为什么看多：量化指标 + 一句话理由</span></h3>
+          <table class="tbl">
+            <thead><tr><th>代码 / 名称</th><th>评分</th><th>量化指标行</th><th>一句话看多理由（可证伪）</th><th>叠加形态</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><b>601398</b><br>工商银行</td><td><b>82.4</b></td><td class="qline">技术 27.1 / 资金 22.8 / 情绪 18.2<br>量比 1.32 · 换手 0.41% · 主力 +2.1亿</td><td>属当前相对强弱主线之一，L2 风格避险下承接大盘资金，5 日超额为正。</td><td><span class="badge b-amber">信号分歧</span></td><td><button class="btn sec" data-go="chat" data-msg="已带入该股事实账本 F-021，回答需可回查">问智能体</button></td></tr>
+              <tr><td><b>600519</b><br>贵州茅台</td><td><b>79.8</b></td><td class="qline">技术 25.4 / 资金 21.6 / 情绪 17.9<br>量比 0.98 · 换手 0.22% · 主力 +0.8亿</td><td>估值回到近一年偏低分位，同市值层内相对抗跌，跌破 ATR 止损则理由作废。</td><td><span class="badge b-gray">混合</span></td><td><button class="btn sec" data-go="chat" data-msg="已带入该股事实账本，回答需可回查">问智能体</button></td></tr>
+              <tr><td><b>300750</b><br>宁德时代</td><td><b>77.1</b></td><td class="qline">技术 26.0 / 资金 20.1 / 情绪 16.4<br>量比 1.51 · 换手 1.12% · 主力 +3.4亿</td><td>所属板块刚转强（启动段），事件面无重大减持公告，量能配合。</td><td><span class="badge b-blue">部分共振</span></td><td><button class="btn sec" data-go="chat" data-msg="已带入该股事实账本，回答需可回查">问智能体</button></td></tr>
+              <tr><td><b>002371</b><br>北方华创</td><td><b>75.6</b></td><td class="qline">技术 24.8 / 资金 19.7 / 情绪 16.8<br>量比 1.24 · 换手 1.86% · 主力 +1.2亿</td><td>国产算力主线，板块 5/10/60 日超额均为正，未到拥挤度极值。</td><td><span class="badge b-amber">信号分歧</span></td><td><button class="btn sec" data-go="chat" data-msg="已带入该股事实账本，回答需可回查">问智能体</button></td></tr>
+            </tbody>
+          </table>
+          <div class="linkrow">
+            <button class="btn" data-go="review" data-msg="复盘对象已自动填入：持仓 ∪ 09:05 定格 18 只 ∪ 实时池 12 只 ∪ 观察池">把今日名单送复盘</button>
+            <button class="btn sec" data-go="factor" data-msg="可查看这些评分用到的因子当前状态与 IC 健康度">看看评分用了哪些因子</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>诚实边界 <span class="tag">原有系统已具备</span></h3>
+          <p class="small muted" style="margin:0">命中 = 跑赢<b>同市值层基准</b>（微/小→中证2000、中→中证500、大→沪深300），不把大盘浮盈算本领 ｜ T+1 用真实日线回填 ｜ 实时池不进 picks.jsonl ｜ 叠加形态 <code>noScoreChange</code>，不改任何评分 ｜ 反幻觉：数据过期标灰、未取到标「暂无」。</p>
+        </div>
+      </section>
+
+      <!-- 3 我的持仓 -->
+      <section class="view" id="v-hold">
+        <h1>我的持仓 <span class="badge b-green">原有 · 已上线</span></h1>
+        <p class="sub"><code>holdings.js</code> 每 30 秒刷新盈亏与止损。建议全部是<b>确定性规则</b>，不含 LLM。以下为演示数据。</p>
+
+        <div class="card">
+          <h3>持仓明细 <span class="tag">/api/holdings · 30 秒</span></h3>
+          <table class="tbl">
+            <thead><tr><th>代码 / 名称</th><th>成本</th><th>现价</th><th>盈亏</th><th>ATR14×2 止损</th><th>确定性建议</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td><b>600519</b><br>贵州茅台</td><td>1,450.00</td><td>1,392.50</td><td class="down">−3.97%</td><td>1,398.00</td><td>已破止损价，触发减仓/复核提示；理由作废需重新评估</td><td><span class="badge b-red">破止损告警</span></td></tr>
+              <tr><td><b>601398</b><br>工商银行</td><td>5.82</td><td>6.14</td><td class="up">+5.50%</td><td>5.71</td><td>趋势仍在线，未触及止盈/止损条件，维持持有</td><td><span class="badge b-green">正常</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>七条确定性建议 <span class="tag">不依赖模型</span></h3>
+            <p class="small muted" style="margin:0">破 ATR 止损 · 跌停 · 浮盈回撤超阈 · 评分跌出观察池 · 事件面重大减持/立案 · 板块转弱 · 持仓集中度超限。<br>告警去重后经 SSE `holdings` 推送，可在 `/api/ack` 确认。</p>
+          </div>
+          <div class="card">
+            <h3>增量联动 <span class="unapplied">增量 · 设计</span></h3>
+            <p class="small muted" style="margin:0 0 10px">持仓自动成为<b>当日复盘对象</b>之一；`risk-check` 技能读取 ATR 止损与市值层，作为讨论的事实依据（不产生买卖指令）。</p>
+            <div class="linkrow">
+              <button class="btn" data-go="review" data-msg="复盘对象已带入 2 只持仓，风控技能将读取 ATR 止损">复盘我的持仓</button>
+              <button class="btn sec" data-go="chat" data-msg="对话示例已填入：我买了 600519，成本1450，100股">用对话录入新持仓</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 研究看板 -->
+      <section class="view" id="v-research">
+        <h1>研究看板 <span class="badge b-green">原有 · 已上线</span></h1>
+        <p class="sub">现有 21 模块的研究产出。这些是智能体增量<b>事实账本（factLedger）的真实输入</b>——复盘里每条论断都要能回查到这里。</p>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>周期事件 <span class="src">/api/cycle</span></h3>
+            <p class="small">21 条制度性规律事件 + 人工日历；三段 CAR（预期 [T-20,T-1] / 兑现 [T-1,T+1] / 衰减 [T+1,T+20]）；影视暑期档 / 国庆档规则，<b>春节档农历不推算</b>。</p>
+            <p class="small muted" style="margin:0">四形态：利好出货 / 趋势延续 / 后知后觉 / 利空出尽。板块阶段性提前告知 n≥5 才给。</p>
+            <div class="linkrow"><button class="btn sec" data-go="chat" data-msg="已带入周期事件 factId，回答需可回查">用这个事实问智能体</button></div>
+          </div>
+          <div class="card">
+            <h3>资金主体 <span class="src">/api/flow</span></h3>
+            <p class="small">245 个交易日龙虎榜按日×席位幂等回填；机构专用 / 沪深股通 / 拉萨系 / 高频活跃席位画像；两融月度抽样 + 当前按日聚合；微/小/中/大盘资金倾向。</p>
+            <p class="small muted" style="margin:0">排除「自然人 / 中小投资者」投资者结构披露行污染；单边与震荡行情分开统计。</p>
+            <div class="linkrow"><button class="btn sec" data-go="research" data-msg="已展开资金主体口径说明">查看口径</button></div>
+          </div>
+          <div class="card">
+            <h3>避险四级 <span class="src">/api/riskoff</span></h3>
+            <p class="small">L1 板块内轮动 / L2 风格避险 / L3 离场 / L4 离境，七项证据链。明确回答「钱去了其他板块还是出了股市」。</p>
+            <p class="small muted" style="margin:0">当前示例：<b>L2 + L1</b> —— 钱没走，场内搬家（银行 +2.90% vs 微盘 −7.65%）。</p>
+            <div class="linkrow"><button class="btn sec" data-go="chat" data-msg="已带入避险判定 F-063 / F-088">让智能体解释</button></div>
+          </div>
+          <div class="card">
+            <h3>预期研究层 edge <span class="src">/api/edge/*</span></h3>
+            <p class="small">496 个行业板块相对强弱 / 8 条主线 / 拥挤度；重组·回购·并购<b>市值重估条件齐备度</b>；板块价格周期阶段；10 维<b>多因素叠加</b>指纹。</p>
+            <p class="small muted" style="margin:0">叠加 <code>noScoreChange</code> 不改分；经验维度 `stack` 为 <code>observeOnly</code>，即使审核通过也不回流。</p>
+            <div class="linkrow"><button class="btn sec" data-go="review" data-msg="叠加形态将作为复盘讨论的一个视角（仅观察）">带叠加形态去复盘</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>IC 自检 <span class="src">/api/ic</span> <span class="tag">因子池有效性复检会复用它</span></h3>
+          <p class="small muted" style="margin:0">每日评分快照 → 到期标注 → Rank IC 聚合；增量层的「因子池定期复检」直接复用这套已上线能力，不重复建设。</p>
+        </div>
+      </section>
+
+      <!-- ========== 组 ② 智能体增量 ========== -->
+
+      <!-- 5 对话入口 -->
+      <section class="view" id="v-chat">
+        <h1>对话入口 <span class="badge b-amber">增量 · 设计</span></h1>
+        <p class="sub">不用懂「因子」「IC」「市值层」。说一句大白话，系统自动分诊；所有 AI 内容都标着 <span class="unapplied">AI 提案 · 未生效</span>，你确认前不会写进任何池子。<b>也能直接问原有系统里的事：告警、名单、持仓、研究结论。</b></p>
+        <div class="card">
+          <h3>对话 <span class="tag">双层分诊：确定性规则先跑，智能体只给建议</span></h3>
+          <div class="chat-stream" id="chatStream">
+            <div class="msg sys"><div class="av">◎</div><div class="bubble">已就绪。当前为设计态 L1：分诊与白话由 DeepSeek(quick) 辅助，确定性校验器复核。未配置模型时自动降级为纯规则模板。原有监控/选股系统始终独立运行、不受影响。</div></div>
+          </div>
+          <div class="composer">
+            <input id="chatInput" placeholder="例如：为什么今天选中这些股？ / 解释一下这条告警">
+            <button class="btn" id="sendBtn">发送</button>
+          </div>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="card">
+          <h3>分诊会走到哪里 <span class="tag">演示用前端规则模拟，真实实现见设计文档 §5.4 / §13.4</span></h3>
+          <div class="flow">
+            <span class="step">用户一句话</span><span class="arrow">→</span>
+            <span class="step">确定性规则</span><span class="arrow">→</span>
+            <span class="step">智能体建议 + 置信度</span><span class="arrow">→</span>
+            <span class="step cur">白话确认卡</span><span class="arrow">→</span>
+            <span class="step">原有系统 或 待审队列</span><span class="arrow">→</span>
+            <span class="step">人工采纳才有界生效</span>
+          </div>
+          <p class="small muted" style="margin:0">置信度低时一律进「待澄清」并向你追问，绝不擅自归类、绝不猜。识别为「录入持仓」时直接写原有 holdings（确定性、不进审核台）。</p>
+        </div>
+      </section>
+
+      <!-- 6 因子池 -->
+      <section class="view" id="v-factor">
+        <h1>因子池 <span class="badge b-amber">增量 · 设计</span></h1>
+        <p class="sub">「定期更新」拆成两件事：因子值随行情重算 + 有效性定期复检（Rank IC / ICIR / 衰减 / 冗余，<b>复用原有 <code>ic.js</code></b>）。</p>
+        <div class="stat-row">
+          <div class="stat"><div class="v">14</div><div class="l">在册因子</div></div>
+          <div class="stat"><div class="v">3</div><div class="l">影子运行（只算不进分）</div></div>
+          <div class="stat"><div class="v">1</div><div class="l">待审上架</div></div>
+          <div class="stat"><div class="v" style="color:var(--green)">10</div><div class="l">已生效（有界）</div></div>
+        </div>
+        <div class="card">
+          <h3>因子状态机 <span class="tag">谁能推进是明确的</span></h3>
+          <div class="flow">
+            <span class="step">draft 草稿</span><span class="arrow">→</span>
+            <span class="step">字段白名单校验</span><span class="arrow">→</span>
+            <span class="step cur">shadow 影子运行 20 日</span><span class="arrow">→</span>
+            <span class="step">IC 复检</span><span class="arrow">→</span>
+            <span class="step">人工审核</span><span class="arrow">→</span>
+            <span class="step">live 有界上架</span>
+          </div>
+          <p class="small muted" style="margin:0">衰减触发自动降回影子态并通知人工；字段不可得时明确拒绝，<b>不近似、不代填</b>。</p>
+        </div>
+        <div class="card">
+          <h3>因子清单 <span class="tag">只登记系统数据源真能算的因子</span></h3>
+          <table class="tbl">
+            <thead><tr><th>因子</th><th>来源</th><th>状态</th><th>Rank IC</th><th>样本天数</th><th>健康度</th></tr></thead>
+            <tbody>
+              <tr><td>5 日相对强弱 ex5</td><td><span class="badge b-gray">内置 · strength.js</span></td><td><span class="badge b-green">live</span></td><td>0.061</td><td>112</td><td><div class="bar"><i style="width:78%"></i></div></td></tr>
+              <tr><td>主线拥挤度分位</td><td><span class="badge b-gray">内置 · strength.js</span></td><td><span class="badge b-green">live</span></td><td>0.048</td><td>96</td><td><div class="bar"><i style="width:64%"></i></div></td></tr>
+              <tr><td>板块阶段超额（启动段）</td><td><span class="badge b-gray">内置 · phase.js</span></td><td><span class="badge b-green">live</span></td><td>0.039</td><td>88</td><td><div class="bar"><i style="width:58%"></i></div></td></tr>
+              <tr><td>叠加共振指纹</td><td><span class="badge b-gray">内置 · stack.js</span></td><td><span class="badge b-amber">observeOnly · 不回流</span></td><td>—</td><td>42</td><td><div class="bar"><i style="width:35%"></i></div></td></tr>
+              <tr><td>5 日主力净流入占比</td><td><span class="badge b-violet">我自定义</span></td><td><span class="badge b-blue">shadow 第 12/20 日</span></td><td>待复检</td><td>12</td><td><div class="bar"><i style="width:60%"></i></div></td></tr>
+              <tr><td>公告重估条件齐备度</td><td><span class="badge b-violet">我自定义</span></td><td><span class="badge b-blue">shadow 第 6/20 日</span></td><td>待复检</td><td>6</td><td><div class="bar"><i style="width:30%"></i></div></td></tr>
+              <tr><td>北向持股变动率 <span class="unapplied">AI 提案 · 未生效</span></td><td><span class="badge b-violet">智能体建议</span></td><td><span class="badge b-amber">待审 · 字段不可得</span></td><td colspan="3" class="small muted">⚠ 北向已停止逐日披露 → 确定性校验器建议拒绝，不估算、不代填</td></tr>
+            </tbody>
+          </table>
+          <p class="small muted" style="margin:12px 0 0">诚实边界：VWAP、盘口、L2 逐笔、财报 TTM、Barra / Alpha101 多数公式当前数据源算不出，一律标「需先接入」，不伪装已实现。</p>
+        </div>
+      </section>
+
+      <!-- 7 经验池 -->
+      <section class="view" id="v-exp">
+        <h1>经验池 <span class="badge b-amber">增量 · 设计</span></h1>
+        <p class="sub">不另起炉灶，扩展<b>原有 <code>journal.js</code></b> 五段式闭环，只给经验加一个「来源」维度。三类经验统一进同一待审队列。</p>
+        <div class="grid3">
+          <div class="card"><h3>个人经验 <span class="badge b-blue">personal</span></h3><p class="small muted">对话框随口一句心得，分诊后结构化存证。</p><div class="stat"><div class="v">6</div><div class="l">累计条目</div></div></div>
+          <div class="card"><h3>自动复盘 <span class="badge b-gray">auto</span></h3><p class="small muted">T+1 真实超额回填后，由复盘流程归纳。</p><div class="stat"><div class="v">11</div><div class="l">累计条目</div></div></div>
+          <div class="card"><h3>智能体讨论 <span class="badge b-violet">debate</span></h3><p class="small muted">多角色技能排布讨论后收敛，带 factId。</p><div class="stat"><div class="v">3</div><div class="l">累计条目</div></div></div>
+        </div>
+        <div class="card">
+          <h3>经验条目 <span class="tag">必须可证伪 · n≥8 才出结论 · 被证伪保留记录</span></h3>
+          <table class="tbl">
+            <thead><tr><th>陈述</th><th>来源</th><th>样本 n</th><th>平均超额</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td>两市成交额低于 1.5 万亿时，微盘连板次日跑赢基准比例下降</td><td><span class="badge b-blue">个人</span></td><td>14</td><td class="down">−1.8%</td><td><span class="badge b-green">已生效（有界）</span></td></tr>
+              <tr><td>叠加形态「多重共振」的标的次日跑赢同层基准比例</td><td><span class="badge b-gray">自动</span></td><td>10</td><td>+0.4%</td><td><span class="badge b-amber">observeOnly · 仅观察</span></td></tr>
+              <tr><td>11-18 名单未达预期主因 L2 风格避险下微盘失血，非选股逻辑问题</td><td><span class="badge b-violet">讨论</span></td><td>1</td><td>—</td><td><span class="unapplied">AI 提案 · 未生效</span></td></tr>
+              <tr><td>涨停次日高开必走（旧经验）</td><td><span class="badge b-blue">个人</span></td><td>23</td><td class="down">−2.1%</td><td><span class="badge b-red">已被证伪 · 保留</span></td></tr>
+            </tbody>
+          </table>
+          <p class="small muted" style="margin:12px 0 0">证伪不是删除：被推翻的经验留痕，防止以后重复踩同一个坑。回流永远受 <b>±2 分 / 乘数 [0.8,1.25] / 不翻符号</b> 约束，终点是<b>原有自动选股评分</b>。</p>
+        </div>
+      </section>
+
+      <!-- 8 今日复盘 -->
+      <section class="view" id="v-review">
+        <h1>今日复盘 · 技能排布 <span class="badge b-amber">增量 · 设计</span></h1>
+        <p class="sub">复盘对象 = 持仓 ∪ 09:05 定格名单 ∪ 实时池 ∪ 观察池（<b>全部来自原有系统</b>）。事实已发生、账本可冻结，每个论断都能核对。</p>
+        <div class="card">
+          <h3>复盘对象与事实账本 <span class="tag">15:10 后冻结</span></h3>
+          <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px">
+            <span class="pill">持仓 2 只</span><span class="pill">09:05 定格 18 只</span><span class="pill">实时池 12 只</span><span class="pill">观察池 18 只</span>
+            <span class="pill on"><span class="dot"></span>事实账本冻结 · 128 个 factId</span>
+          </div>
+          <p class="small muted" style="margin:0">示例事实：沪深300 <span class="down">−0.42%</span> ｜ 银行 <span class="up">+2.90%</span> ｜ 微盘 <span class="down">−7.65%</span> ｜ 判定「L2 风格避险 + L1 板块轮动」。（均为演示数据）</p>
+        </div>
+        <div class="card">
+          <h3>选型落地：形态 TradingAgents / 实现技能排布 / 模型 DeepSeek <span class="tag">零新增运行时依赖</span></h3>
+          <div class="grid2">
+            <div>
+              <div style="margin-bottom:8px"><span class="badge b-blue">quick · deepseek-flash</span> <span class="small muted">thinking off ｜ 分诊、抽取、白话翻译</span></div>
+              <div><span class="badge b-violet">deep · deepseek-v4-pro</span> <span class="small muted">thinking on ｜ 多空辩论、归纳裁决</span></div>
+              <p class="small muted" style="margin:9px 0 0">角色范式借鉴 TradingAgents（4 分析师 + 多空辩论 + 风控三视角 + 决策记忆），<b>但用 12 个 SKILL.md 在 Node 内重排，不装 Python 框架、不接其买卖决策</b>。</p>
+            </div>
+            <div class="small muted">
+              base_url <code>https://api.deepseek.com</code>（无 /v1）<br>
+              response_format <code>{"type":"json_object"}</code> ｜ temperature 0.1<br>
+              每次运行留痕：模型名 / 温度 / factId / 技能版本 → <code>agent-runs.jsonl</code><br>
+              <span class="badge b-green">默认全关 = L0，未配密钥自动降级</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>12 个复盘技能的排布 <span class="tag" id="runState">待运行</span> <button class="btn" id="runBtn" style="margin-left:auto">▶ 运行一次复盘</button></h3>
+          <div class="skill-grid" id="skillGrid"></div>
+          <div class="hr"></div>
+          <p class="small muted" style="margin:0">编排：<code>fact-freeze → [4 个归因并行] → bull ∥ bear → risk-check → fact-audit（纯代码否决）→ scribe → plain-translate → proposals</code>。<b>fact-audit 不经过 LLM</b>，无出处断言直接剔除并留痕。</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>多空讨论 <span class="tag">每条论据带 factId</span></h3>
+            <div class="debate">
+              <div class="dcard bull"><h4>🐂 多头研究员</h4><p class="small"><span class="fid">F-021</span>银行板块 5 日超额为正，属当前主线之一。</p><p class="small"><span class="fid">F-047</span>名单中 3 只大盘股跑赢沪深300。</p></div>
+              <div class="dcard bear"><h4>🐻 空头研究员</h4><p class="small"><span class="fid">F-063</span>L2 风格避险下微盘失血 −7.65%。</p><p class="small"><span class="fid">F-088</span>量能分位 8.7%，承接不足。</p></div>
+            </div>
+            <p class="small muted" style="margin:10px 0 0">分歧如实保留，不抹平、不强行收敛成一句「建议持有」。</p>
+          </div>
+          <div class="card">
+            <h3>反幻觉审计 <span class="badge b-red">纯确定性 · 一票否决</span></h3>
+            <div class="audit-box" id="auditBox">等待运行复盘…<br><span class="small"> auditing 只核对 factLedger，不调用模型：所有「据说 / 可能 / 大概率」且无 factId 的断言会被剔除并可见。</span></div>
+            <div class="hr"></div>
+            <h3 style="margin-bottom:8px">归纳产物 <span class="unapplied">AI 提案 · 未生效</span></h3>
+            <p class="small" id="scribeOut">（运行后生成可证伪经验条目，n&lt;8 不出结论）</p>
+            <button class="btn sec" id="toAuditBtn" disabled>送审核台</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 审核台 -->
+      <section class="view" id="v-audit">
+        <h1>审核台 <span class="badge b-amber">增量 · 设计</span></h1>
+        <p class="sub">所有 AI 提案、待审经验、因子上架申请的唯一收件箱。<b>你点「采纳」之前，一切都不生效。</b>采纳后沿<b>原有 <code>journal.js</code> 五段式</b>回流到自动选股评分。</p>
+        <div class="stat-row">
+          <div class="stat"><div class="v" id="sPending">3</div><div class="l">待审</div></div>
+          <div class="stat"><div class="v" id="sApproved" style="color:var(--green)">0</div><div class="l">今日已采纳</div></div>
+          <div class="stat"><div class="v" id="sRejected" style="color:var(--red)">0</div><div class="l">今日已驳回</div></div>
+        </div>
+        <div id="revList"></div>
+        <div class="card">
+          <h3>采纳后会发生什么 <span class="tag">闭环合拢 · 有界，不接管判断</span></h3>
+          <p class="small muted" style="margin:0">乘数 clamp <b>[0.8, 1.25]</b> ｜ 单股影响 <b>±2 分封顶</b> ｜ <b>不翻转符号</b> ｜ <code>observeOnly</code> 维度不生成规则 ｜ 规则缓存 60 秒，审核时立即失效。<br>回流终点是<b>原有 stocks.js 评分</b>——这就是「沉淀又能用于判断」在同一系统里合拢。</p>
+        </div>
+      </section>
+
+      <!-- ========== 组 ③ 设置 ========== -->
+      <section class="view" id="v-setting">
+        <h1>智能体设置 · DeepSeek <span class="badge b-gray">设计</span></h1>
+        <p class="sub">模型厂商已指定 DeepSeek。以下为建议写入 <code>config.agents</code> 的结构，<b>默认全关 = L0 纯确定性</b>，原有监控/选股系统完全不受影响。</p>
+        <div class="card" style="border-left:3px solid var(--primary)">
+          <h3>选型拍板 <span class="tag">唯一结论 · 见设计文档 §13.1</span></h3>
+          <div class="kv2">
+            <div class="k">形态 / 角色范式</div><div><b>TradingAgents</b>（只借鉴角色划分、结构化辩论、决策记忆；不装、不接决策输出）</div>
+            <div class="k">实现方式</div><div><b>Agent Skills 技能排布</b>：自建 <code>agentBus.js</code> + <code>skillRunner.js</code> + 12 个 <code>SKILL.md</code>，role-as-skill</div>
+            <div class="k">模型</div><div><b>DeepSeek</b> OpenAI 兼容薄适配器（quick / deep 分层）</div>
+            <div class="k">运行时依赖</div><div><span class="badge b-green">零新增</span> 沿用 Node 内置 <code>https</code>，判断链路一行不改</div>
+          </div>
+        </div>
+        <div class="warnbox">⚠️ <b>模型名不要写死。</b>网上大量教程仍写 <code>deepseek-chat</code> / <code>deepseek-reasoner</code>（已不在官方目录），官方当前为 <code>deepseek-flash</code> / <code>deepseek-v4-pro</code>。模型名配置化、启动时校验，以官方当前目录为准。</div>
+        <div class="card">
+          <h3>连接与模型 <span class="tag">OpenAI 兼容格式</span></h3>
+          <div class="form-grid" id="connForm">
+            <label>启用智能体</label><div><label class="switch"><input type="checkbox" id="f_enabled" checked><span class="small">enabled（关掉即降级 L0，原有系统 + 两池/复盘/审核照常可用）</span></label></div>
+            <label>provider</label><div><input type="text" id="f_provider" value="deepseek"></div>
+            <label>base_url</label><div><input type="text" id="f_base" value="https://api.deepseek.com"></div><div class="hint">官方 OpenAI 兼容地址，<b>无 /v1 后缀</b>；chat 端点 /chat/completions</div>
+            <label>API Key</label><div><input type="text" value="从环境变量 DEEPSEEK_API_KEY 读取" disabled></div><div class="hint">🔒 密钥只进环境变量：绝不落盘 config.json、绝不写进日志</div>
+            <label>quick 模型</label><div><input type="text" id="f_quick" value="deepseek-flash"></div><div class="hint">分诊 / 抽取 / 白话，thinking off</div>
+            <label>deep 模型</label><div><input type="text" id="f_deep" value="deepseek-v4-pro"></div><div class="hint">多空辩论 / 归纳裁决，thinking on（<code>thinking:{"type":"enabled"}</code>）</div>
+            <label>temperature</label><div><input type="number" id="f_temp" value="0.1" step="0.1" min="0" max="2"></div>
+            <label>maxRounds</label><div><input type="number" id="f_rounds" value="1" min="1" max="5"></div>
+            <label>技能目录</label><div><input type="text" id="f_skills" value="skills/review"></div><div class="hint">每个技能一个 SKILL.md（Agent Skills 开放标准，可版本化、可审计）</div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3>隐私边界 <span class="badge b-green">默认最严</span></h3>
+            <div class="form-grid">
+              <label>allowExternal</label><div><label class="switch"><input type="checkbox" id="f_ext"><span class="small">是否允许数据发往外部 API</span></label></div>
+              <label>sendHoldings</label><div><label class="switch"><input type="checkbox" id="f_hold"><span class="small">发送持仓明细（含成本/股数）</span></label></div>
+              <label>codeMode</label><div><select id="f_code"><option value="masked">masked · 代码脱敏</option><option value="raw">raw · 原样</option></select></div>
+              <label>payload</label><div><input type="text" id="f_payload" value="factLedgerAggregateOnly"></div>
+              <label>degradeToL0</label><div><label class="switch"><input type="checkbox" id="f_deg" checked><span class="small">失败/未配置自动降级并显式提示</span></label></div>
+            </div>
+            <p class="small muted" style="margin:10px 0 0">若不允许外发：把 base_url 改成 Ollama / 自建兼容端点即可，<b>技能排布一行不动</b>。</p>
+          </div>
+          <div class="card">
+            <h3>降级与免责</h3>
+            <p class="small">未配置密钥、401 / 402 / 429 / 超时 → 自动退回 L0，界面明确提示「智能体未接入，当前为确定性模板复盘」，<b>不静默假装成功</b>。</p>
+            <div class="hr"></div>
+            <p class="small muted">复盘结论页固定显示「研究用途，不构成投资建议」。智能体永不进入评分 / 下单链路，产物只进 <code>proposals.jsonl</code>。</p>
+            <div class="hr"></div>
+            <p class="small muted">当前程序仍是 <b>21 模块 / 零依赖 / 无 LLM 配置</b>。本页与设计方案、交互原型均为设计态，<b>未改动任何现有代码</b>。</p>
+          </div>
+        </div>
+        <div class="card">
+          <h3>config.agents 预览 <button class="btn sec" id="saveBtn" style="margin-left:auto">保存（演示）</button></h3>
+          <pre class="code" id="cfgJson"></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <span>白话映射：</span>
+    <span class="map">Rank IC → 「这个指标排行准不准」</span>
+    <span class="map">L2 风格避险 → 「钱没出股市，只是从微盘搬去了银行/红利」</span>
+    <span class="map">影子运行 → 「先只算分、不真的用」</span>
+    <span class="spacer"></span>
+    <span>组 ① 原有已上线 · 组 ② 智能体增量为设计态 ｜ 研究用途，不构成投资建议 · 设计原型 / 未接入真实数据</span>
+  </footer>
+</div>
+<div id="toast"></div>
+
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+function toast(msg, kind){
+  var d = document.createElement('div');
+  d.className = 'toast ' + (kind || '');
+  d.textContent = msg;
+  $('#toast').appendChild(d);
+  setTimeout(function(){ d.remove(); }, 3400);
+}
+
+/* 主题 */
+$('#themeBtn').onclick = function(){
+  var r = document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+};
+
+/* 导航 */
+function go(v, msg){
+  var b = $$('.nav-item').filter(function(x){ return x.dataset.v === v; })[0];
+  if(b) b.click();
+  if(msg) toast(msg, 'warn');
+}
+$$('.nav-item').forEach(function(b){
+  b.onclick = function(){
+    $$('.nav-item').forEach(function(x){ x.classList.remove('active'); });
+    b.classList.add('active');
+    $$('.view').forEach(function(v){ v.classList.remove('active'); });
+    $('#v-' + b.dataset.v).classList.add('active');
+    $('main').scrollTop = 0;
+  };
+});
+/* 新老联动按钮 */
+$$('[data-go]').forEach(function(b){
+  b.onclick = function(){ go(b.dataset.go, b.dataset.msg || ''); };
+});
+
+/* ---------- 对话分诊 ---------- */
+var EXAMPLES = [
+  { t:'为什么今天选中这些股？', k:'ask' },
+  { t:'解释一下这条告警', k:'ask' },
+  { t:'帮我把今天的名单复盘一下', k:'review' },
+  { t:'微盘股在成交额低于1.5万亿时别追连板', k:'exp' },
+  { t:'帮我加一个「5日主力净流入占比」因子', k:'factor' },
+  { t:'我买了 600519，成本1450，100股', k:'holding' },
+  { t:'复盘今天', k:'review' }
+];
+var META = {
+  exp:    { label:'个人经验',  conf:'0.91', color:'b-blue',   fields:[['类型','personal 个人经验'],['可证伪条件','两市成交额 < 1.5 万亿时，微盘连板次日超额'],['样本 n','待复盘累积（n≥8 才出结论）'],['去向','经验池 → 待审']] },
+  factor: { label:'新增因子',  conf:'0.88', color:'b-violet', fields:[['类型','自定义因子'],['字段白名单','主力净流入 / 成交额（✅ 可得）'],['运行方式','先影子运行 20 日，只算不进分'],['去向','因子池 → 待审']] },
+  holding:{ label:'录入持仓',  conf:'0.99', color:'b-green',  fields:[['类型','持仓（确定性，无需 LLM）'],['校验','代码 600519 / 成本 1450 / 100 股 ✅'],['生效','直接写入原有 holdings，实时监控 ATR 止损'],['去向','不进审核台']] },
+  review: { label:'复盘请求',  conf:'0.95', color:'b-violet', fields:[['类型','当日复盘'],['对象','持仓 ∪ 09:05 定格 ∪ 实时池 ∪ 观察池（原有系统）'],['执行','12 个技能按序排布（DeepSeek quick/deep）'],['去向','结论 → 待审']] },
+  ask:    { label:'白话问答',  conf:'0.86', color:'b-blue',   fields:[['类型','白话解释（可问原有系统的事）'],['依据','factLedger 已冻结的当日事实'],['输出','人话 + 可点开的 factId'],['去向','不写入任何池']] }
+};
+function triage(text){
+  if(/复盘|review|今天怎么样|名单复盘/.test(text)) return 'review';
+  if(/买了|持仓|成本|股$|买入/.test(text)) return 'holding';
+  if(/因子|指标|加一个|选股条件|净流入|换手率/.test(text)) return 'factor';
+  if(/为什么|啥原因|咋|怎么理解|解释|选中|告警/.test(text)) return 'ask';
+  return 'exp';
+}
+function bubble(who, text, cls){
+  var d = document.createElement('div');
+  d.className = 'msg ' + (cls || '');
+  var av = document.createElement('div'); av.className = 'av'; av.textContent = who === 'me' ? '我' : (who === 'sys' ? '◎' : 'AI');
+  var b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+  d.appendChild(av); d.appendChild(b);
+  $('#chatStream').appendChild(d);
+  $('#chatStream').scrollTop = $('#chatStream').scrollHeight;
+}
+function addProposal(text, key){
+  var m = META[key];
+  var wrap = document.createElement('div');
+  wrap.className = 'proposal';
+  var top = document.createElement('div'); top.className = 'top';
+  top.innerHTML = '<span class="unapplied">AI 提案 · 未生效</span><span class="badge ' + m.color + '">分诊：' + m.label + '</span><span class="small muted">置信度 ' + m.conf + ' · 确定性校验器已复核</span>';
+  wrap.appendChild(top);
+  var kv = document.createElement('div'); kv.className = 'kv';
+  m.fields.forEach(function(f){
+    var k = document.createElement('div'); k.className = 'k'; k.textContent = f[0];
+    var v = document.createElement('div'); v.textContent = f[1];
+    kv.appendChild(k); kv.appendChild(v);
+  });
+  wrap.appendChild(kv);
+  var acts = document.createElement('div'); acts.className = 'acts';
+  var ok = document.createElement('button'); ok.className = 'btn ok'; ok.textContent = key === 'holding' ? '确认录入' : '确认存入待审';
+  var chg = document.createElement('button'); chg.className = 'btn sec'; chg.textContent = '改分类';
+  var no = document.createElement('button'); no.className = 'btn no'; no.textContent = '取消';
+  ok.onclick = function(){
+    if(key === 'holding'){ toast('已录入原有持仓，实时监控已开启（确定性操作，无需审核）', 'ok'); }
+    else { bumpPending(); toast('已进审核台，标记「AI 提案·未生效」，等你采纳', 'warn'); }
+    ok.disabled = true; chg.disabled = true; no.disabled = true;
+    ok.textContent = '已提交';
+  };
+  chg.onclick = function(){ toast('已改分类：请从下拉选择（原型省略下拉）'); };
+  no.onclick = function(){ wrap.remove(); };
+  acts.appendChild(ok); acts.appendChild(chg); acts.appendChild(no);
+  wrap.appendChild(acts);
+  $('#chatStream').appendChild(wrap);
+  $('#chatStream').scrollTop = $('#chatStream').scrollHeight;
+}
+function send(text){
+  text = (text || '').trim(); if(!text) return;
+  bubble('me', text, 'me');
+  $('#chatInput').value = '';
+  bubble('sys', '确定性规则先跑 → DeepSeek(quick) 给分类建议与置信度 → 校验器复核…', 'sys');
+  setTimeout(function(){ addProposal(text, triage(text)); }, 480);
+}
+$('#sendBtn').onclick = function(){ send($('#chatInput').value); };
+$('#chatInput').addEventListener('keydown', function(e){ if(e.key === 'Enter') send(this.value); });
+$('#chips').innerHTML = EXAMPLES.map(function(x,i){ return '<button class="chip" data-i="' + i + '">' + x.t + '</button>'; }).join('');
+$$('#chips .chip').forEach(function(c){
+  c.onclick = function(){ send(EXAMPLES[Number(c.dataset.i)].t); };
+});
+
+/* ---------- 审核台 ---------- */
+var REVS = [
+  { title:'经验｜成交量萎缩时微盘连板次日超额转负', src:'个人经验（对话）', conf:'0.91', fid:'—', risk:'可证伪，n=14 已达标', body:'「两市成交额低于 1.5 万亿时，微盘连板次日跑赢同市值层基准的比例下降」' },
+  { title:'因子上架｜5 日主力净流入占比', src:'自定义因子', conf:'0.88', fid:'—', risk:'影子运行 12/20 日，需 IC 复检', body:'字段可得；申请从 shadow 推进到 live，仍受 ±2 分封顶。' },
+  { title:'经验｜11-18 名单未达预期归因', src:'智能体讨论（debate）', conf:'0.72', fid:'6 个', risk:'n=1，不足 8，暂不出统计结论', body:'「主因 L2 风格避险下微盘失血，非选股逻辑问题」——仅为提案，需人工采纳。' }
+];
+var pending = 3, approved = 0, rejected = 0;
+function bumpPending(){ pending++; renderRev(); }
+function renderRev(){
+  $('#sPending').textContent = pending;
+  $('#sApproved').textContent = approved;
+  $('#sRejected').textContent = rejected;
+  $('#navCnt').textContent = pending;
+  var html = '';
+  REVS.forEach(function(r, i){
+    html += '<div class="rev-item" id="rev' + i + '">'
+      + '<div class="rh"><span class="unapplied">AI 提案 · 未生效</span><span class="badge b-gray">' + r.src + '</span>'
+      + '<span class="small muted">置信度 ' + r.conf + ' ｜ factId ' + r.fid + '</span></div>'
+      + '<div class="rb">' + r.body + '</div>'
+      + '<div class="small muted" style="margin-bottom:9px">⚑ ' + r.risk + '</div>'
+      + '<div class="acts"><button class="btn ok" data-a="' + i + '">采纳（有界生效）</button>'
+      + '<button class="btn no" data-r="' + i + '">驳回</button>'
+      + '<span class="small muted">采纳后：±2 分封顶 / 乘数 [0.8,1.25] / 不翻符号 → 回流原有评分</span></div></div>';
+  });
+  $('#revList').innerHTML = html;
+  $$('#revList [data-a]').forEach(function(b){
+    b.onclick = function(){
+      var i = Number(b.dataset.a), el = $('#rev' + i);
+      if(el.dataset.done) return;
+      el.dataset.done = '1'; pending--; approved++;
+      el.querySelector('.rh').innerHTML = '<span class="badge b-green">已采纳 · 有界生效</span><span class="small muted">±2 分封顶 / 不翻符号 · 已回流原有 stocks.js 评分</span>';
+      el.querySelector('.acts').innerHTML = '<span class="small muted">已写入规则库；经验只微调判断，不接管判断。</span>';
+      renderRevStats(); toast('已采纳：有界生效，回流到原有自动选股评分', 'ok');
+    };
+  });
+  $$('#revList [data-r]').forEach(function(b){
+    b.onclick = function(){
+      var i = Number(b.dataset.r), el = $('#rev' + i);
+      if(el.dataset.done) return;
+      el.dataset.done = '1'; pending--; rejected++;
+      el.querySelector('.rh').innerHTML = '<span class="badge b-red">已驳回 · 不回流</span>';
+      el.querySelector('.acts').innerHTML = '<span class="small muted">已留痕，不生成任何规则。</span>';
+      renderRevStats(); toast('已驳回，不回流');
+    };
+  });
+}
+function renderRevStats(){
+  $('#sPending').textContent = pending; $('#sApproved').textContent = approved;
+  $('#sRejected').textContent = rejected; $('#navCnt').textContent = pending;
+}
+renderRev();
+
+/* ---------- 复盘技能排布 ---------- */
+var SKILLS = [
+  { id:'fact-freeze', name:'事实冻结', meta:'原有 journal / cycle / flow / edge', flag:'f-det', txt:'确定性' },
+  { id:'triage-route', name:'对话分诊', meta:'用户输入 + 两池索引', flag:'f-quick', txt:'quick' },
+  { id:'price-volume-review', name:'价量归因', meta:'stocks / ic / strength / phase', flag:'f-det', txt:'确定性' },
+  { id:'capital-flow-review', name:'资金归因', meta:'flow.tilt / riskoff.form', flag:'f-det', txt:'确定性' },
+  { id:'event-review', name:'事件归因', meta:'events / cycle / valuation', flag:'f-det', txt:'确定性' },
+  { id:'macro-style-review', name:'宏观风格', meta:'marketStyle / 外围股指', flag:'f-det', txt:'确定性' },
+  { id:'risk-check', name:'风控视角', meta:'原有 holdings ATR / 市值层', flag:'f-det', txt:'确定性' },
+  { id:'bull-case', name:'多头研究员', meta:'结构化报告 + factId', flag:'f-deep', txt:'deep' },
+  { id:'bear-case', name:'空头研究员', meta:'结构化报告 + factId', flag:'f-deep', txt:'deep' },
+  { id:'fact-audit', name:'反幻觉审计员', meta:'factLedger · 一票否决', flag:'f-audit', txt:'纯代码' },
+  { id:'scribe-summarize', name:'归纳收敛', meta:'可证伪条目 n≥8', flag:'f-deep', txt:'deep' },
+  { id:'plain-translate', name:'白话翻译', meta:'面向不懂量化的用户', flag:'f-quick', txt:'quick' }
+];
+$('#skillGrid').innerHTML = SKILLS.map(function(s, i){
+  return '<div class="skill" id="sk' + i + '"><span class="flag ' + s.flag + '">' + s.txt + '</span>'
+    + '<div class="sid">' + (i+1) + '. ' + s.id + '</div><div class="sname">' + s.name + '</div>'
+    + '<div class="smeta">' + s.meta + '</div></div>';
+}).join('');
+var runTimer = null;
+$('#runBtn').onclick = function(){
+  if(runTimer) return;
+  $('#runBtn').disabled = true; $('#runState').textContent = '运行中…';
+  $('#auditBox').innerHTML = '等待 fact-audit 节点…';
+  $('#scribeOut').textContent = '（运行后生成可证伪经验条目）';
+  $('#toAuditBtn').disabled = true;
+  $$('.skill').forEach(function(s){ s.classList.remove('done','running'); });
+  var i = 0;
+  runTimer = setInterval(function(){
+    if(i > 0) $('#sk' + (i-1)).classList.remove('running');
+    if(i >= SKILLS.length){
+      clearInterval(runTimer); runTimer = null;
+      $('#runBtn').disabled = false; $('#runState').textContent = '已完成 · 结论未生效';
+      $('#auditBox').innerHTML = '<b>✅ 审计完成</b>：核对 12 条论断，<b>剔除 2 条无出处断言</b>（已留痕可见）；其余 10 条均能回查 factId。<br><span class="small">本步骤为纯确定性代码，不调用模型。</span>';
+      $('#scribeOut').innerHTML = '候选经验：<b>「L2 风格避险日，微盘/小盘标的次日超额显著为负」</b> <span class="fid">F-063</span><span class="fid">F-088</span><br><span class="small muted">n=1，不足 8 → 仅作提案，不出统计结论。</span>';
+      $('#toAuditBtn').disabled = false;
+      toast('复盘完成：结论均为「AI 提案·未生效」，已送审核台', 'warn');
+      return;
+    }
+    var el = $('#sk' + i);
+    el.classList.add('running');
+    if(SKILLS[i].id === 'fact-audit'){
+      $('#auditBox').innerHTML = '<b>⏳ fact-audit 执行中</b>：逐条核对 factLedger…';
+    }
+    setTimeout((function(k){ return function(){ $('#sk' + k).classList.add('done'); }; })(i), 180);
+    i++;
+  }, 340);
+};
+$('#toAuditBtn').onclick = function(){ bumpPending(); toast('已进审核台，等你采纳', 'warn'); $('#toAuditBtn').disabled = true; };
+
+/* ---------- 设置表单 ---------- */
+var FIELDS = ['f_enabled','f_provider','f_base','f_quick','f_deep','f_temp','f_rounds','f_skills','f_ext','f_hold','f_code','f_payload','f_deg'];
+function cfg(){
+  return {
+    enabled: $('#f_enabled').checked,
+    shape: 'TradingAgents (paradigm only, not installed)',
+    implementation: 'AgentSkills / role-as-skill',
+    provider: $('#f_provider').value,
+    baseUrl: $('#f_base').value,
+    apiKeyEnv: 'DEEPSEEK_API_KEY',
+    quickModel: $('#f_quick').value,
+    deepModel: $('#f_deep').value,
+    modelCatalogNote: '模型名以 DeepSeek 官方当前目录为准，配置化不写死',
+    temperature: Number($('#f_temp').value),
+    responseFormat: { type: 'json_object' },
+    timeoutMs: 30000,
+    maxRounds: Number($('#f_rounds').value),
+    skillsDir: $('#f_skills').value,
+    runtimeDepsAdded: 0,
+    decisionChainTouched: false,
+    privacy: {
+      allowExternal: $('#f_ext').checked,
+      sendHoldings: $('#f_hold').checked,
+      codeMode: $('#f_code').value,
+      payload: $('#f_payload').value
+    },
+    degradeToL0: $('#f_deg').checked
+  };
+}
+function drawCfg(){ $('#cfgJson').textContent = JSON.stringify(cfg(), null, 2); }
+FIELDS.forEach(function(id){
+  var el = $('#' + id);
+  el.addEventListener('input', drawCfg);
+  el.addEventListener('change', drawCfg);
+});
+drawCfg();
+$('#saveBtn').onclick = function(){ toast('已写入 config.agents（原型演示，未改真实文件）', 'ok'); };
+</script>
+</body>
+</html>

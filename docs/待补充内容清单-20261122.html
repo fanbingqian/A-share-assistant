@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>待补充内容清单</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1d2129;background:#f5f6f8;line-height:1.7;margin:0;padding:32px}
+  .wrap{max-width:1000px;margin:0 auto;background:#fff;border-radius:14px;padding:34px 42px;box-shadow:0 6px 24px rgba(20,30,60,.06)}
+  h1{font-size:24px;margin:0 0 6px} h2{font-size:17px;margin:30px 0 12px;padding-bottom:8px;border-bottom:2px solid #e8f0ff}
+  h3{font-size:14px;margin:18px 0 8px;color:#165dff}
+  .sub{color:#86909c;font-size:13px;margin-bottom:20px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}
+  th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f7f8fa;font-weight:600}
+  code{background:#f2f3f5;padding:1px 6px;border-radius:4px;font-size:12px;color:#c2185b}
+  .p0{background:#ffece8;color:#cb2634;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p1{background:#fff3e8;color:#d25f00;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p2{background:#e8f0ff;color:#165dff;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .done{background:#e8ffea;color:#0a9e3f;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .note{background:#fff8e8;border-left:3px solid #f7ba1e;padding:10px 14px;border-radius:6px;font-size:13px;color:#4e5969;margin:12px 0}
+  .ok{background:#f0fff4;border-left:3px solid #2ea36a;padding:10px 14px;border-radius:6px;font-size:13px;color:#2b3b32;margin:12px 0}
+  ul{padding-left:22px} li{margin:4px 0}
+  .small{font-size:12px;color:#86909c}
+  .concl{background:#f2f7ff;border:1px solid #d6e4ff;border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>全球市场监测系统 · 待补充内容清单</h1>
+  <div class="sub">2026-11-22 · 综合 v2 缺口文档 + 本轮实测状态重新梳理 · 按优先级排序</div>
+
+  <div class="concl">
+    <strong>总览：</strong>框架骨架已 100% 跑通，官方 Hermes 通道当前在线。真正"还没做"的内容集中在三块：<strong>① 两个真 bug（拦截误报、对话未落盘）；② 知识库从骨架到可用（P0–P5，一行未实施）；③ 数据可信度机制（预测账本、事件映射、权威日历、真实资金流）</strong>。下面按 <span class="p0">P0 立即</span> / <span class="p1">P1 重要</span> / <span class="p2">P2 增强</span> 排列。
+  </div>
+
+  <h2>一、P0 · 立即修（真 bug，影响当前使用）</h2>
+  <table>
+    <tr><th>#</th><th>问题</th><th>实测证据</th><th>修复方案</th></tr>
+    <tr><td>1</td><td><strong>买卖词拦截误报</strong></td><td>问"该买入还是卖出茅台"，模型正确回答"我不能给出买入或卖出的指令"，却因复述这两个词被 <code>finalize()</code> 判违规 → <code>ok:false</code>，正确回答被误杀</td><td>在 <code>hermes.js</code> 的 <code>hasForbidden()</code> 加"拒绝语白名单"：命中"不能/不应/禁止/无法 + 买卖词"或"非买卖建议"等否定语境时不拦截；仅对"建议/可以/应该 + 买卖词"等肯定语境拦截</td></tr>
+    <tr><td>2</td><td><strong>对话完全未落盘</strong></td><td><code>data/journal/conversations.jsonl</code> 存在但 <strong>0 行</strong>；server.js 只把 history 传给模型，从不写盘 → 关闭页面后对话全丢，无法做经验回流与知识抽取</td><td>在 <code>/api/v2/chat</code> 每轮一问一答追加一行 JSONL（时间、来源模块、问题、回答、backend、命中的快照摘要）；这也是知识库 P0 的前置</td></tr>
+    <tr><td>3</td><td><strong>WSL 重启后官方通道自动降级</strong></td><td>本轮实测：WSL 处于 Stopped 时 8765 不通，状态显示 deepseek-fallback；唤醒后又变回 hermes-official。每次 Windows 重启都会重演</td><td>配 Windows 计划任务或 WSL 自启脚本，登录时自动 <code>wsl -d Ubuntu</code> 并确认 <code>hermes-bridge.service</code> active；或明确接受"降级是设计行为"</td></tr>
+    <tr><td>4</td><td><strong>智能体看不到日程与事件</strong>（01:30 新发现）</td><td>实测问"近期日程事件有哪些"，智能体答"当前无数据"。原因：注入的 <code>events</code> 字段是<strong>公司事件统计</strong>（70 条汇总），不是日历日程；<code>collectContext()</code> 根本没有注入 <code>calendar.upcoming</code> 的具体条目</td><td>在 <code>server.js</code> 的 <code>/api/v2/chat</code> 注入 <code>cal.upcoming()</code> 的 6 条具体事件（名称/日期/等级），并在 <code>contextPrefix()</code> 增加"日程事件"一行；<strong>板块已能正常注入，无需改</strong></td></tr>
+  </table>
+  <div class="note"><strong>01:30 能力实测补充：</strong>板块数据<strong>能</strong>被智能体看到——<code>/api/v2/chat</code> 单独注入了 <code>daily.sectorMonitor()</code> 的 12 个领涨板块明细，实测智能体能准确报出国有大型银行Ⅲ、电信运营商等具体板块与超额数据，并诚实说明"无直接资金流明细"。日程与事件则因未注入具体条目而看不到，已列入上表第 4 项。</div>
+
+  <h2>二、P1 · 知识库从骨架到可用（上一份方案 P0–P5，尚未实施）</h2>
+  <div class="note">当前知识库实测：2 条笔记（内容重复）、7 节点/14 边、无时序、无去重、无反馈。下面是上一份《知识库评估与消息转知识方案》的落地项，原样纳入本清单。</div>
+  <table>
+    <tr><th>阶段</th><th>内容</th><th>为什么需要</th></tr>
+    <tr><td>P0 数据补洞</td><td>清理重复笔记；graph.json 扩展 <code>confidence/sourceType/sourceMessageId/validFrom/status</code>；新增 messages.jsonl 原始流</td><td>没有字段和原始流，后面全部无法实现；依赖上面 #2</td></tr>
+    <tr><td>P1 抽取链路</td><td>价值门控 + 金融版抽取 prompt + Hermes 调用 + 启发式兜底 + 来源溯源</td><td>让"整理为图谱"产出可信节点，而非粗关键词</td></tr>
+    <tr><td>P2 对齐审核</td><td>别名表 + 相似度合并 + pending-merge + 冲突清单 + 人工确认 UI</td><td>防止同义实体泛滥；conflicts 不自动消解是刻意设计</td></tr>
+    <tr><td>P3 时序回流</td><td><code>valid_to</code> 事实失效 + 问答命中反馈 + 偏好摘要注入 + 衰减清理</td><td>投资逻辑会过期；借鉴 Graphiti"失效而非删除"</td></tr>
+    <tr><td>P4 图谱增强</td><td>社区着色 + 自适应阈值 + 语义缩放（复用已移植引擎，不动渲染核心）</td><td>节点上百后可读性</td></tr>
+    <tr><td>P5 事件锚定</td><td>对接"日程与事件"，事件作为锚点连接个股/概念/因子</td><td>形成"事件→板块→个股"因果链的知识层</td></tr>
+  </table>
+
+  <h2>三、P1 · 数据可信度与闭环机制</h2>
+  <table>
+    <tr><th>缺口</th><th>当前状态</th><th>补充方案</th></tr>
+    <tr><td><strong>预测账本</strong></td><td><code>data/predictions.jsonl</code> 不存在；Hermes 的方向依据只是即时文本，无事后命中检验</td><td>每日行情预测写入 predictions.jsonl（日期、方向、依据、证伪条件、标的/板块），次日复盘自动核对命中，纳入经验库 → 让预测可证伪、可进化</td></tr>
+    <tr><td><strong>事件→个股映射表</strong></td><td>目前只给"相关板块"，事件到受益个股缺映射，也无证据等级</td><td>维护 mapping.json（事件类型→板块→候选个股+证据等级 A/B/C），智能体引用时标注来源，人工确认后生效；与知识库 P5 复用</td></tr>
+    <tr><td><strong>知识图谱语义质量</strong></td><td>无 LLM 时关键词兜底节点粗；conflicts 边需人工审核</td><td>官方 Hermes 在线后自动抽取三元组质量已提升；冲突边人工审核是刻意设计，保持</td></tr>
+    <tr><td><strong>提醒到达率</strong></td><td>仅页面内 toast + 告警流，关页面就收不到</td><td>如需"关页面也提醒"，接消息网关（Hermes 支持 Telegram/企业微信 20+ 平台）或浏览器 Notification + 常驻 Service Worker</td></tr>
+  </table>
+
+  <h2>四、P2 · 数据源升级（决定"实时/全量"程度）</h2>
+  <table>
+    <tr><th>缺口</th><th>当前近似做法</th><th>升级路径</th></tr>
+    <tr><td>权威财经事件日历</td><td>B 级"待核实"按制度规律推算，展会/全球会议覆盖不全</td><td>接 Investing.com / Trading Economics / 央行 RSS，把 B 级升为 A 级已确认日期</td></tr>
+    <tr><td>板块真实主力资金净流入</td><td>用多周期相对强度近似，非真实净流入金额</td><td>接东财/同花顺行业资金流接口（dml 净额），升级为"连续 N 日净流入"</td></tr>
+    <tr><td>防守型个股与 ETF 池</td><td>只给防御板块线索，个股/ETF 清单为空（不编造）</td><td>接股息率/波动率/最大回撤 + ETF 全量列表，按"低波+高股息+弱市抗跌"筛选，或手工维护清单文件</td></tr>
+    <tr><td>全市场日线快照</td><td>"承压不跌"与观察池基于约 18 只候选池，非全市场</td><td>用同花顺 Financial-API Market Dumps 每日落一份全市场日线，跑全市场 MA5/防守筛选</td></tr>
+    <tr><td>海外指标稳定性</td><td>LetsVPN 环境频繁 socket hang up，已自动降级缓存</td><td>保持程序级故障转移；如需稳定实时，单独配代理或换源（用户此前明确不关 VPN）</td></tr>
+  </table>
+
+  <h2>五、P2 · 安全与运维</h2>
+  <ul>
+    <li><strong>桥接鉴权</strong>：hermes_bridge.py 当前无 token 校验，仅绑 127.0.0.1；生产建议加 token header 校验。</li>
+    <li><strong>Hermes 工具集收敛</strong>：用 <code>hermes tools</code> 限制为只读，避免智能体误操作文件。</li>
+    <li><strong>DeepSeek 额度</strong>：软上限 20 万 token/日，可在 config.json 的 agent.maxTokensPerDay 调整；官方通道 token 计数为 0（CLI 桥接拿不到），成本监控要留意。</li>
+    <li><strong>拦截误报回归测试</strong>：修 #1 后补一组用例（肯定语境拦截 / 否定语境放行 / 引用Fact不拦截）。</li>
+  </ul>
+
+  <div class="ok"><strong>已经完成、不用再做的：</strong>简洁外壳 + 五导航 + 右侧常驻对话、21 个 v2 API 路由、万年日历/事件/提醒、两市监控与预测、496 细分行业板块监控、三类选股、我的股池、知识图谱渲染引擎、官方 Hermes + DeepSeek 双通道且均已实测可用、金融纪律与买卖词拦截（除误报外）。</div>
+
+  <h2>六、建议执行顺序</h2>
+  <table>
+    <tr><th>第几步</th><th>做什么</th><th>理由</th></tr>
+    <tr><td>1</td><td>修拦截误报（#1）+ 对话落盘（#2）</td><td>两个真 bug，改动小、收益大，且对话落盘是知识库前置</td></tr>
+    <tr><td>2</td><td>预测账本 predictions.jsonl</td><td>让 Hermes 的预测可复盘、可进化，是"经验回流"闭环的关键一环</td></tr>
+    <tr><td>3</td><td>知识库 P0–P3</td><td>把知识库从骨架做成可用；P4/P5 可视情况延后</td></tr>
+    <tr><td>4</td><td>WSL 自启 + 桥接鉴权 + 工具收敛</td><td>运维与安全，一次性配置</td></tr>
+    <tr><td>5</td><td>数据源升级（按需求逐项）</td><td>投入较大，按实际需要选做，不必一次全上</td></tr>
+  </table>
+
+  <h2>七、执行进度与决策记录（2026-11-22 02:20 更新）</h2>
+  <div class="ok"><strong>已按建议顺序完成第 1–3 步 + 第 4 步的 WSL 自启，全部实测通过：</strong></div>
+  <table>
+    <tr><th>步骤</th><th>状态</th><th>实测证据</th></tr>
+    <tr><td>1 · 拦截误报</td><td><span class="done">已完成</span></td><td><code>hasForbidden()</code> 改为逐次出现 + 否定语境白名单；14 组用例 + 真实 467 字回答全通过；端到端 <code>ok:true</code> 不再误杀正确拒绝</td></tr>
+    <tr><td>1 · 对话落盘</td><td><span class="done">已完成</span></td><td><code>conversations.jsonl</code> 每轮追加（时间/模块/问答/backend），并同步进知识库消息流</td></tr>
+    <tr><td>1 · 日程注入</td><td><span class="done">已完成</span></td><td>智能体准确报出 FOMC/非农/CPI/中央经济工作会议等具体事件与日期（原先答"无数据"）</td></tr>
+    <tr><td>2 · 预测账本</td><td><span class="done">已完成</span></td><td>新建 <code>predictions.js</code> + <code>predictions.jsonl</code>；方向判定 8/8；本地自累积实际涨跌（不依赖不稳的 K 线）；3 个 API；闭环测试偏强+次日0.8%→hit</td></tr>
+    <tr><td>3 · 知识库 P0–P3</td><td><span class="done">已完成</span></td><td>消息原始流、价值门控、置信度锚点、相似度合并/待确认、时序失效、反馈衰减全部落地；新增 10 个 API；智能体实测抽 8 节点/8 边，15 节点图谱，溯源 8/8；重复笔记 2→1</td></tr>
+    <tr><td>4 · WSL 自启</td><td><span class="done">已完成</span></td><td>启动文件夹安装 <code>开机自启-Hermes桥接.vbs</code>；实测 WSL Stopped→Running、桥接 active、8765 监听、官方对话 5.4s 返回</td></tr>
+  </table>
+  <div class="note"><strong>两项暂缓（符合"约束暂不加固"的既定方针）：</strong>
+    <ul>
+      <li><strong>桥接鉴权</strong>：bridge 绑 <code>0.0.0.0:8765</code> 是 <strong>WSL2 网络转发的必需配置</strong>（改 <code>127.0.0.1</code> 会让 Windows 侧访问不到，直接断链），并非疏忽；且该端口被 WSL2 NAT + Windows 防火墙双重隔离，外部网络不可达，Node 侧固定调本机 <code>127.0.0.1:8765</code>。加 token 需同时改两端协议、有断链风险，收益有限 → 暂不加。</li>
+      <li><strong>工具收敛</strong>：Hermes 当前 terminal/file/code_execution 等工具 enabled。收敛会改变智能体能力边界（可能影响记忆/技能），且属于约束加固，与你"约束暂不加固"的指示冲突 → 暂不动，保持现状。</li>
+    </ul>
+  </div>
+  <div class="note"><strong>第 5 步 · 数据源升级</strong>（权威事件日历 / 真实资金流 / 防守 ETF 池 / 全市场日线）投入较大、且当前 VPN 环境部分海外源不稳，按清单原意"按需求逐项选做"，未擅自启动。需要时再逐项排期。</div>
+
+  <p class="small">本清单基于 2026-11-22 00:02 实测状态整理，02:20 更新执行进度。所有数值来自程序或缓存；智能体输出禁买卖建议、禁编造数字、不改任何评分。市场有风险，投资需谨慎。</p>
+</div>
+</body>
+</html>

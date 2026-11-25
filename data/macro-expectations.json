@@ -1,0 +1,330 @@
+{
+  "snapshotAt": "2026-11-25",
+  "capturedBy": "domain_search 多源公开信息检索（2026-11-25）",
+  "validDays": 7,
+  "sourcePolicy": "以下均为机构 / 经济学家 / 财经媒体的预测或观点，不是官方发布数据。除明确标注「国家统计局 / 中国人民银行 / BLS / CME FedWatch」的条目外，其余均属财经媒体转述或研报二次引用，为非一手来源，需核实原文。各机构发布时间不同、口径可能不一致（如 CPI 同比是否可比），不得当作已发生事实使用。",
+  "disclaimer": "免责声明：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。",
+  "directionLegend": {
+    "positive": "对风险资产偏正面（通胀压力缓和 / 政策偏松 / 增长改善）",
+    "negative": "对风险资产偏谨慎（通胀黏性 / 政策偏紧 / 增长走弱）",
+    "neutral": "中性或风险大致平衡"
+  },
+  "events": {
+    "US_CPI": {
+      "name": "美国 CPI / 核心 CPI",
+      "agency": "美国劳工统计局 BLS",
+      "jurisdiction": "美国",
+      "nextRelease": "2026-12-10 公布 11 月 CPI（晚于 12 月 8–9 日议息会议）",
+      "officialFacts": [
+        {
+          "text": "10 月 CPI 环比 +0.4%（预期 +0.3%，前值 +0.6%），核心 CPI 环比 +0.3%（预期 +0.2%，前值 +0.3%），核心已连续三个月维持 0.3%；住房分项 +0.3%，贡献总体涨幅三成以上；二手车 -1.2%。",
+          "source": "新华财经 / 中国金融信息网（转述 BLS 数据）",
+          "date": "2026-11-19",
+          "url": "https://finance.sina.com.cn/jjxw/2026-11-19/doc-inizhfah4578064.shtml",
+          "primary": false
+        },
+        {
+          "text": "BLS 因去年 10 月联邦政府停摆导致数据采集中断，本月未公布同比数据；最新同比锚点为 9 月的 3.7%（9 月环比 +0.6%）。",
+          "source": "格隆汇转述摩根士丹利美国通胀监测报告",
+          "date": "2026-11-06",
+          "url": "https://gu.qq.com/resources/shy/news/detail-v2/index.html?t=1#/index?_tentrees_trans=0&id=SN20261106181419b67d4dd5",
+          "primary": false
+        },
+        {
+          "text": "10 月 PPI 同比 +6.5%，为 2022 年 11 月以来最高；11 月 CPI 定于 12 月 10 日公布，晚于 12 月议息会议。",
+          "source": "Continuum Economics 11 月 CPI 前瞻 / 新华财经",
+          "date": "2026-11-25",
+          "url": "https://continuumeconomics.com/a/fe8ee460/preview-due-december-10-us-november-cpi-gasoline-to-slip-but-core-rate-to-remain-firm",
+          "primary": false
+        }
+      ],
+      "consensusLine": "主流共识：11 月总体同比回落到 3.9% 附近（个别模型 3.6%–3.7%），核心同比回升至约 3.0%，方向上是「总体缓和、核心仍黏」。",
+      "views": [
+        {
+          "institution": "高盛 Goldman Sachs（Jessica Rindels）",
+          "view": "预计 10 月核心 CPI 环比 +0.16%、总体 +0.21%，均低于共识（+0.2% / +0.3%）；预计 11 月总体 CPI 同比 3.81%、核心同比 2.67%，11–12 月核心环比约 +0.1%。理由含机票持平、健康保险因 BLS 半年度源数据更新环比 -2.5%、二手车 -1.5%；并提示 BLS 插值法季节性因子可能高估 10 月季调核心 CPI 约 5bp。",
+          "direction": "positive",
+          "date": "2026-11-09",
+          "source": "格隆汇转述高盛报告",
+          "url": "https://gu.qq.com/resources/shy/news/detail-v2/index.html?t=1#/index?_tentrees_trans=0&id=SN2026111015093398b2afbb",
+          "needsVerify": true
+        },
+        {
+          "institution": "摩根士丹利 Morgan Stanley",
+          "view": "预计 10 月核心 CPI 环比 0.19%（9 月 0.33%）、总体环比 0.19%、未季调指数 337.020，低于彭博共识；认为读数落在 0.1% 与 0.3% 的概率相当，风险大致平衡。",
+          "direction": "neutral",
+          "date": "2026-11-06",
+          "source": "格隆汇转述摩根士丹利美国通胀监测报告",
+          "url": "https://gu.qq.com/resources/shy/news/detail-v2/index.html?t=1#/index?_tentrees_trans=0&id=SN20261106181419b67d4dd5",
+          "needsVerify": true
+        },
+        {
+          "institution": "Continuum Economics",
+          "view": "预计 11 月核心 CPI 环比 +0.28%（四舍五入前 +0.28%，仅较前三月 0.30% 小幅放缓），总体环比基本持平（未四舍五入 +0.04%）；同比总体 3.9%、核心同比 3.0%（2025 年 9 月以来最高），并明确指出该读数「对美联储而言仍然太高」。汽油价格预计回落 6.6%、能源分项 -3.3%。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "Continuum Economics 官网 11 月 CPI 前瞻",
+          "url": "https://continuumeconomics.com/a/fe8ee460/preview-due-december-10-us-november-cpi-gasoline-to-slip-but-core-rate-to-remain-firm",
+          "needsVerify": true
+        },
+        {
+          "institution": "市场定价 / nowcast（克利夫兰联储、Kalshi、Polymarket）",
+          "view": "克利夫兰联储 nowcast 为 3.94%；Kalshi 隐含中位数约 3.7%；Polymarket 主流档位 3.7%（约 41%）、3.8%（约 25–26%）、3.6%（约 22–23%），「高于 3.6%」概率约 66%–76%。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "domain_search 综合（预测市场与 nowcast 引用）",
+          "needsVerify": true
+        },
+        {
+          "institution": "22V Research（Jordi Visser，少数派）",
+          "view": "认为 11 月 CPI 环比可能为负（汽油大跌），但经季调调整后概率有限；部分市场给出「≤0%」约 58%。",
+          "direction": "positive",
+          "date": "2026-11-25",
+          "source": "domain_search 综合",
+          "needsVerify": true
+        }
+      ]
+    },
+    "FOMC": {
+      "name": "美联储 FOMC 利率决议 / 议息路径",
+      "agency": "美联储 FOMC",
+      "jurisdiction": "美国",
+      "nextRelease": "2026-12-08 至 12-09 议息（含经济预测摘要与点阵图）",
+      "officialFacts": [
+        {
+          "text": "现行联邦基金利率目标区间 3.75%–4.00%（有效利率 3.88%）；10 月 27–28 日会议以 10:2 维持不变，库克、哈马克主张当次加息 25BP。",
+          "source": "新华财经 / 中国金融信息网（转述 10 月 FOMC 纪要）",
+          "date": "2026-11-19",
+          "url": "https://finance.sina.com.cn/jjxw/2026-11-19/doc-inizhfah4578064.shtml",
+          "primary": false
+        },
+        {
+          "text": "10 月会议纪要：几乎所有官员认为进一步加息「很可能是合适的」，部分官员讨论了 12 月加息超过 25BP 的可能。",
+          "source": "新华财经 / 中国金融信息网",
+          "date": "2026-11-19",
+          "url": "https://finance.sina.com.cn/jjxw/2026-11-19/doc-inizhfah4578064.shtml",
+          "primary": false
+        },
+        {
+          "text": "CME「美联储观察」：12 月加息 25BP 概率 11/19 为 92.7%、11/23 为 91.4%、11/25 为 97.4%；到 2027 年 1 月累计加息 50BP 概率约 57.7%–68.1%。",
+          "source": "中国基金报 2026-11-25 / 新华财经 2026-11-23（CME FedWatch）",
+          "date": "2026-11-25",
+          "url": "https://www.chnfund.com/article/f536797d-37a9-94e7-8de5-3a2521c31ea4",
+          "primary": false
+        },
+        {
+          "text": "12 月 10 日公布 11 月 CPI，晚于 12 月 8–9 日议息会议，决策时无法看到该读数；11 月 30 日 9:30 公布中国 11 月 PMI，12 月 9 日 9:30 公布中国 11 月 CPI / PPI。",
+          "source": "济安金信《资本市场周度大事前瞻（2026.11.23-11.29）》",
+          "date": "2026-11-23",
+          "url": "http://www.jajx.com/article/8671.cshtml",
+          "primary": false
+        }
+      ],
+      "consensusLine": "主流共识：12 月加息 25BP 近乎一致（市场定价约 97%），不存在降息预期；分歧集中在 2027 年再加 1 次、2 次还是连续 3 次至 4.50%–4.75%。",
+      "views": [
+        {
+          "institution": "CME FedWatch 市场定价",
+          "view": "12 月加息 25BP 概率 97.4%（11/25），加息 50BP 概率 0%；降息或维持不变的可能性极低。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "中国基金报（CME 数据）",
+          "url": "https://www.chnfund.com/article/f536797d-37a9-94e7-8de5-3a2521c31ea4",
+          "needsVerify": false
+        },
+        {
+          "institution": "高盛 Goldman Sachs（David Mericle）",
+          "view": "12 月 +25BP，1 月不加、2027 年 3 月 +25BP；首次降息预期推迟至 2027 年 12 月。",
+          "direction": "negative",
+          "date": "2026-11-19",
+          "source": "新华财经 / 中国金融信息网",
+          "url": "https://finance.sina.com.cn/jjxw/2026-11-19/doc-inizhfah4578064.shtml",
+          "needsVerify": true
+        },
+        {
+          "institution": "摩根大通 J.P. Morgan（Michael Feroli）",
+          "view": "12 月、2027 年 1 月、3 月连续三次各 +25BP，峰值 4.50%–4.75%；11/19 把 1 月和 3 月纳入预测，认为缺少支持暂停的理由。",
+          "direction": "negative",
+          "date": "2026-11-19",
+          "source": "新华财经 / 中国金融信息网、腾讯自选股转述",
+          "needsVerify": true
+        },
+        {
+          "institution": "美国银行 BofA（Aditya Bhave）",
+          "view": "12 月、2027 年 1 月、3 月连加三次，峰值 4.50%–4.75%；若经济数据转弱或金融条件显著收紧，末次加息可能延后或取消。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "腾讯自选股转述机构预测汇总",
+          "needsVerify": true
+        },
+        {
+          "institution": "德意志银行 Deutsche Bank（Amy Yang）",
+          "view": "11/24 重申 12 月、2027 年 1 月、3 月连加三次至 4.50%–4.75%；近期市场波动降低了一次加息 50BP 的必要性。",
+          "direction": "negative",
+          "date": "2026-11-24",
+          "source": "腾讯自选股转述机构预测汇总",
+          "needsVerify": true
+        },
+        {
+          "institution": "丹斯克银行 Danske Bank",
+          "view": "12 月起三次加息把区间推升至 4.50%–4.75%，随后维持至 2027 年末；判断更紧政策影响将在 2027 年下半年显现。",
+          "direction": "negative",
+          "date": "2026-11-18",
+          "source": "新华财经 / 中国金融信息网",
+          "needsVerify": true
+        },
+        {
+          "institution": "瑞银 UBS",
+          "view": "预计 12 月与 2027 年 3 月各 +25BP，提示连续加息风险上升，但认为较高收益率与趋紧融资条件已约束经济活动，不宜外推漫长加息周期。",
+          "direction": "negative",
+          "date": "2026-11-16",
+          "source": "新华财经 / 中国金融信息网",
+          "needsVerify": true
+        },
+        {
+          "institution": "PNC 经济研究团队",
+          "view": "基准预测为 12 月 +25BP，50BP 并非最可能结果；若通胀持续顽固，可能从隔次会议加息转向连续加息。",
+          "direction": "negative",
+          "date": "2026-11-16",
+          "source": "新华财经 / 中国金融信息网",
+          "needsVerify": true
+        },
+        {
+          "institution": "荷兰国际集团 ING",
+          "view": "12 月再加息一次后，美联储可能在 2027 年较长时间内保持观望；认为利率敏感部门已降温、工资压力缓和。",
+          "direction": "negative",
+          "date": "2026-11-10",
+          "source": "新华财经 / 中国金融信息网",
+          "needsVerify": true
+        },
+        {
+          "institution": "贝莱德 BlackRock BII（相对偏鸽）",
+          "view": "认同 12 月 +25BP，但认为市场定价的未来 12 个月三次加息过于激进；预计 12 月之后 2027 年上半年仅再加一次，能源价格冲击见顶将转为 2027 年抑制通胀的力量（到 2027 年底约拉低整体通胀 0.8pp）。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "腾讯自选股转述贝莱德每周市场评论",
+          "needsVerify": true
+        },
+        {
+          "institution": "美联储理事 沃勒（鹰派官员）",
+          "view": "11/18 表示通胀朝错误方向扩散，需在 12 月加息 50BP，或明确释放 2027 年 1 月及后续继续收紧的信号。",
+          "direction": "negative",
+          "date": "2026-11-18",
+          "source": "新华财经 / 中国金融信息网",
+          "needsVerify": true
+        },
+        {
+          "institution": "纽约联储主席 威廉姆斯（渐进派官员）",
+          "view": "可能仍需加息、不排除连续会议加息，但不认为需要「戏剧性行动」；预计今明两年 GDP 增长约 2.75%、整体通胀今年 3.5%、2028 年才回到 2%；关税影响基本消退，能源前景高度不确定。",
+          "direction": "neutral",
+          "date": "2026-11-17",
+          "source": "新华财经 / 中国金融信息网、汇通网",
+          "needsVerify": true
+        }
+      ]
+    },
+    "CN_PMI": {
+      "name": "中国官方制造业 PMI / 非制造业 PMI",
+      "agency": "国家统计局",
+      "jurisdiction": "中国",
+      "nextRelease": "2026-11-30 09:30 公布 11 月 PMI；财新 11 月制造业 PMI 12 月 1 日",
+      "officialFacts": [
+        {
+          "text": "10 月官方制造业 PMI 49.3%（9 月 50.1%，环比 -0.8pp）；生产 49.8、新订单 49.4、新出口订单 48.7；大型企业 50.2、中型 48.4、小型 47.5。10 月非制造业商务活动指数 49.7%，建筑业 48.0%，服务业 50.0%。",
+          "source": "国家统计局（NEODATA 中国宏观指标，一手数据）",
+          "date": "2026-10-31",
+          "primary": true
+        },
+        {
+          "text": "10 月工业企业利润当月同比 -5.5%（前值 +21.6%），累计 +1.9%（前值 +3.2%）；中国 10 月 CPI 同比 0.70%、PPI 同比 +5.70%（华泰期货口径）。",
+          "source": "domain_search 综合（媒体转述，需核实原文）",
+          "date": "2026-11-25",
+          "primary": false
+        },
+        {
+          "text": "11 月 30 日 9:30 发布 11 月官方 PMI；12 月 9 日 9:30 发布 11 月 CPI 与 PPI；11 月 PMI 能否重回 50 以上决定 12 月政策预期。",
+          "source": "济安金信《资本市场周度大事前瞻》、韭研公社周度机会",
+          "date": "2026-11-23",
+          "primary": false
+        }
+      ],
+      "consensusLine": "机构预测严重两极分化：野村与财经日历共识看 48.6%（继续收缩、疫情后重启以来最低），东方金诚与经济学人智库看回升至 50.1% 附近（重回扩张）。",
+      "views": [
+        {
+          "institution": "野村 Nomura（陆挺）",
+          "view": "11 月 EPMI 从 58.0 降至 50.6（-7.4pp，远超 2023–2025 年 11 月平均 3.7pp 降幅）；预计 11 月官方制造业 PMI 从 49.3 降至 48.6%，为疫情后重启以来最低；维持 2026Q4 及全年 GDP 同比 4.6%，2027 年放缓至 4.0%。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "Yahoo 财经（转述野村报告）",
+          "url": "https://hk.finance.yahoo.com/news/%E9%87%8E%E6%9D%91%E9%99%B8%E6%8C%BA%E6%96%99%E4%B8%AD%E5%9C%8B2027%E5%B9%B4-gdp-%E5%A2%9E%E9%95%B7%E5%B0%87%E9%A1%AF%E8%91%97%E6%94%BE%E7%B7%A9%E8%87%B34-0-130724588.html",
+          "needsVerify": true
+        },
+        {
+          "institution": "市场 / 财经日历共识（FinScans、ForexHatch）",
+          "view": "11 月制造业 PMI 预期 48.6%（前值 49.3）。",
+          "direction": "negative",
+          "date": "2026-11-25",
+          "source": "domain_search 综合（财经日历）",
+          "needsVerify": true
+        },
+        {
+          "institution": "东方金诚（王青）",
+          "view": "预计 11 月制造业 PMI 回升至 50.1% 左右，重回扩张；理由为过去十年 11 月环比平均 +0.2pp、长假扰动消退、10 月地方 5500 亿结存限额使用、全年 8000 亿新型政策性金融工具落地、出口高位。另预计 11 月基建投资加速对冲地产、长假效应消退后服务业 PMI 可能回落。",
+          "direction": "positive",
+          "date": "2026-11-25",
+          "source": "cnhjzs.com 转述（需核实原文）",
+          "url": "https://cnhjzs.com/13533120.html",
+          "needsVerify": true
+        },
+        {
+          "institution": "经济学人智库 EIU（徐天辰）",
+          "view": "新型政策性金融工具完成发行、结存专项债额度激活后，稳投资效应将继续显现，11 月制造业活动有望较为旺盛。",
+          "direction": "positive",
+          "date": "2026-11-25",
+          "source": "cnhjzs.com 转述（需核实原文）",
+          "needsVerify": true
+        }
+      ]
+    }
+  },
+  "crossAssetViews": [
+    {
+      "assets": ["us_equity", "gold", "futures"],
+      "text": "鹰派信号直接托举美元指数与美债短端收益率；黄金作为无息资产在实际利率预期抬升的环境下承压、持有成本上升削弱避险吸引力；对利率高度敏感的 AI 成长股估值受更高折现率冲击，资金从长久期成长板块流出的压力尚未完全缓解；油价仍是关键摇摆变量。",
+      "source": "汇通网《鹰派声音密集出炉，市场低估了美联储的抗通胀决心？》",
+      "date": "2026-11-19",
+      "url": "https://www.fx678.com/C/20261119/202611190951579112.html",
+      "needsVerify": true
+    },
+    {
+      "assets": ["us_equity", "futures", "gold"],
+      "text": "若 PCE 偏热且褐皮书强化物价黏性，成长估值将二次承压；若偏鸽，上周 risk-off 可能快速逆转。广度未修复、量能未回之前不追高、不抄底，忌单向押注，看数据落地后的资金承接。",
+      "source": "韭研公社《每周市场机会 2026-11-23 至 11-29》",
+      "date": "2026-11-23",
+      "url": "https://www.jiuyangongshe.com/a/3ya6ulh2rpj",
+      "needsVerify": true
+    },
+    {
+      "assets": ["a_share", "futures"],
+      "text": "11 月 PMI 是下一窗口首个基本面锚，10 月制造业 PMI 已回落至 49.3，能否重回荣枯线决定 12 月政策预期；OPEC+ 会议结果直接决定 2027 年油价中枢与上游资本开支。",
+      "source": "济安金信《资本市场周度大事前瞻》/ 韭研公社",
+      "date": "2026-11-23",
+      "url": "http://www.jajx.com/article/8671.cshtml",
+      "needsVerify": true
+    },
+    {
+      "assets": ["us_equity", "gold"],
+      "text": "能源价格冲击已见顶，2027 年能源对通胀由推升转为抑制（到 2027 年底约拉低整体通胀 0.8pp）；市场可能高估了美联储后续加息次数，但美国经济与约 4% 的薪资增长仍支撑核心服务通胀，核心通胀仍更接近 3% 而非 2% 目标。",
+      "source": "腾讯自选股转述贝莱德每周市场评论",
+      "date": "2026-11-25",
+      "needsVerify": true
+    },
+    {
+      "assets": ["a_share", "us_equity"],
+      "text": "关税影响已基本消退，能源（伊朗战争）前景「高度不确定」；AI 基建推升芯片等特定商品价格但尚未广泛传导，AI 也可能通过提高生产率扩大供给。",
+      "source": "新华财经转述纽约联储主席威廉姆斯讲话 / 瑞银分析",
+      "date": "2026-11-19",
+      "url": "https://finance.sina.com.cn/jjxw/2026-11-19/doc-inizhfah4578064.shtml",
+      "needsVerify": true
+    }
+  ]
+}

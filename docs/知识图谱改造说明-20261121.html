@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>知识图谱改造说明</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1d2129;background:#f5f6f8;line-height:1.7;margin:0;padding:32px}
+  .wrap{max-width:900px;margin:0 auto;background:#fff;border-radius:14px;padding:32px 38px;box-shadow:0 6px 24px rgba(20,30,60,.06)}
+  h1{font-size:24px;margin:0 0 6px} h2{font-size:17px;margin:28px 0 12px;padding-bottom:8px;border-bottom:2px solid #e8f0ff}
+  .sub{color:#86909c;font-size:13px;margin-bottom:20px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{border:1px solid #e5e6eb;padding:7px 11px;text-align:left}
+  th{background:#f7f8fa;font-weight:600}
+  code{background:#f2f3f5;padding:1px 6px;border-radius:4px;font-size:12px;color:#c2185b}
+  .tag{display:inline-block;background:#e8f0ff;color:#165dff;padding:2px 8px;border-radius:5px;font-size:11px;margin-right:6px}
+  .note{background:#fff8e8;border-left:3px solid #f7ba1e;padding:10px 14px;border-radius:6px;font-size:13px;color:#4e5969;margin:12px 0}
+  .ok{color:#1a9d5a;font-weight:600}
+  ul{padding-left:22px} li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>个人知识库 · 图谱渲染改造说明</h1>
+  <div class="sub">2026-11-21 · 从 AI-Hel2 移植力导向图谱渲染层（零依赖）</div>
+
+  <div class="note">本次只改造<strong>图谱的渲染与交互</strong>，数据契约（<code>data/knowledge/graph.json</code>）、笔记列表、入库与抽取逻辑<strong>全部未动</strong>。笔记照常记录 →「整理为图谱」后，新渲染器自动生效。</div>
+
+  <h2>改了什么</h2>
+  <ul>
+    <li><span class="tag">新增</span><code>web/v2/graph-engine.js</code>：从 AI-Hel2 逐行移植的物理引擎（Barnes-Hut 四叉树斥力 + Hooke 弹簧 + 圆碰撞 + 自动冻结）与数据适配层（度数统计、类型着色、同向边合并）。纯原生 JS，零依赖。</li>
+    <li><span class="tag">重写</span><code>web/v2/v2.js</code> 的 <code>loadGraph()</code>：静态放射布局 → 力导向 SVG 渲染 + 完整交互。</li>
+    <li><span class="tag">增强</span><code>web/v2/index.html</code> / <code>v2.css</code>：图谱工具条、图例、节点详情、参数面板。</li>
+  </ul>
+
+  <h2>图谱交互（对应 AI-Hel2 ForceGraph2DWrapper）</h2>
+  <table>
+    <tr><th>交互</th><th>行为</th><th>来源公式</th></tr>
+    <tr><td>滚轮缩放</td><td>以鼠标位置为中心，范围 1/128 ~ 8 倍</td><td>d3.zoom scaleExtent</td></tr>
+    <tr><td>拖拽节点</td><td>3px 阈值才触发，拖动时 pin，点击不 pin</td><td>pinNode / movePinned / unpinNode</td></tr>
+    <tr><td>拖拽空白</td><td>平移视图</td><td>pan</td></tr>
+    <tr><td>悬停节点</td><td>邻居保持高亮，其余节点淡化到 0.15</td><td>BFS 邻居集</td></tr>
+    <tr><td>点击节点</td><td>弹出详情：类型 / 连接数 / 置信度</td><td>—</td></tr>
+    <tr><td>首次收敛</td><td>自动适应视图（fit-to-view）</td><td>AI-Hel2 auto-fit</td></tr>
+  </table>
+
+  <h2>可调参数（自动保存到本机 localStorage）</h2>
+  <table>
+    <tr><th>参数</th><th>默认</th><th>范围</th><th>作用</th></tr>
+    <tr><td>节点大小 nodeSize</td><td>1.25</td><td>0.3–3</td><td>节点半径倍率</td></tr>
+    <tr><td>边透明 edgeOpacity</td><td>0.6</td><td>0.05–1</td><td>连线透明度</td></tr>
+    <tr><td>标签透明 textOpacity</td><td>0.85</td><td>0.1–1</td><td>标签透明度，随缩放按 log2(k) 淡出</td></tr>
+    <tr><td>边宽 linkThickness</td><td>0.4</td><td>0.1–2.5</td><td>连线粗细（随缩放反向补偿）</td></tr>
+    <tr><td>向心力 centerForce</td><td>0.1</td><td>0–1</td><td>节点向视图中心的拉力</td></tr>
+    <tr><td>斥力 repelForce</td><td>11</td><td>0–20</td><td>节点互斥，实际取三次方</td></tr>
+    <tr><td>吸引力 attractForce</td><td>0.8</td><td>0–1</td><td>弹簧刚度</td></tr>
+    <tr><td>边长 linkLength</td><td>70</td><td>30–500</td><td>理想连线长度</td></tr>
+    <tr><td>显示孤岛 / 箭头</td><td>开 / 关</td><td>开关</td><td>无连接节点、边箭头</td></tr>
+  </table>
+  <p class="note">节点半径按度数自适应：<code>4 + min(degree,12)×0.5</code>；颜色按类型（概念蓝 / 因子紫 / 经验绿 / 模式黄 / 事件红 / 问题橙），可在参数里用自定义色覆盖。这些公式与配色均来自 AI-Hel2 的 <code>graphAdapter.ts</code>。</p>
+
+  <h2>验证结果</h2>
+  <ul>
+    <li class="ok">语法校验通过（graph-engine.js / v2.js）</li>
+    <li class="ok">DOM 引用校验通过（动态 ID 除外）</li>
+    <li class="ok">真实数据测试：graph.json 7 节点 14 边 → 适配后 7 节点 10 边（同向边合并正确）</li>
+    <li class="ok">仿真 300 帧后正常冻结，坐标全部有限</li>
+    <li class="ok">120 节点压测 300 帧仅 71ms，Barnes-Hut 性能良好</li>
+    <li class="ok">静态资源全部 HTTP 200，引擎 API 调用与暴露完全匹配</li>
+  </ul>
+
+  <h2>未改动 / 后续可做</h2>
+  <ul>
+    <li>知识库列表（DocTree / EntityBrowser 式分组）本次未移植——当前笔记列表已够用。</li>
+    <li>知识抽取仍走现有 Hermes organize 流程，未引入 AI-Hel2 的 LLM 抽取器。</li>
+    <li>当前 graph.json 仅 7 节点，图谱视觉较简；随着笔记整理积累会自动丰富。</li>
+    <li>若将来需要，可再移植：namespace 分组、颜色正则分组、社区折叠、节点→对话联动。</li>
+  </ul>
+</div>
+</body>
+</html>

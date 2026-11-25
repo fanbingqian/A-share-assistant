@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PC 端交互原型 · B 三栏工作台 / C 复盘时间线</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef1f7;color:#1c2431;
+  font:14px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12px}
+a{color:#2559c9;text-decoration:none}
+
+.proto{background:#26215C;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.proto .tt{font-weight:700;font-size:14px;white-space:nowrap}
+.proto .desc{font-size:12px;opacity:.8;flex:1 1 340px;line-height:1.5}
+.proto .sw{display:flex;gap:6px;background:rgba(255,255,255,.12);padding:4px;border-radius:9px}
+.proto .sw button{border:0;background:transparent;color:#d9d5f5;border-radius:6px;padding:6px 14px;
+  cursor:pointer;font-size:12.5px;font-weight:600;white-space:nowrap}
+.proto .sw button.on{background:#fff;color:#26215C}
+
+.frame{margin:16px;background:#f4f6fb;border:1px solid #d9e1ef;border-radius:12px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(20,35,70,.06)}
+.frame-hide{display:none}
+
+.topbar{height:48px;background:#fff;border-bottom:1px solid #e2e8f2;display:flex;align-items:center;
+  gap:12px;padding:0 16px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:14px;white-space:nowrap}
+.brand small{font-weight:500;color:#8a95aa;margin-left:8px;font-size:11.5px}
+.badge{font-size:11px;background:#eef4ff;color:#254a86;border:1px solid #d6e4ff;
+  border-radius:20px;padding:3px 10px;white-space:nowrap}
+.badge.gray{background:#f1f3f8;color:#6b7893;border-color:#e2e8f2}
+.sp{flex:1}
+.search{border:1px solid #d3dceb;border-radius:7px;padding:6px 10px;width:190px;font-size:12px;background:#fff}
+.tgl{display:flex;align-items:center;gap:7px;font-size:12px;color:#5a6780;white-space:nowrap;
+  border:1px solid #d3dceb;border-radius:7px;padding:5px 10px;cursor:pointer;user-select:none}
+.tgl .dot{width:8px;height:8px;border-radius:50%;background:#1d9e75}
+.tgl.off .dot{background:#a9b2c4}
+.tgl.off{color:#98a2b5}
+
+.work{display:grid;min-height:660px;align-items:stretch}
+.work-b{grid-template-columns:224px minmax(0,1fr) 344px}
+.work-c{grid-template-columns:190px minmax(0,1fr) 318px}
+.side{background:#fff;border-right:1px solid #e2e8f2;padding:14px 10px}
+.side-lbl{font-size:11px;letter-spacing:1px;color:#8a95aa;padding:8px 10px 6px;font-weight:700}
+.nav{display:flex;width:100%;align-items:center;gap:9px;text-align:left;border:0;background:transparent;
+  padding:8px 10px;border-radius:8px;cursor:pointer;color:#33405c;font-size:13px;margin-bottom:2px}
+.nav:hover{background:#f0f4fc}
+.nav.on{background:#e8f0ff;color:#1746ad;font-weight:700}
+.nav .ico{font-size:14px;width:18px;text-align:center;opacity:.75}
+.nav .sub{display:block;font-size:11px;font-weight:400;opacity:.65;margin-top:1px}
+.side-foot{margin-top:16px;padding:10px;border:1px dashed #cdd8ea;border-radius:8px;font-size:11.5px;color:#6b7893}
+.main{padding:16px 18px 28px;min-width:0;overflow:auto}
+.evi{border-left:1px solid #e2e8f2;background:#fbfcfe;padding:14px 14px 28px;min-width:0}
+.evi.off{background:#f7f8fb}
+
+.h1{font-size:18px;font-weight:800;margin:0 0 2px}
+.sub{color:#6b7893;font-size:12px;margin:0 0 14px}
+.card{background:#fff;border:1px solid #e2e8f2;border-radius:10px;padding:13px 15px;margin-bottom:12px}
+.card h3{margin:0 0 10px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.card h3 .n{font-weight:500;color:#8792a8;font-size:11.5px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:#fff;border:1px solid #e2e8f2;border-radius:9px;padding:10px 12px}
+.kpi .k{font-size:11.5px;color:#7c88a0}
+.kpi .v{font-size:19px;font-weight:800;line-height:1.4;margin-top:2px}
+.kpi .m{font-size:11px;color:#8a95aa;margin-top:2px}
+.up{color:#c0392b}
+.down{color:#1b8a5a}
+.flat{color:#6b7893}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:#7c88a0;font-weight:600;font-size:11.5px;padding:7px 8px;border-bottom:1px solid #e6ecf6;white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #f0f3f9;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.clk{cursor:pointer}
+tr.clk:hover{background:#f6f9ff}
+tr.on{background:#eef4ff}
+.tag{display:inline-block;font-size:11px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid transparent}
+.tag.blue{background:#eef4ff;color:#254a86;border-color:#d6e4ff}
+.tag.purple{background:#f0eefe;color:#4a3fa8;border-color:#ddd7f7}
+.tag.amber{background:#fdf3e2;color:#8a5a0b;border-color:#f6e2bb}
+.tag.red{background:#fceceb;color:#a32d2d;border-color:#f3cfcd}
+.tag.green{background:#e7f5ef;color:#0f6e56;border-color:#c7e8da}
+.tag.gray{background:#f1f3f8;color:#6b7893;border-color:#e2e8f2}
+.flag{border-left:3px solid #BA7517;background:#fdf7ec;border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:8px;font-size:12.5px}
+.flag.s2{border-left-color:#D85A30;background:#fdf0ea}
+.flag.s3{border-left-color:#A32D2D;background:#fceceb}
+.flag .fl-h{font-weight:700;margin-bottom:3px}
+.flag .fl-m{color:#6b7893;font-size:11.5px}
+.quad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.qbox{border:1px solid #e6ecf6;border-radius:8px;padding:9px 11px;background:#f7f9fd}
+.qbox .qk{font-size:11.5px;color:#7c88a0}
+.qbox .qv{font-size:15px;font-weight:700;margin-top:2px}
+.qbox .qn{font-size:11px;color:#8a95aa;margin-top:3px}
+
+.evi-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.evi-tabs button{border:1px solid #dde5f1;background:#fff;color:#5a6780;border-radius:7px;
+  padding:5px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.evi-tabs button.on{background:#2559c9;border-color:#2559c9;color:#fff;font-weight:700}
+.evi-pane{display:none}
+.evi-pane.on{display:block}
+.fact{border:1px solid #e6ecf6;border-radius:8px;padding:10px 11px;margin-bottom:9px;background:#fff}
+.fact .f-t{font-size:12.5px;font-weight:700;margin-bottom:4px}
+.fact .f-b{font-size:12px;color:#33405c;line-height:1.6}
+.fact .f-s{font-size:11px;color:#8a95aa;margin-top:6px;border-top:1px dashed #e6ecf6;padding-top:5px}
+.hypo{border:1px solid #ddd7f7;border-radius:8px;padding:10px 11px;margin-bottom:9px;background:#faf9ff}
+.hypo .h-t{font-weight:700;font-size:12.5px;color:#3C3489;margin-bottom:4px}
+.hypo .h-b{font-size:12px;line-height:1.6}
+.hypo .h-f{font-size:11.5px;color:#6b7893;margin-top:5px}
+.hypo .h-f b{color:#a32d2d}
+.pill{display:inline-block;background:#fff;border:1px solid #ddd7f7;border-radius:5px;
+  padding:1px 6px;font-size:11px;color:#534AB7;margin-right:5px}
+label.lb{display:block;font-size:11.5px;color:#6b7893;margin:8px 0 4px}
+input.tx,textarea.tx{width:100%;border:1px solid #d3dceb;border-radius:7px;padding:7px 9px;
+  font-size:12px;font-family:inherit;background:#fff;resize:vertical}
+textarea.tx{min-height:56px}
+.btn{border:1px solid #d3dceb;background:#fff;color:#25304a;border-radius:7px;padding:6px 11px;
+  cursor:pointer;font-size:12px;white-space:nowrap}
+.btn:hover{border-color:#8fa8d4;background:#f6f9ff}
+.btn.pri{background:#2559c9;border-color:#2559c9;color:#fff}
+.btn.pri:hover{background:#1c49ab}
+.btn.danger{color:#a32d2d;border-color:#f0c9c7}
+.btn-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.note{font-size:11.5px;color:#8a95aa;line-height:1.55;margin-top:10px}
+.status{margin-top:10px;font-size:12px;border-radius:7px;padding:7px 10px;display:none}
+.status.show{display:block}
+.status.ok{background:#e7f5ef;color:#0f6e56;border:1px solid #c7e8da}
+.status.warn{background:#fdf3e2;color:#8a5a0b;border:1px solid #f6e2bb}
+
+.tl-day{display:grid;grid-template-columns:78px minmax(0,1fr);gap:0;margin-bottom:0}
+.tl-date{border-right:2px solid #dfe6f2;padding:12px 10px 0 0;text-align:right;position:relative}
+.tl-date b{display:block;font-size:12.5px}
+.tl-date span{font-size:11px;color:#8a95aa}
+.tl-date .node{position:absolute;right:-6px;top:16px;width:10px;height:10px;border-radius:50%;
+  background:#2559c9;border:2px solid #fff}
+.tl-date.gray .node{background:#aab5c9}
+.tl-date.red .node{background:#c0392b}
+.tl-body{padding:10px 0 10px 16px}
+.tl-card{background:#fff;border:1px solid #e2e8f2;border-radius:9px;padding:11px 13px;margin-bottom:8px}
+.tl-card .t-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;margin-bottom:6px}
+.tl-card .t-b{font-size:12px;line-height:1.65;color:#33405c}
+.tl-card .t-s{font-size:11px;color:#8a95aa;margin-top:6px;border-top:1px dashed #e6ecf6;padding-top:5px}
+.precommit{background:#faf9ff;border:1px solid #ddd7f7}
+.demo-mark{font-size:10.5px;color:#8a5a0b;background:#fdf3e2;border:1px solid #f6e2bb;
+  border-radius:4px;padding:1px 5px;margin-left:4px;font-weight:500}
+.conflict{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.conflict div{border:1px solid #e6ecf6;border-radius:7px;padding:8px 10px;font-size:11.5px;background:#fff}
+.conflict .ca{background:#fdf7ec;border-color:#f6e2bb}
+.conflict .cb{background:#eef4ff;border-color:#d6e4ff}
+.conflict b{display:block;margin-bottom:3px;font-size:11.5px}
+.exp{border:1px solid #e6ecf6;border-radius:8px;padding:9px 11px;margin-bottom:8px;background:#fff}
+.exp .e-h{font-size:12.5px;font-weight:700;margin-bottom:4px}
+.exp .e-m{font-size:11px;color:#7c88a0}
+.ladder{font-size:11.5px;color:#5a6780;line-height:1.9}
+.ladder .st{display:inline-block;width:17px;height:17px;line-height:17px;text-align:center;
+  border-radius:50%;background:#eef4ff;color:#254a86;font-size:10.5px;font-weight:700;margin-right:6px}
+.ladder .cur{background:#2559c9;color:#fff}
+
+.foot{background:#fff;border-top:1px solid #e2e8f2;padding:10px 16px;font-size:11px;color:#8a95aa;line-height:1.6}
+.foot b{color:#6b7893}
+@media(max-width:1180px){
+  .work-b,.work-c{grid-template-columns:200px minmax(0,1fr)}
+  .evi{grid-column:1 / -1;border-left:0;border-top:1px solid #e2e8f2}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+
+<div class="proto">
+  <div class="tt">PC 端界面原型 · B / C 对照</div>
+  <div class="desc">纯前端演示，零 CDN、离线可用。仅已核实的事实带真实数字与来源时点；其余字段一律以 <b>--</b> 占位，候选 A/B 为界面占位而非真实标的。点击表格行、右栏标签、审核按钮可体验交互。</div>
+  <div class="sw">
+    <button id="btnB" class="on" onclick="switchPlan('B')">方案 B · 三栏工作台</button>
+    <button id="btnC" onclick="switchPlan('C')">方案 C · 复盘时间线</button>
+  </div>
+</div>
+
+<div class="frame" id="frameB">
+  <div class="topbar">
+    <div class="brand">GlobalMarketMonitor <small>个人选股助手</small></div>
+    <span class="badge">2026-11-19 周四 · 盘后</span>
+    <span class="badge gray">数据快照 18:35 · 北京时间</span>
+    <div class="sp"></div>
+    <input class="search" id="searchB" placeholder="搜索代码 / 经验 / 按 / 聚焦" aria-label="搜索">
+    <div class="tgl" id="tglB" onclick="toggleAgent()"><span class="dot"></span><span id="tglTxt">智能体层：开（可一键关闭）</span></div>
+  </div>
+
+  <div class="work work-b">
+    <div class="side">
+      <div class="side-lbl">今日</div>
+      <button class="nav on"><span class="ico">◎</span><span>驾驶舱<span class="sub">四象限 · Flag · 候选</span></span></button>
+      <button class="nav"><span class="ico">▤</span><span>选股结果<span class="sub">确定性评分输出</span></span></button>
+      <div class="side-lbl">我的股池</div>
+      <button class="nav"><span class="ico">★</span><span>股池与监控<span class="sub">manual / screened</span></span></button>
+      <button class="nav"><span class="ico">⚑</span><span>提示台账<span class="sub">flag-events · 反例</span></span></button>
+      <div class="side-lbl">复盘与经验</div>
+      <button class="nav"><span class="ico">◷</span><span>复盘时间线<span class="sub">转至方案 C</span></span></button>
+      <button class="nav"><span class="ico">◈</span><span>经验库<span class="sub">pitfall / win 双向</span></span></button>
+      <button class="nav"><span class="ico">✓</span><span>待审队列<span class="sub">4 条 pending · 需复核</span></span></button>
+      <div class="side-lbl">系统</div>
+      <button class="nav"><span class="ico">⚙</span><span>画像与偏好<span class="sub">行为反推校正</span></span></button>
+      <div class="side-foot">现有 <code>#iwShell</code> 已是「左 224px + 右主视图」。本方案只补第三栏 <code>.iw-evidence</code>，纯增量，删一列即回退。</div>
+    </div>
+
+    <div class="main">
+      <h1 class="h1">今日驾驶舱</h1>
+      <p class="sub">首屏只放结论与待处理项；证据与解释在右栏，避免长页面里数字与出处对不上。</p>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">两市日内形态</div><div class="v flat">分化</div><div class="m">沪 <span class="down">低开低走</span> / 深 --</div></div>
+        <div class="kpi"><div class="k">我的股池</div><div class="v">1 <span style="font-size:12px;font-weight:500;color:#8a95aa">+2 占位</span></div><div class="m">manual 1 / screened 2</div></div>
+        <div class="kpi"><div class="k">待审提案</div><div class="v" style="color:#BA7517">4</div><div class="m">全部标记「需复核」</div></div>
+        <div class="kpi"><div class="k">假警报率</div><div class="v">--</div><div class="m">样本 18/30，暂不计算</div></div>
+      </div>
+
+      <div class="card">
+        <h3>今日风险提示 <span class="n">Flag 默认不改分、不剔除、不出现操作判断</span></h3>
+        <div class="flag s3"><div class="fl-h">强警示 · 同标的重复模式</div>
+          <div>000766 在近 6 个月内第二次出现「事件前抢跑 → 事件落地后连续跌停」。6/25 获批后曾三连跌停；11/15 纳入医保目录公告后 11/16–11/18 再度三连跌停。</div>
+          <div class="fl-m">来源：公司公告 2026-40（深交所，2026-11-15 16:11）；westock-data 日 K，取数 2026-11-19。历史样本 2 · 反例 0 · 待回填</div>
+        </div>
+        <div class="flag s2"><div class="fl-h">警示 · 关键价格未落地</div>
+          <div>公告确认纳入 2026 版国家医保目录（乙类），协议期 2027-01-01 至 2028-12-31，<b>医保支付标准未公布</b>，以国家医保局及各省公示为准。</div>
+          <div class="fl-m">来源：上海证券报 2026-11-16 公告全文（一手转载，需以深交所原文为准）。三季报 / 龙虎榜 / 融资 / PE 数字：<span class="tag gray">需核实原文 · 置 --</span></div>
+        </div>
+        <div class="flag"><div class="fl-h">提示 · 叙述与行情冲突</div>
+          <div>11-17 有稿件写「低开高走」，同附日 K 为前收 3602.57 / 开 3585.67 / 收 3584.58，按定义是<b>低开低走</b>。已由确定性重算裁定，叙述标 <code>narrative_conflict</code>。</div>
+          <div class="fl-m">来源：westock-data sh000001 日 K，取数 2026-11-19；稿件为非一手来源，仅作线索</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>股池与候选 <span class="n">点击行切换右栏证据视图</span></h3>
+        <table>
+          <thead><tr><th>代码</th><th>名称</th><th>来源</th><th>评分</th><th>Flag</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr class="clk on" data-pane="p1" onclick="pickRow(this,'p1')">
+              <td class="mono">000766</td><td>通化金马</td><td><span class="tag blue">manual</span></td>
+              <td class="mono">--</td><td><span class="tag red">强警示</span></td><td>监控中</td>
+            </tr>
+            <tr class="clk" data-pane="p3" onclick="pickRow(this,'p3')">
+              <td class="mono">--</td><td>候选 A<span class="demo-mark">界面占位</span></td><td><span class="tag purple">screened</span></td>
+              <td class="mono">--</td><td><span class="tag amber">提示</span></td><td>candidate · 待审批</td>
+            </tr>
+            <tr class="clk" data-pane="p4" onclick="pickRow(this,'p4')">
+              <td class="mono">--</td><td>候选 B<span class="demo-mark">界面占位</span></td><td><span class="tag purple">screened</span></td>
+              <td class="mono">--</td><td><span class="tag gray">无</span></td><td>candidate · 待审批</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">规则：<code>screened</code> 来源一律先进 <code>candidate</code>，智能体不能自己往股池塞票；评分与 PE 等未核实字段保持 <code>--</code>，不允许模型补数。</p>
+      </div>
+
+      <div class="card">
+        <h3>两市日内四象限 <span class="n">gap = 开/前收−1；intraday = 收/开−1；形态与涨跌分开存</span></h3>
+        <div class="quad">
+          <div class="qbox"><div class="qk">上证 · 11-17</div><div class="qv down">低开低走</div>
+            <div class="qn">前收 3602.57 / 开 3585.67 / 收 3584.58 · 来源 westock-data 日 K，取数 2026-11-19</div></div>
+          <div class="qbox"><div class="qk">上证 · 11-18</div><div class="qv amber" style="color:#BA7517">高开低走</div>
+            <div class="qn">前收 3584.58 / 开 3596.55 / 收 3587.83 · 当日仍 <span class="up">+0.09%</span> 收涨，形态 ≠ 涨跌</div></div>
+          <div class="qbox"><div class="qk">深证 · 11-17 / 11-18</div><div class="qv flat">--</div>
+            <div class="qn">原型未接入深市日 K，字段保留占位，不做推测</div></div>
+          <div class="qbox"><div class="qk">含金量六维</div><div class="qv flat">复用现有缓存</div>
+            <div class="qn">breadth / style / strength / phase / flow / cycle，无需新建数据管道</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="evi" id="eviB">
+      <div style="font-size:13px;font-weight:800;margin-bottom:2px">证据与解释</div>
+      <div class="sub" id="eviTitle" style="margin-bottom:10px">当前对象：000766 通化金马</div>
+      <div class="evi-tabs" id="tabsB">
+        <button class="on" data-p="p1" onclick="eviTab('p1')">事实账本</button>
+        <button data-p="p2" onclick="eviTab('p2')">并列假说</button>
+        <button data-p="p3" onclick="eviTab('p3')">反例与校准</button>
+        <button data-p="p4" onclick="eviTab('p4')">事前登记</button>
+      </div>
+
+      <div class="evi-pane on" id="p1">
+        <div class="fact"><div class="f-t">公告事实 · 一手</div>
+          <div class="f-b">琥珀酸安维吖啶片首次纳入 2026 版国家医保目录（乙类），协议期 2027-01-01 至 2028-12-31；支付标准、报销细则以国家医保局及各省公示为准。</div>
+          <div class="f-s">公告 2026-40 · 深交所 2026-11-15 16:11 · 上海证券报 2026-11-16 全文转载</div></div>
+        <div class="fact"><div class="f-t">行情事实 · 日 K</div>
+          <div class="f-b">11-16 / 17 / 18 三连跌停，分别 <span class="down">-10.00% / -9.97% / -10.02%</span>，收盘 14.85 / 13.37 / 12.03 元。11-19 收 11.07 元（<span class="down">-7.98%</span>），盘中触及跌停价 10.83 未封住，换手 4.98%、成交 5.36 亿元。</div>
+          <div class="f-s">westock-data 日 K，取数 2026-11-19 · 12.04 是 11-18 开盘价，非收盘价</div></div>
+        <div class="fact"><div class="f-t">异动公告 · 一手</div>
+          <div class="f-b">公告 2026-41 核查确认：无应披露未披露重大事项，经营与内外部环境未发生重大变化。即事件落地后未新增基本面利空。</div>
+          <div class="f-s">中国证券报 2026-11-19 报道，需以深交所公告原文为准</div></div>
+        <div class="fact" style="background:#f7f8fb"><div class="f-t">待核实线索 · 不进事实账本</div>
+          <div class="f-b">三季报具体数字、11-13 龙虎榜、融资余额、PE(TTM) 均来自 AI 异动稿件，<b>字段一律置 --</b>，只进待核实队列，不得用于计算。</div>
+          <div class="f-s">来源等级 C：其他智能体 / 自媒体稿件 = 线索，不是事实</div></div>
+      </div>
+
+      <div class="evi-pane" id="p2">
+        <p class="note" style="margin:0 0 9px">解释冲突<b>不裁决</b>。两条假说并列展示，各自带证伪条件与反例数；模型禁止合成第三种解释。</p>
+        <div class="hypo"><div class="f-t">H1 · 预期差与交易结构</div>
+          <div class="h-b">事件前已抢跑、支付标准未落地、协议期 2027 才执行，事件落地后分歧资金撤退；同一标的 6 个月内重复出现该模式。</div>
+          <div class="h-f"><b>证伪条件：</b>支付标准落地后若股价与成交未出现二次分歧，且 T+20 未跑输基准，则本假说削弱。</div>
+          <div class="h-f"><span class="pill">support 2</span><span class="pill">contradict 0</span><span class="pill">状态 待验证</span></div></div>
+        <div class="hypo"><div class="f-t">H2 · 板块与流动性共振</div>
+          <div class="h-b">高位创新药题材整体退潮叠加连续一字跌停导致流动性枯竭，属板块级现象而非个股独有。</div>
+          <div class="h-f"><b>证伪条件：</b>若同期同板块标的未同步走弱、或跌停打开后换手放大但个股仍独立新低，则本假说削弱。</div>
+          <div class="h-f"><span class="pill">support --</span><span class="pill">contradict --</span><span class="pill">状态 数据不足</span></div></div>
+        <div class="fact" style="background:#fdf7ec;border-color:#f6e2bb"><div class="f-t">事实口径冲突 · 确定性裁定</div>
+          <div class="f-b">「11-17 低开高走」vs 日 K 计算结果 → <b>低开低走</b>。此类冲突两行代码即可裁定，智能体只负责归类为 <code>fact_scope_conflict</code>，不得参与判断。</div></div>
+      </div>
+
+      <div class="evi-pane" id="p3">
+        <div class="fact"><div class="f-t">风险回避价值 <span class="tag gray">--</span></div>
+          <div class="f-b">复用项目已有 <code>barOf()</code> / <code>benchRet()</code> 回填 T+1 / T+5 / T+20、20 日最大回撤、超额收益。当前样本 18/30，未达门槛，不出数。</div></div>
+        <div class="fact"><div class="f-t">假警报率 <span class="tag gray">--</span></div>
+          <div class="f-b">必须与风险回避价值并列展示。只统计前者会让系统越来越保守，最终对每只票都报警，等于没有提示。</div></div>
+        <div class="fact"><div class="f-t">反例库 <code>counterexamples.jsonl</code></div>
+          <div class="f-b">记录「同样信号触发但后续上涨」的样本。没有反例库的经验库，本质是确认偏误放大器。当前录入 0 条。</div></div>
+        <div class="fact" style="background:#fdf7ec;border-color:#f6e2bb"><div class="f-t">提示语白名单</div>
+          <div class="f-b">只允许陈述事实、来源、样本数与不确定性。<b>禁止</b>出现「别买」「不接飞刀」「反弹即卖出」等操作判断。</div></div>
+      </div>
+
+      <div class="evi-pane" id="p4">
+        <div class="precommit tl-card">
+          <div class="t-h">事前登记 <span class="tag purple">precommit</span></div>
+          <div class="t-b">在结果出来之前写下预判与证伪条件；事后只做对照，不补写理由。没有事前登记的复盘不进入经验库。</div>
+        </div>
+        <label class="lb">我的预判（结果前填写）</label>
+        <textarea class="tx" id="pcText" placeholder="例：我判断该公告落地后 5 个交易日内跑输基准，理由是支付标准未公布导致预期差无法收敛。"></textarea>
+        <label class="lb">什么现象算我错（必填）</label>
+        <textarea class="tx" id="pcFalsify" placeholder="例：支付标准公布前股价已收复事件前高点，且 T+5 未跑输基准。"></textarea>
+        <div class="btn-row"><button class="btn pri" onclick="submitPrecommit()">登记为待验证假说</button></div>
+        <div class="status" id="pcStatus"></div>
+        <div style="margin-top:14px;font-size:12px;font-weight:700;margin-bottom:6px">待审队列 · 4 条</div>
+        <div class="fact"><div class="f-b">现有 4 条 pending 由同一批 18 条样本按 7 个维度切出，非独立证据；<b>建议全部标记「需复核、暂不采纳」</b>，先修 <code>statsOf()</code> 命中率与超额的样本口径。</div>
+          <div class="f-s">核验来源：server/journal.js、data/journal/lessons.jsonl，2026-11-19</div></div>
+        <label class="lb">审核动作（二次确认，不弹模态）</label>
+        <div class="btn-row">
+          <button class="btn" id="btnReview" onclick="reviewStep(1)">标记需复核</button>
+          <button class="btn danger" onclick="reviewStep(9)">驳回</button>
+        </div>
+        <div class="status" id="rvStatus"></div>
+        <p class="note">采纳后才允许回流：±2 分 / 乘数 0.8–1.25 / 不翻符号，并冻结基线 v0 作永久对照。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><b>数据口径</b>：本原型仅含已核实事实，均标注来源与时点；所有 <code>--</code> 为字段占位，非估算值。红涨绿跌按 A 股习惯。<b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+
+<div class="frame frame-hide" id="frameC">
+  <div class="topbar">
+    <div class="brand">GlobalMarketMonitor <small>复盘时间线</small></div>
+    <span class="badge">2026-11-19 周四 · 盘后</span>
+    <span class="badge gray">按日为主轴 · 事前登记优先</span>
+    <div class="sp"></div>
+    <input class="search" id="searchC" placeholder="按 / 聚焦口语录入" aria-label="搜索">
+    <div class="tgl" id="tglC" onclick="toggleAgent()"><span class="dot"></span><span id="tglTxtC">智能体层：开（可一键关闭）</span></div>
+  </div>
+
+  <div class="work work-c">
+    <div class="side">
+      <div class="side-lbl">时间轴</div>
+      <button class="nav on"><span class="ico">◷</span><span>11-19 今日<span class="sub">冲突并列 · 待回填</span></span></button>
+      <button class="nav"><span class="ico">◷</span><span>11-18<span class="sub">三连跌停 · 异动公告</span></span></button>
+      <button class="nav"><span class="ico">◷</span><span>11-17<span class="sub">叙述冲突已裁定</span></span></button>
+      <button class="nav"><span class="ico">◷</span><span>11-16<span class="sub">公告后首个交易日</span></span></button>
+      <button class="nav"><span class="ico">◷</span><span>11-15<span class="sub">公告 2026-40 挂网</span></span></button>
+      <button class="nav"><span class="ico">◷</span><span>11-13<span class="sub">事前登记示例</span></span></button>
+      <div class="side-lbl">筛选</div>
+      <button class="nav"><span class="ico">⚑</span><span>仅看 Flag</span></button>
+      <button class="nav"><span class="ico">◈</span><span>仅看待审</span></button>
+      <div class="side-foot">C 不是替代 B，而是 B 的「复盘」子页。PC 上以日为纵轴、口语录入常驻底部，最贴合经验累积的节奏。</div>
+    </div>
+
+    <div class="main">
+      <h1 class="h1">复盘时间线 · 000766</h1>
+      <p class="sub">每天一张卡：<b>事前怎么想 → 事实是什么 → 事后如何对照</b>。所有因果解释只能作为待验证假说，不能写成结论。</p>
+
+      <div class="card" style="background:#faf9ff;border-color:#ddd7f7">
+        <h3>今日口语录入 <span class="n">智能体只做归类与抽取，不补数字、不写因果</span></h3>
+        <textarea class="tx" id="oralText" placeholder="用你自己的话说说今天看到了什么、当时怎么想的……"></textarea>
+        <div class="btn-row">
+          <button class="btn pri" onclick="submitOral()">提交并抽取四元组</button>
+          <button class="btn" onclick="clearOral()">清空</button>
+        </div>
+        <div class="status" id="oralStatus"></div>
+        <p class="note">输出结构固定为「主张 / 证据 / 来源 / 时点」，字段缺失即拒绝；来源等级 C 的线索数字一律置 <code>--</code>。</p>
+      </div>
+
+      <div class="card">
+        <h3>事件链 <span class="n">原型示例条目均标「演示」，非真实交易记录</span></h3>
+
+        <div class="tl-day"><div class="tl-date gray"><b>11-13</b><span>事前</span><div class="node"></div></div>
+          <div class="tl-body"><div class="tl-card precommit">
+            <div class="t-h">事前登记示例 <span class="demo-mark">原型演示 · 非真实记录</span> <span class="tag purple">precommit</span></div>
+            <div class="t-b"><b>预判：</b>若公告落地后支付标准仍未公布，事件后 5 个交易日内可能跑输基准。<br>
+              <b>证伪条件：</b>支付标准公布前股价已收复事件前高点，且 T+5 未跑输基准。<br>
+              <b>登记时点：</b>必须在结果出来之前；事后补写一律不采信。</div>
+            <div class="t-s">字段契约：<code>experiences.jsonl</code> 的 precommit / falsifyCondition / registeredAt</div>
+          </div></div></div>
+
+        <div class="tl-day"><div class="tl-date"><b>11-15</b><span>公告</span><div class="node"></div></div>
+          <div class="tl-body"><div class="tl-card">
+            <div class="t-h">事实卡 <span class="tag blue">A 级 · 一手公告</span></div>
+            <div class="t-b">琥珀酸安维吖啶片首次纳入 2026 版国家医保目录（乙类），协议期 2027-01-01 至 2028-12-31；<b>支付标准未公布</b>，以国家医保局及各省公示为准。</div>
+            <div class="t-s">公告 2026-40 · 深交所 2026-11-15 16:11 · 上海证券报 2026-11-16 全文转载 · 归因字段明确写「不认定原因」</div>
+          </div></div></div>
+
+        <div class="tl-day"><div class="tl-date red"><b>11-16</b><span>至 11-18</span><div class="node"></div></div>
+          <div class="tl-body"><div class="tl-card">
+            <div class="t-h">结果回填 <span class="tag green">行情 · 已核实</span></div>
+            <div class="t-b">11-16 / 17 / 18 三连跌停 <span class="down">-10.00% / -9.97% / -10.02%</span>，收盘 14.85 / 13.37 / 12.03 元。11-18 公司公告 2026-41 确认无未披露重大事项、经营未发生重大变化 —— <b>事件落地后并无新增基本面利空</b>。</div>
+            <div class="t-s">westock-data 日 K，取数 2026-11-19；异动公告据中国证券报 2026-11-19 报道，需以深交所原文为准</div>
+          </div>
+          <div class="tl-card" style="background:#fdf7ec;border-color:#f6e2bb">
+            <div class="t-h">冲突并列 <span class="tag amber">narrative_conflict</span></div>
+            <div class="t-b">11-17 有稿件写「低开高走」；同附上证日 K 为前收 3602.57 / 开 3585.67 / 收 3584.58，按 <code>gap</code> 与 <code>intraday</code> 定义应为<b>低开低走</b>。</div>
+            <div class="conflict">
+              <div class="ca"><b>叙述层（C 级线索）</b>低开高走 · 来源：媒体稿件 · 不作事实采信</div>
+              <div class="cb"><b>行情层（确定性重算）</b>低开低走 · 来源：westock-data sh000001 日 K，取数 2026-11-19</div>
+            </div>
+            <div class="t-s">裁定方式：两行代码重算，不由模型裁决；模型只负责把该冲突归类为 fact_scope_conflict</div>
+          </div></div></div>
+
+        <div class="tl-day"><div class="tl-date red"><b>11-19</b><span>今日</span><div class="node"></div></div>
+          <div class="tl-body"><div class="tl-card">
+            <div class="t-h">事后对照 <span class="tag gray">T+1 / T+5 / T+20 待回填</span></div>
+            <div class="t-b">收 11.07 元（<span class="down">-7.98%</span>），盘中触及跌停价 10.83 未封住，换手 4.98%、成交 5.36 亿元。「跌停打开 + 放量换手」这个信号已经出现，当日仍收跌 —— <b>单日打开跌停不等于出清完成</b>。若系统把该信号直接当买入依据，今日就会误判。</div>
+            <div class="t-s">来源：westock-data 日 K，取数 2026-11-19 · 按日度纪律，信号需由后续行情反馈而非叙事判定</div>
+          </div></div></div>
+      </div>
+    </div>
+
+    <div class="evi" id="eviC">
+      <div style="font-size:13px;font-weight:800;margin-bottom:2px">经验沉淀</div>
+      <div class="sub" style="margin-bottom:10px">踩坑与成功走同一套晋升闸门</div>
+
+      <div class="card" style="padding:11px 12px">
+        <h3>双向经验 <span class="n">polarity</span></h3>
+        <div class="exp"><div class="e-h"><span class="tag red">pitfall</span> 事件前抢跑 + 关键价格未落地</div>
+          <div class="e-m">scope: stock · support 2 · contradict 0 · 状态 影子验证</div></div>
+        <div class="exp"><div class="e-h"><span class="tag green">win</span> 事前写下的证伪条件被行情证实</div>
+          <div class="e-m">scope: self · support 1 · contradict 0 · 状态 影子验证</div></div>
+        <div class="exp" style="background:#f7f8fb"><div class="e-h"><span class="tag gray">叙事案例 L3</span> 「五重因素共同导致跌停」</div>
+          <div class="e-m">事后组织、不可证伪 · <b>永不进评分</b>，只作阅读</div></div>
+        <p class="note">成功经验最容易事后编理由；没有 precommit 的「好经验」一律不采信，与踩坑经验同门槛。</p>
+      </div>
+
+      <div class="card" style="padding:11px 12px">
+        <h3>晋升阶梯 <span class="n">当前停在第 2 级</span></h3>
+        <div class="ladder">
+          <div><span class="st">1</span>事前登记 precommit ＋ 证伪条件</div>
+          <div><span class="st cur">2</span>影子验证 · 不改分、只记台账</div>
+          <div><span class="st">3</span>n≥30 · IC&gt;0.03 · IR&gt;0.5 · 样本外不劣化</div>
+          <div><span class="st">4</span>人工采纳（二次确认）</div>
+          <div><span class="st">5</span>有界回流 ±2 分 → 漂移检测 → 失效退役</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:11px 12px">
+        <h3>行为习惯 <span class="n">从 trades.jsonl 确定性算出</span></h3>
+        <div class="exp"><div class="e-h">处置效应 / 追高倾向 / 计划偏离度</div><div class="e-m">字段 <code>--</code> · 现有 holdings.json 缺卖出记录与买入时点上下文</div></div>
+        <div class="exp"><div class="e-h">复盘覆盖率 · 选择性记忆</div><div class="e-m">picks 2 / outcomes 18 / lessons 4 pending · rules.json count=0</div></div>
+        <p class="note">画像冲突时以行为为准，且<b>只影响提示显示与排序，不改分</b>。</p>
+      </div>
+
+      <div class="card" style="padding:11px 12px;background:#fdf7ec;border-color:#f6e2bb">
+        <h3>本页不做的事</h3>
+        <div style="font-size:12px;line-height:1.8">不写「因为 X 所以涨」；不给买卖结论；不自动下单；不把媒体稿件的数字当事实；不在样本 18/30 时计算胜率。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><b>数据口径</b>：本原型仅含已核实事实，均标注来源与时点；所有 <code>--</code> 为字段占位，非估算值。<b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+
+<script>
+var rvState = 0;
+var agentOn = true;
+
+function switchPlan(p) {
+  var b = document.getElementById('frameB');
+  var c = document.getElementById('frameC');
+  var bb = document.getElementById('btnB');
+  var bc = document.getElementById('btnC');
+  if (p === 'B') {
+    b.classList.remove('frame-hide');
+    c.classList.add('frame-hide');
+    bb.classList.add('on');
+    bc.classList.remove('on');
+  } else {
+    c.classList.remove('frame-hide');
+    b.classList.add('frame-hide');
+    bc.classList.add('on');
+    bb.classList.remove('on');
+  }
+}
+
+function eviTab(id) {
+  var panes = document.querySelectorAll('#eviB .evi-pane');
+  for (var i = 0; i < panes.length; i++) { panes[i].classList.remove('on'); }
+  var target = document.getElementById(id);
+  if (target) { target.classList.add('on'); }
+  var btns = document.querySelectorAll('#tabsB button');
+  for (var j = 0; j < btns.length; j++) {
+    btns[j].classList.toggle('on', btns[j].getAttribute('data-p') === id);
+  }
+}
+
+function pickRow(row, id) {
+  var rows = document.querySelectorAll('tr.clk');
+  for (var i = 0; i < rows.length; i++) { rows[i].classList.remove('on'); }
+  row.classList.add('on');
+  eviTab(id);
+  var t = document.getElementById('eviTitle');
+  var cells = row.querySelectorAll('td');
+  var name = cells[1].textContent.replace('界面占位', '').trim();
+  t.textContent = '当前对象：' + cells[0].textContent.trim() + ' ' + name;
+}
+
+function submitPrecommit() {
+  var a = document.getElementById('pcText').value.trim();
+  var b = document.getElementById('pcFalsify').value.trim();
+  var s = document.getElementById('pcStatus');
+  s.className = 'status show';
+  if (!a || !b) {
+    s.classList.add('warn');
+    s.textContent = '证伪条件为必填：没有可证伪条件的登记不进入经验库。';
+    return;
+  }
+  s.classList.add('ok');
+  s.textContent = '已登记为待验证假说（原型演示，未写入文件）。状态：影子验证 · 不改分。';
+  document.getElementById('pcText').value = '';
+  document.getElementById('pcFalsify').value = '';
+}
+
+function reviewStep(kind) {
+  var s = document.getElementById('rvStatus');
+  var btn = document.getElementById('btnReview');
+  s.className = 'status show';
+  if (kind === 9) {
+    rvState = 0;
+    btn.textContent = '标记需复核';
+    s.classList.add('warn');
+    s.textContent = '已驳回（原型演示）。驳回理由会写入 conflicts.jsonl 供后续核对。';
+    return;
+  }
+  if (rvState === 0) {
+    rvState = 1;
+    btn.textContent = '确认标记 4 条？';
+    s.classList.add('warn');
+    s.textContent = '二次确认：再次点击才生效，避免误采纳。';
+  } else {
+    rvState = 0;
+    btn.textContent = '标记需复核';
+    s.classList.remove('warn');
+    s.classList.add('ok');
+    s.textContent = '4 条 pending 已标记为「需复核、暂不采纳」。回流闸门保持关闭。';
+  }
+}
+
+function submitOral() {
+  var v = document.getElementById('oralText').value.trim();
+  var s = document.getElementById('oralStatus');
+  s.className = 'status show';
+  if (!v) {
+    s.classList.add('warn');
+    s.textContent = '录入为空。智能体不会替你补内容。';
+    return;
+  }
+  s.classList.add('ok');
+  s.textContent = '已抽取四元组（原型演示）：主张 1 条 / 证据待核对 / 来源 user_note / 时点取系统时间。数字字段一律置 --。';
+}
+
+function clearOral() {
+  document.getElementById('oralText').value = '';
+  document.getElementById('oralStatus').className = 'status';
+}
+
+function toggleAgent() {
+  agentOn = !agentOn;
+  var ids = ['tglB', 'tglC'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (!el) { continue; }
+    el.classList.toggle('off', !agentOn);
+  }
+  var t1 = document.getElementById('tglTxt');
+  var t2 = document.getElementById('tglTxtC');
+  var txt = agentOn ? '智能体层：开（可一键关闭）' : '智能体层：关 · 仅确定性结果';
+  if (t1) { t1.textContent = txt; }
+  if (t2) { t2.textContent = txt; }
+  var e1 = document.getElementById('eviB');
+  var e2 = document.getElementById('eviC');
+  if (e1) { e1.classList.toggle('off', !agentOn); }
+  if (e2) { e2.classList.toggle('off', !agentOn); }
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === '/' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    var visible = !document.getElementById('frameC').classList.contains('frame-hide');
+    var el = document.getElementById(visible ? 'searchC' : 'searchB');
+    if (el) { el.focus(); }
+  }
+  if (e.key === 'Escape') {
+    var ev = document.getElementById('eviB');
+    if (ev) { ev.classList.toggle('off'); }
+  }
+});
+</script>
+</body>
+</html>

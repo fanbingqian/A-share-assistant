@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>市场智能助手</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/v2/v2.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- 左侧导航 -->
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">M</div>
+      <div class="brand-text">
+        <strong>市场智能助手</strong>
+        <span>Market Intelligence</span>
+      </div>
+    </div>
+
+    <div class="nav-list">
+      <button class="nav-item active" data-view="calendar">
+        <span class="nav-ico">▦</span><span>日程与事件</span>
+        <span class="nav-badge zero" id="ufBadge-calendar" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item" data-view="newsflash">
+        <span class="nav-ico">◉</span><span>新闻快讯</span>
+        <span class="nav-badge zero" id="ufBadge-newsflash" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item" data-view="market">
+        <span class="nav-ico">▤</span><span>每日行情</span>
+        <span class="nav-badge zero" id="ufBadge-market" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item" data-view="portfolio">
+        <span class="nav-ico">◎</span><span>我的股池</span>
+        <span class="nav-badge zero" id="ufBadge-portfolio" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item nav-chat-mobile" data-view="chat">
+        <span class="nav-ico">◇</span><span>对话</span>
+        <span class="nav-badge zero" id="ufBadge-chat" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item" data-view="knowledge">
+        <span class="nav-ico">⌘</span><span>个人知识库</span>
+        <span class="nav-badge zero" id="ufBadge-knowledge" title="自上次查看以来的更新条数">0</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <span class="nav-ico">⚙</span><span>设置</span>
+        <span class="nav-badge zero" id="ufBadge-settings" title="自上次查看以来的更新条数">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-foot">
+      <button class="uf-entry" id="btnUpdateFeed" title="查看各板块真实更新动态">
+        <span class="uf-entry-ico">◷</span><span>更新动态</span><span class="uf-entry-badge zero" id="ufEntryBadge">0</span>
+      </button>
+      <div class="agent-chip" id="agentChip">
+        <span class="agent-dot"></span>
+        <span class="agent-label">智能体</span>
+        <span class="agent-backend" id="agentBackend">连接中…</span>
+      </div>
+      <button class="legacy-link" id="btnLegacy" title="打开旧版完整监测面板">旧版完整面板 →</button>
+      <div class="disclaimer-mini">仅信息监测，不构成投资建议</div>
+    </div>
+  </nav>
+
+  <!-- 中间内容区 -->
+  <main class="content" id="content">
+
+    <!-- 日程与事件 -->
+    <section class="view active" id="view-calendar">
+      <header class="view-head">
+        <div>
+          <h1>日程与事件</h1>
+          <p class="sub">万年日历 · 确定性财经事件 · A股周期事件 · 自动提醒</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btnReminders">查看提醒</button>
+          <button class="btn" id="btnAddEvent">+ 添加事件</button>
+        </div>
+      </header>
+      <div class="cal-layout">
+        <div class="card cal-card">
+          <div class="cal-toolbar">
+            <button class="cal-nav" id="calPrev">‹</button>
+            <select id="calYear" class="cal-select"></select>
+            <select id="calMonth" class="cal-select"></select>
+            <button class="cal-nav" id="calNext">›</button>
+            <button class="cal-today" id="calToday">今天</button>
+          </div>
+          <div class="cal-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <span><i class="dot g-A"></i>A 已确认</span>
+            <span><i class="dot g-B"></i>B 待核实</span>
+            <span><i class="dot g-C"></i>C 季节性</span>
+            <span><i class="dot g-user"></i>自定义</span>
+            <span><i class="bar cal-span-legend"></i>跨天行程（连续色条）</span>
+            <span class="cal-legend-tip">点击词条看详情 · 点「+N 条」看当日全部 · 点日期看当日事件</span>
+          </div>
+        </div>
+        <div class="card cal-side">
+          <!-- 常驻：当日事件（不折叠，点日历日期即刷新） -->
+          <div class="cal-sec cal-sec-fixed">
+            <h3 id="calDayTitle">当日事件</h3>
+            <div id="calDayEvents" class="day-events"><div class="empty">点击日历中带标记的日期查看事件</div></div>
+          </div>
+
+          <!-- 可折叠：未来 30 天 -->
+          <section class="cal-sec" data-sec="upcoming">
+            <button type="button" class="cal-sec-head" data-sec="upcoming" data-toggle="calSecUpcoming" aria-expanded="false">
+              <span class="cal-sec-chev">▸</span>
+              <span class="cal-sec-title">未来 30 天</span>
+              <span class="cal-sec-note" id="calUpcomingSub">点击展开</span>
+              <span class="cal-sec-tag">折叠</span>
+            </button>
+            <div class="cal-sec-body" id="calSecUpcoming" hidden>
+              <div id="calUpcoming" class="upcoming-list"><div class="empty">加载中…</div></div>
+            </div>
+          </section>
+
+          <!-- 可折叠：事件历史统计 -->
+          <section class="cal-sec" data-sec="study">
+            <button type="button" class="cal-sec-head" data-sec="study" data-toggle="calSecStudy" aria-expanded="false">
+              <span class="cal-sec-chev">▸</span>
+              <span class="cal-sec-title">事件历史统计（近2年）</span>
+              <span class="cal-sec-note">统计口径 / 样本</span>
+              <span class="cal-sec-tag">折叠</span>
+            </button>
+            <div class="cal-sec-body" id="calSecStudy" hidden>
+              <div class="cal-sec-tools"><button class="mini-btn" id="btnEventStudyRefresh" title="重新抓取日线并计算">刷新统计</button></div>
+              <div id="eventStudyBox" class="event-study-box"><div class="empty">加载中…</div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- 新闻快讯：政策快讯（自每日行情迁入）+ 今日新闻流 + 公司公告线索（自日程与事件迁入）+ 新闻监控 -->
+    <section class="view" id="view-newsflash">
+      <header class="view-head">
+        <div>
+          <h1>新闻快讯</h1>
+          <p class="sub">政策快讯 · 今日新闻流 · 公司公告线索 · 新闻源与板块消息面监控 <span class="stamp" id="newsFlashStamp"></span></p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btnNewsFlashRefresh">立即刷新</button>
+          <button class="btn primary" id="btnNewsDailyAI">✦ 智能体解读今日新闻</button>
+        </div>
+      </header>
+
+      <div class="nf-layout">
+      <div class="nf-main">
+
+      <!-- 今日整体解读报告（可折叠，结构化文字） -->
+      <div class="card nf-report nf-report-card hidden open" id="newsDailyCard">
+        <div class="nf-report-head" id="newsDailyHead" role="button" tabindex="0" aria-expanded="true" title="点击折叠 / 展开">
+          <span class="nf-report-ico">▾</span>
+          <b>今日新闻整体解读</b>
+          <span class="nf-report-meta" id="newsDailyMeta"></span>
+          <button type="button" class="nf-fold-btn" id="newsDailyFold">收起 ▴</button>
+        </div>
+        <div class="ai-text nf-report-text md-body" id="newsDailyText"></div>
+      </div>
+
+      <!-- 今日新闻流：每条带智能体单条解读 -->
+      <div class="card nf-feed-card">
+        <div class="nf-sec-head">
+          <div><b>今日新闻流</b><span class="note" id="newsFeedMeta">读取中…</span></div>
+          <div class="nf-filters" id="newsFeedFilter">
+            <button type="button" class="nf-fbtn active" data-kind="all">全部</button>
+            <button type="button" class="nf-fbtn" data-kind="policy">政策</button>
+            <button type="button" class="nf-fbtn" data-kind="company">公司公告</button>
+            <button type="button" class="nf-fbtn" data-kind="other">其他</button>
+          </div>
+        </div>
+        <p class="note">每条新闻可点「✦ 智能体解读」做单条结构化解读；解读只引用新闻原文与系统真实标的清单，不给买卖指令。</p>
+        <div id="newsFeedBox"><div class="empty">正在读取今日新闻…</div></div>
+      </div>
+
+      <!-- 政策与监管快讯（原「每日行情 → 政策快讯」整体迁入，id 全部保留） -->
+      <div class="card policy-head-card">
+        <div class="policy-head-row">
+          <div><b>政策与监管快讯</b> <span class="tab-badge" id="policyBadge" style="display:none">0</span><span class="note" id="policyMeta">正在读取…</span></div>
+          <div class="head-inline-btns">
+            <button class="btn tiny ghost" id="btnPolicyTriage" title="生成候选新闻快照，让 Hermes 智能体做价值分级">智能体筛选</button>
+            <button class="btn ghost" id="btnPolicyRefresh">立即刷新</button>
+          </div>
+        </div>
+        <p class="note">按政策关键词权重筛选，标注来源与时点；仅为新闻线索，不表示涨跌方向或买卖建议。</p>
+        <div id="policyTriageBox" class="policy-triage-box hidden"></div>
+      </div>
+      <div class="card" id="policyNewsBox"><div class="empty">正在读取政策快讯…</div></div>
+
+      <!-- 公司公告 / 待复核新闻线索（原「日程与事件 → 新闻未来事件扫描」整体迁入） -->
+      <div class="card fe-card">
+        <div class="fe-head">
+          <div><b>公司公告 / 待复核新闻线索</b><span class="note" id="feMeta">读取中…</span></div>
+          <span class="head-inline-btns"><button class="btn tiny ghost" id="btnFutureScan">立即扫描</button></span>
+        </div>
+        <p class="note">回购、增减持、停复牌等个股公告属于「新闻线索」，已不再在日程与事件里显示。扫描服务内存中的全部新闻，只把「带确定时间且对 A 股有影响」的内容自动写入日历；未命中影响词的进入待复核队列，不静默丢弃。相对时间与周期规律一律标注来源与确认级别。</p>
+        <div id="feCoverage" class="fe-coverage"><div class="empty">读取中…</div></div>
+        <div class="fe-review-title">待复核队列 <span class="note" id="feCompanyCount"></span><button class="mini-btn" id="btnFeReviewToggle">展开 / 收起</button></div>
+        <div id="feReview" class="fe-review" style="display:none"><div class="empty">读取中…</div></div>
+      </div>
+      </div><!-- /nf-main -->
+
+      <!-- 右侧辅助栏：新闻监控概览（点击卡片以弹窗查看全部信息） -->
+      <aside class="nf-aside">
+        <div class="card nf-monitor-card" id="nfMonitorCard" role="button" tabindex="0"
+             title="点击以弹窗查看本板块全部信息" aria-label="新闻监控概览，点击查看详情">
+          <div class="nf-sec-head">
+            <div><b>新闻监控概览</b><span class="note" id="newsFlashMeta">读取中…</span></div>
+            <span class="nf-open-btn" aria-hidden="true">全部 ⤢</span>
+          </div>
+          <div class="nf-bias-mini" id="nfBiasMini"><div class="empty">读取中…</div></div>
+
+          <!-- 股市板块消息面排名（真实东财行业板块 BK 代码 · 贝叶斯收缩 · 随新闻实时重算） -->
+          <div class="nf-rank-box" id="nfBoardRankBox"><div class="empty">读取中…</div></div>
+
+          <div class="nf-kpi-row" id="newsFlashKpi"><div class="empty">读取中…</div></div>
+          <div class="nf-monitor-grid">
+            <div class="nf-monitor-col">
+              <div class="nf-sub-title">主题词消息面 <span class="note">关键词近似 · 供参考</span></div>
+              <div id="newsSectorBox"><div class="empty">读取中…</div></div>
+            </div>
+            <div class="nf-monitor-col">
+              <div class="nf-sub-title">新闻源健康 <span class="note">本次抓取条数</span></div>
+              <div id="newsHealthBox"><div class="empty">读取中…</div></div>
+            </div>
+          </div>
+          <p class="note nf-card-tip">点击卡片查看全部信息 · 排名为真实股市板块消息面，非涨跌预测</p>
+        </div>
+      </aside>
+      </div><!-- /nf-layout -->
+    </section>
+
+    <!-- 每日行情 -->
+    <section class="view" id="view-market">
+      <header class="view-head">
+        <div>
+          <h1>每日行情</h1>
+          <p class="sub">两市监控 · 板块资金 · 三类选股 <span class="stamp" id="marketStamp"></span></p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btnMarketRefresh">刷新数据</button>
+          <button class="btn" id="btnMarketAI">智能体解读</button>
+        </div>
+      </header>
+
+      <div class="tabs" id="marketTabs">
+        <button class="tab active" data-tab="two">两市预测与监控</button>
+        <button class="tab" data-tab="sector">板块监控</button>
+        <button class="tab" data-tab="picks">三类选股</button>
+      </div>
+
+      <!-- 两市 -->
+      <div class="tab-panel active" id="mtwo">
+        <div class="card" id="marketMonitorBox"><div class="empty">正在读取两市量能数据…</div></div>
+        <div class="card" id="globalQuotesBox">
+          <div class="gq-head">
+            <div><b>全球市场监控</b> <span class="note">全球股指 · 黄金 / 原油 · 比特币 · 美债 / 美元</span></div>
+            <span class="gq-stamp" id="globalQuotesStamp">等待行情推送…</span>
+          </div>
+          <div id="globalQuotesBody"><div class="empty">正在读取全球行情…</div></div>
+        </div>
+        <div class="card ai-box" id="marketForecastBox">
+          <div class="ai-box-head"><span class="ai-tag">智能体预测</span><span class="note" id="forecastStatus">依据数据生成，可证伪</span></div>
+          <div id="marketForecastText" class="ai-text"><div class="empty">点击「智能体解读」生成方向依据</div></div>
+        </div>
+      </div>
+
+      <!-- 板块 -->
+      <div class="tab-panel" id="msector">
+        <div class="card" id="sectorBox"><div class="empty">正在读取板块数据…</div></div>
+        <div class="card ai-box" id="sectorAiBox" style="display:none">
+          <div class="ai-box-head"><span class="ai-tag">智能体分析</span></div>
+          <div id="sectorAiText" class="ai-text"></div>
+        </div>
+      </div>
+
+      <!-- 选股：四类量化策略合并到同一板块，每只标注类别；含短线情绪与次日双池 -->
+      <div class="tab-panel" id="mpicks">
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>短线情绪 · 三项指标</h3>
+            <span class="note" id="sentimentMeta"></span>
+            <span class="head-inline-btns"><button class="btn tiny ghost" id="btnSentimentRefresh">重新计算</button></span>
+          </div>
+          <div class="card" id="sentimentBox"><div class="empty">读取情绪指标…</div></div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>选股池 · 四类量化策略（趋势 / 低吸 / 打板 / 趋势突破）</h3>
+            <span class="note" id="unifiedNote"></span>
+          </div>
+          <div class="pick-filter" id="pickFilter">
+            <button class="pf-btn active" data-kind="all">全部</button>
+            <button class="pf-btn" data-kind="trend">趋势</button>
+            <button class="pf-btn" data-kind="dip">低吸</button>
+            <button class="pf-btn" data-kind="board">打板</button>
+            <button class="pf-btn" data-kind="breakout">趋势突破</button>
+            <button class="pf-btn" data-kind="leader">★ 板块领跑</button>
+            <button class="pf-btn" data-kind="follower">↳ 跟随候选</button>
+          </div>
+          <div class="card" id="unifiedBox"><div class="empty">读取选股池…</div></div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>市场级量化标注 <span class="note">板块带动 / 哑铃效应 / 经验核对 / 回购价格偏离</span></h3>
+            <span class="head-inline-btns"><button class="btn tiny ghost" id="btnRegimeToggle">展开 / 收起</button></span>
+          </div>
+          <div class="card" id="regimeBox" hidden><div class="empty">读取技术标注…</div></div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>盘后复盘专家团 <span class="note">智能体不参与预判 · 技术面 / 资金面 / 消息面 / 风控四角色</span></h3>
+            <span class="head-inline-btns"><button class="btn tiny ghost" id="btnReviewTeamNoAI">仅程序事实</button><button class="btn tiny primary" id="btnReviewTeam">生成复盘</button></span>
+          </div>
+          <div class="card" id="reviewTeamBox"><div class="empty">点击「生成复盘」对当日重点关注股与已买入持仓做盘后结构化复盘。</div></div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head"><h3>板块领跑股 → 跟随候选</h3><span class="note">同行业内程序判定的相对领先与跟随，非荐股结论</span></div>
+          <div class="card" id="leaderFollowBox"><div class="empty">读取领跑与跟随…</div></div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>次日备选观察池 / 风险规避池</h3>
+            <span class="note" id="poolsMeta"></span>
+          </div>
+          <div class="pools-grid">
+            <div class="card"><h4 class="pool-title watch">次日备选观察池 <span class="note" id="watchPoolCnt"></span></h4><div id="watchPoolBox"><div class="empty">读取观察池…</div></div></div>
+            <div class="card"><h4 class="pool-title risk">风险规避池 <span class="note" id="riskPoolCnt"></span></h4><div id="riskPoolBox"><div class="empty">读取风险池…</div></div></div>
+          </div>
+        </div>
+        <div class="pick-group">
+          <div class="pick-head">
+            <h3>预测股票池 · 09:05 定格 / 当晚复盘</h3>
+            <span class="note" id="pickPoolNote"></span>
+            <span class="head-inline-btns"><button class="btn tiny ghost" id="btnPoolFreeze">立即定格</button><button class="btn tiny ghost" id="btnPoolReview">立即复盘</button></span>
+          </div>
+          <div class="card" id="pickPoolBox"><div class="empty">读取预测股票池…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 我的股池 -->
+    <section class="view" id="view-portfolio">
+      <header class="view-head">
+        <div>
+          <h1>我的股池</h1>
+          <p class="sub">今日上午确定 · 我的选股 · 已卖出；人工记录不参与评分</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btnRefreshQuotes">刷新行情</button>
+          <button class="btn" id="btnAddSold">+ 记录卖出</button>
+        </div>
+      </header>
+      <div class="tabs" id="portfolioTabs">
+        <button class="tab active" data-tab="morning">今日上午确定 <span id="cntMorning" class="tab-cnt">0</span></button>
+        <button class="tab" data-tab="mine">我的选股 <span id="cntMine" class="tab-cnt">0</span></button>
+        <button class="tab" data-tab="sold">已卖出 <span id="cntSold" class="tab-cnt">0</span></button>
+      </div>
+      <div class="tab-panel active" id="pmorning">
+        <div class="card">
+          <h3 class="card-title">今日上午确定（09:05 预测池） <span id="morningMeta" class="note"></span></h3>
+          <div id="morningPoolList" class="stock-list"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+      <div class="tab-panel" id="pmine">
+        <div class="card">
+          <h3 class="card-title">我的选股（关注清单）</h3>
+          <div id="watchPicks" class="stock-list"><div class="empty">加载中…</div></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">当前持仓</h3>
+          <div id="watchHoldings" class="stock-list"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+      <div class="tab-panel" id="psold">
+        <div class="card">
+          <h3 class="card-title">卖出记录（复盘用）</h3>
+          <div id="soldList" class="sold-list"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 对话（移动端/聚焦） -->
+    <section class="view" id="view-chat">
+      <header class="view-head">
+        <div>
+          <h1>对话</h1>
+          <p class="sub">核心智能体了解你的整个板块数据</p>
+        </div>
+      </header>
+      <div class="card chat-focus-card">
+        <div class="big-chat-ico">◇</div>
+        <h2>智能体常驻在右侧</h2>
+        <p>右侧对话面板在全部页面始终可用，并已注入全局数据快照（两市、板块、股池、评分、事件）。</p>
+        <p class="note">你可以直接问：「今天量能怎么样」「哪些板块有持续资金流入」「解释一下我的股池」。</p>
+        <button class="btn" id="btnFocusChat">聚焦对话输入框</button>
+      </div>
+    </section>
+
+    <!-- 个人知识库 -->
+    <section class="view" id="view-knowledge">
+      <header class="view-head kb-view-head">
+        <div>
+          <h1>个人知识库</h1>
+          <p class="sub">本地 md 词条 · 知识图谱 · 智能体整理</p>
+        </div>
+        <div class="head-actions">
+          <div class="kb-mode-switch" id="kbModeSwitch">
+            <button class="kb-mode-btn active" data-mode="graph">◉ 知识图谱</button>
+            <button class="kb-mode-btn" data-mode="entries">☰ 知识词条</button>
+            <button class="kb-mode-btn" data-mode="history">⟳ 更新历史</button>
+            <button class="kb-mode-btn" data-mode="hygiene">⚑ 数据质量</button>
+          </div>
+          <button class="btn ghost" id="btnOrganize">整理为图谱</button>
+          <button class="btn primary" id="btnAddNote">+ 记一条</button>
+        </div>
+      </header>
+
+      <!-- 图谱视图：铺满面板 -->
+      <div class="kb-mode-panel active" id="kbPanelGraph">
+        <div class="kb-graph-full">
+          <div class="kb-graph-topbar">
+            <span class="note" id="graphStats">—</span>
+            <div class="graph-tools">
+              <div class="kg-source-switch" id="kgSourceSwitch">
+                <button class="kg-src-btn active" data-src="unified" title="全板块统一图谱（行情/选股/股池/情绪/新闻/事件/经验…）">全板块</button>
+                <button class="kg-src-btn" data-src="legacy" title="个人经验/概念图谱">经验词条</button>
+              </div>
+              <div class="kg-dim-switch" id="kgDimSwitch">
+                <button class="kg-dim-btn" data-dim="2d" title="2D 力导向图">2D</button>
+                <button class="kg-dim-btn active" data-dim="3d" title="3D 力导向图（WebGL）">3D</button>
+              </div>
+              <input id="graphSearch" class="mini-input" placeholder="搜索节点 / 图谱提问…">
+              <button class="btn tiny ghost" id="graphFitBtn" title="适应视图">⤢ 适应</button>
+              <button class="btn tiny ghost" id="graphSettingsBtn" title="显示参数">⚙ 参数</button>
+              <button class="btn tiny ghost" id="graphResetBtn" title="恢复默认布局（2D 参数）">↺</button>
+              <button class="btn tiny ghost" id="btnKgRebuild" title="重建全板块图谱（重新读取所有数据）">⟳ 重建图谱</button>
+            </div>
+          </div>
+          <div class="graph-legend" id="graphLegend"></div>
+          <div id="graphWrap" class="graph-wrap"><div class="empty">整理笔记后显示图谱</div></div>
+          <div class="graph-detail hidden" id="graphDetail"></div>
+          <div class="graph-settings hidden" id="graphSettings">
+            <div class="gs-title">图谱参数 <span class="note">自动保存到本机</span></div>
+            <div class="gs-grid" id="gsGrid"></div>
+            <label class="gs-check"><input type="checkbox" id="gsOrphans" checked> 显示孤岛节点</label>
+            <label class="gs-check"><input type="checkbox" id="gsArrows"> 显示边箭头</label>
+          </div>
+          <div class="kb-ask">
+            <input id="kbAskInput" placeholder="基于你的知识库提问…">
+            <button class="btn tiny" id="kbAskBtn">提问</button>
+          </div>
+          <div id="kbAnswer" class="kb-answer"></div>
+        </div>
+      </div>
+
+      <!-- 知识词条视图：本地 md 文档列表 -->
+      <div class="kb-mode-panel" id="kbPanelEntries">
+        <div class="kb-entries-toolbar">
+          <div class="kb-entries-title"><h3>知识词条 <span class="note" id="entriesMeta">本地 md 文档</span></h3></div>
+          <div class="head-actions">
+            <button class="btn tiny ghost" id="btnExportEntries">导出为 md</button>
+            <button class="btn tiny ghost" id="btnReloadEntries">↺ 重新读取</button>
+          </div>
+        </div>
+        <p class="kb-entries-hint note">词条以 Markdown 文件保存在本机 <code>data/knowledge/entries/</code>，可直接编辑；图谱由这些词条与问答整理生成。</p>
+        <div id="entryList" class="entry-list"><div class="empty">读取词条中…</div></div>
+        <div class="entry-editor hidden" id="entryEditor">
+          <div class="entry-editor-head"><b id="entryEditorTitle">词条编辑</b><button class="btn tiny ghost" id="entryEditorClose">关闭</button></div>
+          <textarea id="entryEditorText" spellcheck="false"></textarea>
+          <div class="entry-editor-foot"><span class="note">编辑本地 md 文件，保存后立即生效</span><button class="btn tiny" id="entryEditorSave">保存</button></div>
+        </div>
+      </div>
+
+      <!-- 更新历史视图：双时态时序知识图谱（被取代的事实 / 实体合并 / 时点回溯） -->
+      <div class="kb-mode-panel" id="kbPanelHistory">
+        <div class="kg-history-head">
+          <div>
+            <h3>知识图谱更新历史 <span class="note">双时态 · 事实更新不删除旧值</span></h3>
+            <p class="note" id="kgHistoryMeta">读取中…</p>
+          </div>
+          <div class="head-actions">
+            <div class="kg-asof">
+              <input type="datetime-local" id="kgAsofInput" class="mini-input" title="时点回溯：系统在那一刻相信什么">
+              <button class="btn tiny ghost" id="btnKgAsof">回溯</button>
+            </div>
+            <button class="btn tiny ghost" id="btnKgHistoryReload">↺ 刷新</button>
+          </div>
+        </div>
+        <div class="kg-asof-result hidden" id="kgAsofResult"></div>
+        <div class="kg-history-list" id="kgHistoryList"><div class="empty">读取中…</div></div>
+      </div>
+
+      <!-- 数据质量视图：垃圾信息处理 -->
+      <div class="kb-mode-panel" id="kbPanelHygiene">
+        <div class="kg-hygiene-head">
+          <div>
+            <h3>数据质量 / 垃圾信息处理 <span class="note">默认只报告，不自动删除</span></h3>
+            <p class="note" id="kgHygieneMeta">读取中…</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn tiny ghost" id="btnKgHygieneScan">⟳ 重新扫描</button>
+            <button class="btn tiny ghost" id="btnKgHygieneClean" title="只执行可逆处置（归档/隐藏），不物理删除">执行可逆清理</button>
+          </div>
+        </div>
+        <div class="kg-hygiene-summary" id="kgHygieneSummary"></div>
+        <div class="kg-hygiene-list" id="kgHygieneList"><div class="empty">读取中…</div></div>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="view" id="view-settings">
+      <header class="view-head">
+        <div>
+          <h1>设置</h1>
+          <p class="sub">轮询频率 · 新闻告警 · 智能体 · 数据模块 · 本机存储</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn ghost" id="btnResetConfig">恢复默认</button>
+          <button class="btn primary" id="btnSaveConfig">保存设置</button>
+        </div>
+      </header>
+      <div class="card agent-diag" id="agentDiagBox">
+        <div class="agent-diag-head">
+          <div>
+            <b>智能体大模型 · 状态与连通性检测</b>
+            <div class="note">下方配置修改后需点「保存设置」；检测会向官方 Hermes 与 DeepSeek 各发起一次真实最小请求（约 16 token，产生极少费用）</div>
+          </div>
+          <button class="btn ghost" id="btnAgentTest">发起连通性检测</button>
+        </div>
+        <div id="agentDiagBody" class="agent-diag-body"><span class="note">读取中…</span></div>
+        <div id="agentTestResult" class="agent-test-result"><span class="note">尚未检测</span></div>
+      </div>
+      <div class="settings-grid" id="settingsGrid"><div class="empty">读取配置中…</div></div>
+      <div class="card settings-store">
+        <h3>本机存储与数据源</h3>
+        <div id="settingsStore" class="settings-store-body">读取中…</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 右侧常驻对话 -->
+  <aside class="chatpanel" id="chatpanel">
+    <div class="chat-head">
+      <div class="chat-title"><span class="chat-avatar">H</span><div><strong>Hermes 智能体</strong><span id="chatBackend">DeepSeek 驱动</span></div></div>
+      <div class="chat-head-actions">
+        <button class="chat-sessions-btn" id="btnChatSessions" title="会话列表">☰</button>
+        <button class="chat-clear" id="btnChatClear" title="清空当前会话">清空</button>
+        <button class="chat-min" id="btnChatMin" title="最小化对话（保留竖条）">−</button>
+        <button class="chat-hide" id="btnChatHide" title="侧推隐藏对话（完全收起）">»</button>
+      </div>
+    </div>
+    <div class="chat-context" id="chatContext">已注入全局数据快照</div>
+    <div class="chat-mode-bar">
+      <label class="chat-mode-toggle" title="Agent 模式：智能体自己决定调用哪些数据工具，并显示思考时用了什么">
+        <input type="checkbox" id="chatAgentMode" checked>
+        <span class="cmt-track"><span class="cmt-dot"></span></span>
+        <span class="cmt-label">Agent 模式 · 工具取证</span>
+      </label>
+      <button class="chat-tools-btn" id="btnAgentTools" title="查看智能体可调用的数据工具">工具 <span id="chatToolCount">—</span></button>
+    </div>
+    <!-- 会话列表浮层：新建 / 切换 / 搜索 / 重命名 / 删除 -->
+    <div class="chat-sessions hidden" id="chatSessions">
+      <div class="cs-head">
+        <strong>对话会话</strong>
+        <button class="cs-close" id="btnCsClose" title="关闭">×</button>
+      </div>
+      <div class="cs-tools">
+        <input type="text" id="csSearch" placeholder="搜索历史对话内容…" autocomplete="off" />
+        <button id="btnCsNew" title="新建会话">＋新建</button>
+      </div>
+      <div class="cs-list" id="csList"><div class="empty">加载中…</div></div>
+      <div class="cs-results hidden" id="csResults"></div>
+      <div class="cs-tip">单击切换 · 双击重命名 · 右侧 × 删除</div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="msg assistant">
+        <div class="msg-bubble">你好，我是贯穿全部模块的核心智能体。我能看到两市量能、板块资金、你的股池与事件日历。有什么想了解的？</div>
+      </div>
+    </div>
+    <div class="chat-quick" id="chatQuick">
+      <button data-q="今天两市量能如何，整体动力怎么样？">今天量能如何</button>
+      <button data-q="哪些板块有持续资金流入，哪些具备中长期强势？">板块资金流向</button>
+      <button data-q="用一句话说明我的三类选股各自的特征和风险。">解读三类选股</button>
+    </div>
+    <div class="chat-input-wrap">
+      <textarea id="chatInput" placeholder="问我任何关于市场、板块、股池的问题…" rows="2"></textarea>
+      <button class="chat-send" id="btnChatSend" title="发送">➤</button>
+    </div>
+    <div class="chat-foot">禁买卖建议 · 数字可追溯 · 不改评分</div>
+  </aside>
+
+  <!-- 侧推隐藏后的悬浮拉回把手 -->
+  <button class="chat-reopen hidden" id="btnChatReopen" title="展开对话面板（侧推隐藏）">
+    <span class="chat-reopen-ico">◇</span><span>对话</span><span class="chat-reopen-dot" id="chatReopenDot"></span>
+  </button>
+
+  <!-- 全局「更新动态」抽屉：按板块列出真实更新事件，未读高亮 -->
+  <div class="uf-mask hidden" id="ufMask"></div>
+  <aside class="uf-drawer hidden" id="ufDrawer">
+    <div class="uf-drawer-head">
+      <div><strong>更新动态</strong><span class="note" id="ufDrawerMeta">读取中…</span></div>
+      <div class="uf-drawer-actions">
+        <button class="btn tiny ghost" id="btnUfDetailToggle" title="展开/收起每条更新的详细内容">展开详情</button>
+        <button class="btn tiny ghost" id="btnUfSeenAll">全部已读</button>
+        <button class="uf-drawer-x" id="btnUfClose" title="关闭">✕</button>
+      </div>
+    </div>
+    <div class="uf-tabs" id="ufTabs">
+      <button class="uf-tab active" data-view="all">全部</button>
+      <button class="uf-tab" data-view="calendar">日程</button>
+      <button class="uf-tab" data-view="newsflash">快讯</button>
+      <button class="uf-tab" data-view="market">行情</button>
+      <button class="uf-tab" data-view="portfolio">股池</button>
+      <button class="uf-tab" data-view="knowledge">知识库</button>
+      <button class="uf-tab" data-view="settings">设置</button>
+    </div>
+    <div class="uf-list" id="ufList"><div class="empty">读取中…</div></div>
+    <div class="uf-drawer-foot">每条事件对应一次真实数据更新（SSE 推送或定时任务），高频刷新按窗口聚合计数。</div>
+  </aside>
+
+</div>
+
+<!-- 弹框：添加事件 -->
+<div class="modal-mask hidden" id="modalEventMask"></div>
+<div class="modal hidden" id="modalEvent">
+  <div class="modal-head"><h3>添加事件</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body">
+    <label>日期<input type="date" id="evDate"></label>
+    <label>名称<input id="evName" placeholder="如：某公司业绩发布 / 展会"></label>
+    <label>分类<input id="evCategory" placeholder="如：公司事件 / 展会 / 会议"></label>
+    <label>相关板块<input id="evSectors" placeholder="逗号分隔，如：创新药,医药商业"></label>
+    <label>备注<textarea id="evDetail" rows="3" placeholder="事件说明（可选）"></textarea></label>
+  </div>
+  <div class="modal-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" id="btnSaveEvent">保存</button></div>
+</div>
+
+<!-- 弹框：记录卖出 -->
+<div class="modal-mask hidden" id="modalSoldMask"></div>
+<div class="modal hidden" id="modalSold">
+  <div class="modal-head"><h3>记录卖出</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body">
+    <div class="form-row">
+      <label>代码<input id="soldCode" maxlength="6" placeholder="600519"></label>
+      <label>名称<input id="soldName" placeholder="自动/手填"></label>
+    </div>
+    <div class="form-row">
+      <label>买入价<input id="soldBuy" type="number" step="0.01" placeholder="可选"></label>
+      <label>卖出价<input id="soldSell" type="number" step="0.01" placeholder="可选"></label>
+    </div>
+    <div class="form-row">
+      <label>股数<input id="soldShares" type="number" step="1" placeholder="可选"></label>
+      <label>持有天数<input id="soldDays" type="number" step="1" placeholder="可选"></label>
+    </div>
+    <label>卖出原因<textarea id="soldReason" rows="3" placeholder="为什么卖，事后怎么看（复盘用）"></textarea></label>
+  </div>
+  <div class="modal-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" id="btnSaveSold">保存</button></div>
+</div>
+
+<!-- 弹框：记一条笔记 -->
+<div class="modal-mask hidden" id="modalNoteMask"></div>
+<div class="modal hidden" id="modalNote">
+  <div class="modal-head"><h3>记一条</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body">
+    <label>类型<select id="noteKind"><option value="question">问题</option><option value="experience">经验</option><option value="lesson">总结</option></select></label>
+    <label>标题<input id="noteTitle" placeholder="一句话概括"></label>
+    <label>内容<textarea id="noteContent" rows="5" placeholder="记录你的疑问、经验或复盘总结…"></textarea></label>
+    <label>标签<input id="noteTags" placeholder="逗号分隔，如：缩量,MA5,板块轮动"></label>
+  </div>
+  <div class="modal-foot"><button class="btn ghost" data-close>取消</button><button class="btn primary" id="btnSaveNote">保存</button></div>
+</div>
+
+<!-- 弹框：事件提醒卡片（SSE 主动推送） -->
+<div class="modal-mask hidden" id="modalEventCardMask"></div>
+<div class="modal hidden" id="modalEventCard">
+  <div class="modal-head"><h3 id="ecTitle">事件提醒</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body">
+    <div class="ec-meta" id="ecMeta"></div>
+    <div class="ec-sec"><h4>什么事情</h4><div id="ecWhat" class="ec-lead"></div></div>
+    <div class="ec-sec ec-analysis-sec">
+      <div class="ec-analysis-head" id="ecAnalysisHead" role="button" tabindex="0" aria-expanded="true" title="点击折叠 / 展开智能体解读">
+        <h4>智能体解读</h4>
+        <span class="ec-analysis-meta" id="ecAnalysisMeta"></span>
+        <button type="button" class="ec-fold-btn" id="ecAnalysisFold">收起 ▴</button>
+      </div>
+      <div id="ecAnalysis" class="ai-text ec-analysis md-body"></div>
+    </div>
+    <div class="ec-sec"><h4>历史同类统计（程序口径）</h4><div id="ecHistory" class="ec-history">加载中…</div></div>
+    <div class="ec-sec"><h4>观察点（非买卖建议）</h4><div id="ecObservation" class="ec-lead"></div></div>
+  </div>
+  <div class="modal-foot"><button class="btn primary" data-close>知道了</button></div>
+</div>
+
+<!-- 弹框：日历事件详情 / 当日全部事件 -->
+<div class="modal-mask hidden" id="modalCalEventMask"></div>
+<div class="modal hidden cal-event-modal" id="modalCalEvent">
+  <div class="modal-head"><h3 id="ceTitle">事件详情</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body" id="ceBody"></div>
+  <div class="modal-foot"><button class="btn ghost hidden" id="ceBack">← 返回当日列表</button><button class="btn primary" data-close>关闭</button></div>
+</div>
+
+<!-- 弹框：新闻监控概览 · 全部信息（点击右侧辅助栏卡片打开） -->
+<div class="modal-mask hidden" id="modalNfMonitorMask"></div>
+<div class="modal hidden nf-monitor-modal" id="modalNfMonitor">
+  <div class="modal-head">
+    <h3>新闻监控概览 · 全部信息</h3>
+    <button class="modal-x" data-close>✕</button>
+  </div>
+  <div class="modal-body" id="nfMonitorBody"><div class="empty">读取中…</div></div>
+  <div class="nf-bias-review" id="nfBiasReview">
+    <div class="nf-modal-h">智能体复核（按需 · 不改写程序比例）</div>
+    <p class="note">占比由程序确定性计算，智能体默认不参与、也不会改写任何数字。仅在你点击左下按钮时调用一次，用于解释边界样本与口径限制，约 30–60 秒。</p>
+    <div class="nf-report hidden open" id="nfBiasReport">
+      <div class="nf-report-head" role="button" tabindex="0" aria-expanded="true">
+        <span class="nf-report-ico">▾</span><b>智能体复核结果</b>
+        <span class="nf-report-meta" id="nfBiasMeta"></span>
+        <button type="button" class="nf-fold-btn">收起 ▴</button>
+      </div>
+      <div class="ai-text nf-report-text md-body" id="nfBiasText"></div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn ghost" id="btnNfBiasAI">✦ 智能体复核消息面（按需 · 约 30–60 秒）</button>
+    <button class="btn primary" data-close>关闭</button>
+  </div>
+</div>
+
+<!-- 弹框：个股量化评分与技术指标 -->
+<div class="modal-mask hidden" id="modalStockMask"></div>
+<div class="modal hidden stock-modal" id="modalStock">
+  <div class="modal-head"><h3 id="stockTitle">个股分析</h3><button class="modal-x" data-close>✕</button></div>
+  <div class="modal-body" id="stockBody"><div class="empty">加载中…</div></div>
+  <div class="modal-foot">
+    <button class="btn ghost" id="btnStockAsk">让智能体解读</button>
+    <button class="btn primary" data-close>关闭</button>
+  </div>
+</div>
+
+<!-- 提醒弹框 -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="/v2/markdown-lite.js"></script>
+<script src="/v2/graph-engine.js"></script>
+<script src="/v2/vendor/3d-force-graph.min.js"></script>
+<script src="/v2/agent-ui.js"></script>
+<script src="/v2/review-render.js"></script>
+<script src="/v2/macro-render.js"></script>
+<script src="/v2/v2.js"></script>
+</body>
+</html>

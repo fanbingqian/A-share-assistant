@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>正在启动</title>
+<style>
+  :root{
+    --nav:#0d1424; --nav2:#141d33; --ink:#e7ecf6; --ink3:#8894ad;
+    --brand:#3d7bff; --line:rgba(255,255,255,.09);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none}
+  body{
+    background:var(--nav);
+    background-image:
+      radial-gradient(680px 260px at 18% -18%, rgba(61,123,255,.28), transparent 62%),
+      radial-gradient(520px 240px at 108% 118%, rgba(26,157,90,.16), transparent 60%);
+    color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:26px 28px;position:relative;
+  }
+  body::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:2px;
+    background:linear-gradient(90deg,#165dff,#3d7bff 40%,#1a9d5a 100%);
+  }
+  .row{display:flex;align-items:center;gap:12px}
+  .logo{
+    width:42px;height:42px;border-radius:12px;flex:none;
+    background:linear-gradient(135deg,#165dff,#4080ff);
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;font-weight:800;letter-spacing:-.5px;
+    box-shadow:0 8px 22px rgba(22,93,255,.42);
+  }
+  .t1{font-size:16px;font-weight:650;letter-spacing:.3px}
+  .t2{font-size:11px;color:var(--ink3);margin-top:2px;letter-spacing:.6px}
+  .msg{margin-top:26px;font-size:12.5px;color:#b9c4d8;display:flex;align-items:center;gap:9px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:pulse 1.15s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+  .bar{margin-top:16px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar i{
+    display:block;height:100%;width:38%;border-radius:3px;
+    background:linear-gradient(90deg,rgba(61,123,255,0),#3d7bff,#7aa8ff);
+    animation:slide 1.5s cubic-bezier(.45,.05,.35,1) infinite;
+  }
+  @keyframes slide{0%{transform:translateX(-105%)}100%{transform:translateX(275%)}}
+  .foot{
+    position:absolute;left:28px;right:28px;bottom:18px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:10.5px;color:#5f6b83;border-top:1px solid var(--line);padding-top:10px;
+  }
+  .foot b{color:#8b96ad;font-weight:600}
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="logo">A</div>
+    <div>
+      <div class="t1">全球市场监测</div>
+      <div class="t2">A 股智能分析与盘后复盘</div>
+    </div>
+  </div>
+
+  <div class="msg"><span class="dot"></span><span>正在启动本地数据服务…</span></div>
+  <div class="bar"><i></i></div>
+
+  <div class="foot">
+    <span>数据仅存本机 · 只读分析</span>
+    <b>127.0.0.1</b>
+  </div>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>智能体选型与技术架构 v4 · 2026-11-19</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6fb;color:#1c2431;
+  font:14px/1.72 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 24px 60px}
+header{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:22px 26px;margin-bottom:18px}
+h1{font-size:25px;font-weight:800;margin:0 0 6px;letter-spacing:.2px}
+.meta{color:#6b7893;font-size:12.5px}
+.lead{margin-top:16px;padding:14px 16px;background:#eef4ff;border:1px solid #d6e4ff;border-radius:9px;
+  color:#254a86;font-size:13.5px;line-height:1.75}
+.lead b{color:#123c86}
+section{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:20px 26px;margin-bottom:18px}
+h2{font-size:18px;font-weight:800;margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid #eef1f7}
+h3{font-size:14.5px;font-weight:700;margin:20px 0 8px}
+h4{font-size:13.5px;font-weight:700;margin:16px 0 6px;color:#33405c}
+p{margin:8px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:5px 0}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;
+  font-size:12px;background:#f2f5fa;border:1px solid #e6ecf6;border-radius:4px;padding:1px 5px}
+pre{background:#f7f9fd;border:1px solid #e6ecf6;border-radius:9px;padding:13px 15px;overflow:auto;
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;font-size:12px;line-height:1.65;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:12.8px;margin:10px 0}
+th{text-align:left;background:#f7f9fd;color:#5a6780;font-weight:700;font-size:12px;
+  padding:9px 10px;border:1px solid #e6ecf6;white-space:nowrap}
+td{padding:9px 10px;border:1px solid #e6ecf6;vertical-align:top;line-height:1.6}
+tr:nth-child(even) td{background:#fcfdff}
+.tag{display:inline-block;font-size:11px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid transparent}
+.tag.blue{background:#eef4ff;color:#254a86;border-color:#d6e4ff}
+.tag.purple{background:#f0eefe;color:#4a3fa8;border-color:#ddd7f7}
+.tag.amber{background:#fdf3e2;color:#8a5a0b;border-color:#f6e2bb}
+.tag.red{background:#fceceb;color:#a32d2d;border-color:#f3cfcd}
+.tag.green{background:#e7f5ef;color:#0f6e56;border-color:#c7e8da}
+.tag.gray{background:#f1f3f8;color:#6b7893;border-color:#e2e8f2}
+.callout{border-left:3px solid #2559c9;background:#f6f9ff;padding:11px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+.callout.warn{border-left-color:#BA7517;background:#fdf7ec}
+.callout.danger{border-left-color:#A32D2D;background:#fceceb}
+.callout.ok{border-left-color:#1D9E75;background:#edf8f3}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.box{border:1px solid #e6ecf6;border-radius:9px;padding:12px 14px;background:#fafbfe}
+.box .bt{font-weight:700;font-size:13px;margin-bottom:5px}
+.box .bm{font-size:12px;color:#5a6780;line-height:1.65}
+.src{font-size:11.5px;color:#8a95aa;margin-top:6px;line-height:1.55}
+.kpi{background:#f7f9fd;border:1px solid #e6ecf6;border-radius:9px;padding:11px 13px}
+.kpi .k{font-size:11.5px;color:#7c88a0}
+.kpi .v{font-size:18px;font-weight:800;margin-top:2px}
+footer{background:#fff;border:1px solid #e2e8f2;border-radius:12px;padding:18px 26px;
+  font-size:12px;color:#6b7893;line-height:1.8}
+.disc{background:#fdf7ec;border:1px solid #f6e2bb;border-radius:9px;padding:12px 15px;
+  margin-top:12px;color:#7a5410;font-size:12.5px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>智能体选型与技术架构 v4</h1>
+  <div class="meta">项目：GlobalMarketMonitor · 文档日期：2026-11-19（周四，盘后）· 承接 v1 智能体选型 / v2 风险提示层 / v3 双向经验与市场状态 · 状态：设计稿，未改动任何现有代码或数据文件</div>
+  <div class="lead">
+    <b>四句话结论。</b>① <b>选哪个</b>：复盘链路用 <b>LangGraph（库，MIT）+ Pydantic AI（MIT）</b>，跑成独立 Python sidecar，自己用 FastAPI 包一层，<b>绝不用官方 Agent Server</b>；判断链路永远不引入 LLM。② <b>智能体做什么</b>：不是「懂股票的助理」，而是四个受限角色（抽取 / 假说 / 分拣 / 翻译）＋一个可暂停可回放的状态机，产出物永远是<b>待审提案</b>。③ <b>架构</b>：现有 8777 零依赖 Node 主服务保持不变，新增「确定性层 → 只读 sidecar → 确定性网关 → 人工闸门 → 有界回流」五段。④ <b>闭环</b>：专业性与个性化都能闭环，但闭环目标是<b>提示校准</b>，「经验 → 胜率」这一环在小样本、非平稳市场里统计上不可闭环，不能设为系统目标。
+  </div>
+</header>
+
+<section>
+  <h2>零、先澄清一个被绕了三轮的问题</h2>
+  <p>前三版一直说「不引入框架」，而你要的是「入驻的智能体」——这两个说法看似矛盾，其实在说两条不同的链路：</p>
+  <table>
+    <thead><tr><th>链路</th><th>做什么</th><th>对 LLM 的态度</th><th>前三版的结论</th></tr></thead>
+    <tbody>
+      <tr><td><b>判断链路</b></td><td>选股评分、Gate 剔除、Flag 触发、四象限标注、事实口径冲突裁定</td><td><span class="tag red">禁入</span> 全部确定性计算，可复算、可回溯</td><td>「不引入框架」指的就是这里，结论不变</td></tr>
+      <tr><td><b>复盘链路</b></td><td>口语复盘归类、假说生成、冲突语义分拣、结果翻译、经验晋升编排</td><td><span class="tag purple">受限进入</span> 只产提案，不产结论</td><td>前三版只给了「薄适配器」，<b>没有正面回答选型 —— 本版补上</b></td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn"><b>为什么之前不敢直接给框架名</b>：在样本 18/30、待审 4 条、复盘流程单步就能跑完的时候，上状态机是过度设计，还会带来第二套运行时和进程通信成本。但「什么时候该上」必须有明确条件，否则就变成了回避问题 —— 见第一节的触发条件表。</div>
+</section>
+
+<section>
+  <h2>一、选型：LangGraph ＋ Pydantic AI，以及一条许可证修正</h2>
+
+  <h3>1.1 单选结论</h3>
+  <div class="grid2">
+    <div class="box"><div class="bt"><span class="tag purple">编排层</span> LangGraph（Python 库，MIT）</div>
+      <div class="bm">把「事前登记 → 影子验证 → 待审 → 人工审核 → 有界回流 → 失效退役」画成显式状态图。<code>interrupt()</code> 在「写入知识库之前」暂停，<code>Command(resume=...)</code> 跨天续跑；<code>SqliteSaver</code> 把 checkpoint 落在本地，<code>durability="sync"</code> 适配可能等几天的审批。三个月后可以加载任意历史 checkpoint 回放「我当时为什么这么判断」。</div></div>
+    <div class="box"><div class="bt"><span class="tag blue">单步层</span> Pydantic AI（MIT）</div>
+      <div class="bm">用 Pydantic 模型强制「主张 / 证据 / 来源 / 时点 / 证伪条件」字段不缺失；<code>requires_approval=True</code> 的 deferred tools 天然适配「AI 跑完 → 我下班后审 → 明天继续」；OpenTelemetry 原生，trace 落到自己的存储，不绑定任何商业控制台。</div></div>
+  </div>
+
+  <div class="callout danger"><b>对前版结论的修正（重要）</b>：v1 写的是「LangGraph（MIT）做成独立 sidecar」，这个说法不够精确。核实结果是 —— <b>LangGraph 库、checkpointer、CLI、SDK 均为 MIT，但官方 Agent Server（HTTP 服务化）是 Elastic License 2.0，自托管生产需要 LangSmith 许可密钥</b>。因此架构必须写成：<b>只装库，自己用 FastAPI 包一层 HTTP 接口，完全不用 Agent Server</b>，这样整条链路保持 MIT、无商业许可依赖、无托管平台绑定。<div class="src">来源：Geekflare《LangGraph review》、WTF Radar《LangGraph Review: Durable Agent Graphs for Production》、LangGraph 官方 persistence / interrupts 文档，经 domain_search 于 2026-11-19 检索；第三方评测为<b>非一手来源，许可证条款需以官方 LICENSE 原文核实</b>。</div></div>
+
+  <h3>1.2 六个候选的横向核实</h3>
+  <table>
+    <thead><tr><th>项目</th><th>本质</th><th>许可证</th><th>人在回路 / 断点恢复</th><th>可审计性</th><th>本项目的处置</th></tr></thead>
+    <tbody>
+      <tr><td><b>LangGraph</b></td><td>图运行时库</td><td>库 MIT；<b>Agent Server 为 Elastic-2.0</b></td><td><code>interrupt()</code> + <code>Command(resume)</code>；SQLite / Postgres checkpointer，节点级，可 time-travel</td><td>显式图 + 全量 checkpoint；深度洞察依赖 LangSmith（可不用）</td><td><span class="tag green">首选编排</span> 只用库，自包 FastAPI</td></tr>
+      <tr><td><b>Pydantic AI</b></td><td>类型化 agent 库</td><td>MIT</td><td>deferred tools（<code>requires_approval</code>）；durability 依赖 Temporal / DBOS 等外部引擎</td><td>OpenTelemetry 原生，任意后端，不强制商业平台</td><td><span class="tag green">首选单步</span> 强类型输出</td></tr>
+      <tr><td>OpenAI Agents SDK</td><td>轻量 agent 库</td><td>MIT</td><td><code>needs_approval</code> + RunState 序列化；<b>无逐步 checkpoint</b></td><td>tracing <b>默认开启并上传 OpenAI</b></td><td><span class="tag amber">不选</span> 仍处 0.x，API 无稳定承诺；持仓数据不宜默认外传</td></tr>
+      <tr><td>CrewAI</td><td>角色化多 agent 库</td><td>MIT</td><td><code>@human_feedback</code> + <code>@persist</code>；官方明说 checkpoint <b>best-effort、失败只记日志、静默回退、需手动 kickoff</b></td><td>依赖第三方 tracing 或自家平台</td><td><span class="tag amber">不选</span> 静默失败在审计场景不友好，不能作唯一事实来源</td></tr>
+      <tr><td>Goose</td><td>本地 agent 运行时（桌面 / CLI）</td><td>Apache-2.0</td><td>仅<b>会话级</b>恢复（<code>goose session -r</code>）；步骤级需外挂 Diagrid Catalyst</td><td>观察 / 巡检管线，无独立审计账本</td><td><span class="tag blue">可选外壳</span> 只给只读工具，不当状态机；默认自主执行、无 OS 沙箱，需先切 <code>ask</code></td></tr>
+      <tr><td>OpenClaw</td><td>自托管个人 agent 网关</td><td>MIT</td><td>SQLite 会话持久化，<b>无执行恢复</b>；审批天然当轮</td><td><b>metadata-only 审计账本</b>，刻意不存业务内容</td><td><span class="tag red">排除</span> 默认 host exec <code>full</code>、sandbox <code>off</code>；安全公告密度高；且它回答不了「我当时为什么这么判断」</td></tr>
+    </tbody>
+  </table>
+  <div class="src">上表为 2026-11-19 通过 domain_search 检索的公开资料快照，来源含各项目官方文档、PyPI / npm 元数据、Geekflare / WTF Radar / CrewAI docs / ki-agentenkompass 评测等。版本号、star 数、下载量为非一手转述且随时间变化，<b>需核实原文</b>；本表只用于架构取舍，不作为数据引用。</div>
+
+  <div class="callout"><b>一条比选型更重要的实现约束</b>：这六个框架<b>没有一个是「持久执行 = 恰好一次」</b>。LangGraph 恢复时被打断的节点会从头重跑，CrewAI 任务重跑，Pydantic AI 的引擎是 at-least-once，OpenAI SDK 官方明说审批不保证恰好一次。因此所有外部写入（知识库、<code>rules.json</code>、<code>flag-events.jsonl</code>）<b>必须带幂等键</b>，例如 <code>reviewId = date + symbol + ruleId + version</code>；同一次复盘的结论重复写入不能产生重复记录。所有写库副作用放在 <code>interrupt()</code> 之后，或做成幂等。</div>
+
+  <h3>1.3 什么时候才真的上这个 sidecar（触发条件）</h3>
+  <table>
+    <thead><tr><th>阶段</th><th>状态</th><th>智能体形态</th></tr></thead>
+    <tbody>
+      <tr><td>现在（Step 0–2）</td><td>样本 18/30、4 条 pending、复盘单步可完成、<code>rules.json count=0</code></td><td><b>不上框架</b>。Node 内置 <code>fetch</code> 薄适配器 + 手写 JSON schema 校验即可，三个纯任务无状态、无需编排</td></tr>
+      <tr><td>触发条件 ①</td><td>待审队列 &gt; 30 条，需要分诊、排序、去重、归并变体</td><td rowspan="4"><b>上 LangGraph sidecar</b>。满足任一条即启动；此时才值得付出第二套运行时的成本</td></tr>
+      <tr><td>触发条件 ②</td><td>复盘需要跨天暂停 / 恢复（人不在电脑前，隔几天才审）</td></tr>
+      <tr><td>触发条件 ③</td><td>流程变成多步互相依赖，且任何一步失败要从中间续跑而非整轮重来</td></tr>
+      <tr><td>触发条件 ④</td><td>需要回放「三个月前为什么这么判断」并要求可举证</td></tr>
+    </tbody>
+  </table>
+  <p><b>明确排除</b>：AutoGen（已停维）、Flowise（2026-08 归档 EOL）、TradingAgents / ai-hedge-fund（LLM 做决策核心，与判断链路禁入铁律冲突）、smolagents（让模型写代码执行）、Dify / n8n（许可证限制且引入重型平台）。<b>可借鉴架构但不引入</b>：v3 文档列出的 Market-Regime-Detection（多方法并列、不一致是特性）、TradeNote（昨日计划自动带入今天 = precommit）、Portfolio Performance（TWR / IRR 双口径可修命中率口径不一致）。</p>
+</section>
+
+<section>
+  <h2>二、智能体到底做什么：逐项职责清单</h2>
+  <p>「智能体」在本系统里不是一个有人格的助理，而是四个受限角色 + 一个编排器 + 一道网关。每一项都必须能回答「输入什么、输出什么、禁止什么、怎么校验」。</p>
+  <table>
+    <thead><tr><th>角色</th><th>输入</th><th>输出</th><th>禁止</th><th>校验方式</th></tr></thead>
+    <tbody>
+      <tr><td><b>R1 结构化抽取员</b><br><span class="tag purple">LLM · Pydantic AI</span></td><td>你的口语复盘、公告原文、媒体稿件（标来源等级）</td><td>「主张 / 证据 / 来源 / 时点」四元组 JSON；缺字段直接拒绝</td><td>禁止补数字、禁止改写数字、禁止把 C 级线索写成事实</td><td>Pydantic schema 强类型；来源为 C 级时数字字段一律置 <code>null</code></td></tr>
+      <tr><td><b>R2 假说生成员</b><br><span class="tag purple">LLM</span></td><td>事实账本 + 可溯源知识卡（催化预期差 / 常见误导信号 / 因子有效性）</td><td>带<b>证伪条件</b>的待验证假说卡；每天最多一个主假说</td><td>禁止写「因为 X 所以涨」、禁止给买卖结论、禁止一次生成五个原因</td><td>证伪条件非空；supportN / contradictN 必填；反例库强制关联</td></tr>
+      <tr><td><b>R3 冲突分拣员</b><br><span class="tag purple">LLM 只做语义</span></td><td>两条互斥叙述</td><td>冲突类型标签：<code>fact_scope_conflict</code> / <code>interpretation</code> / <code>stale</code> / <code>value</code></td><td><b>禁止裁决谁对、禁止合成第三种解释</b>；事实与口径类冲突一律交确定性重算覆盖</td><td>类型必须在枚举内；事实类标签出现时网关强制走重算</td></tr>
+      <tr><td><b>R4 教练翻译员</b><br><span class="tag purple">LLM</span></td><td>确定性计算结果 + 个人画像</td><td>人话提示 + 按画像的提示排序与措辞</td><td>禁止改分、禁止新增判断、禁止出现「别买 / 不接飞刀」等操作建议</td><td>提示语白名单模板；输出不含数字变更；画像只影响展示</td></tr>
+      <tr><td><b>编排器</b><br><span class="tag blue">LangGraph</span></td><td>上述四角色 + 人工答复</td><td>状态机：<code>precommit → 影子验证 → 待审 → interrupt() → 有界回流 → 失效退役</code></td><td>禁止自主循环、禁止无人审核即写库</td><td>checkpoint 本地 SQLite；OTel trace 落自有存储；幂等键</td></tr>
+      <tr><td><b>确定性网关</b><br><span class="tag blue">Node · 零 LLM</span></td><td>智能体全部输出</td><td>通过 / 剔除后的待审提案</td><td>禁止直接改评分、禁止直接入池</td><td>schema 校验、事实账本逐条核对出处、幂等去重、<b>无出处即剔除</b></td></tr>
+    </tbody>
+  </table>
+  <div class="callout ok"><b>专业知识从哪来</b>：不靠模型参数里的记忆，靠<b>可溯源的知识卡</b>（每张卡带机制链、可观测指标、证伪条件、来源与版本）。智能体只是把知识卡与当日事实做匹配，卡本身由你审、可版本化、可退役。这样「股票专业性」是可维护的资产，而不是每次调模型碰运气。</div>
+</section>
+
+<section>
+  <h2>三、端到端技术架构</h2>
+
+  <h3>3.1 分层与进程边界</h3>
+  <table>
+    <thead><tr><th>层</th><th>运行时 / 端口</th><th>职责</th><th>读写权限</th></tr></thead>
+    <tbody>
+      <tr><td><b>L0 现有主服务</b></td><td>Node 内置模块 · 8777 · 零第三方依赖</td><td>21+ 模块、13 定时器、行情落盘、7 类状态缓存、股池 / 持仓 / 告警、现有 17 个面板</td><td>读写自有 <code>data/</code></td></tr>
+      <tr><td><b>L1 确定性计算层</b><span class="tag blue">新增 · Node</span></td><td>同进程，零依赖</td><td><code>factor.js</code>（Gate / Score / Flag / Explain 四用途）、<code>market-state.js</code>（gap / intraday 四象限）、<code>conflict-resolver.js</code>（事实口径重算）、<code>flag-rules.json</code>（只读规则表）、反馈回填 <code>barOf()</code> / <code>benchRet()</code></td><td>读缓存；写 JSONL 事实账本</td></tr>
+      <tr><td><b>L2 智能体 sidecar</b><span class="tag purple">新增 · Python</span></td><td>独立进程 · <code>127.0.0.1:8788</code> · FastAPI + LangGraph + Pydantic AI + SqliteSaver + OTel</td><td>四角色 + 状态机；只暴露三个接口：<code>POST /proposal</code>、<code>POST /resume</code>、<code>GET /trace/:id</code></td><td><b>只读挂载</b>事实账本；不写任何业务文件；除模型 API 外无出访</td></tr>
+      <tr><td><b>L3 确定性网关 + 人工闸门</b><span class="tag blue">新增 · Node</span></td><td>8777 内</td><td>schema / 出处 / 幂等校验；待审队列；审核二次确认；采纳后才写 <code>rules.json</code></td><td>唯一有权写规则与股池状态变更的一层</td></tr>
+      <tr><td><b>L4 界面</b><span class="tag gray">纯增量</span></td><td><code>web/</code> · 现有 <code>.iw-</code> 前缀</td><td>B 三栏工作台 + C 复盘时间线；证据栏常驻来源时点；一键关闭智能体层</td><td>只读 API + 显式审核动作</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><b>为什么要独立 sidecar 而不是塞进 8777</b>：Python 与零依赖 Node 是两套运行时；sidecar 挂掉时 8777 必须照常选股、照常监控，界面只是少一块「待审提案」并可一键关闭。这是可用性底线，也是权限隔离手段 —— 只给它只读挂载，物理上就无法改分或下单。</div>
+
+  <h3>3.2 数据契约（新增文件，均为纯增量）</h3>
+  <pre>{
+  "market-state.jsonl":  { "date":"2026-11-17", "index":"sh000001",
+    "prevClose":3602.57, "open":3585.67, "close":3584.58,
+    "gapPct":"computed", "intradayPct":"computed",
+    "quadrant":"low_open_low_close", "dayChangePct":"computed",
+    "narrativeLabel":"low_open_high_close", "conflict":"narrative_conflict",
+    "source":"westock-data sh000001 日K", "asOf":"2026-11-19" },
+
+  "flag-events.jsonl":   { "flagId":"F-000766-20261115-repattern", "symbol":"000766",
+    "triggerTs":"SYSTEM_TS", "level":"strong",
+    "ruleId":"repeat_pattern_6m", "sourceGrade":"A",
+    "sourceRefs":["公告2026-40@深交所2026-11-15","westock-data日K@2026-11-19"],
+    "sampleN":2, "counterN":0,
+    "feedback":{ "t1":null, "t5":null, "t20":null, "maxDD20":null, "excess":null },
+    "affectsScore":false },
+
+  "experiences.jsonl":   { "expId":"E-...", "polarity":"pitfall|win",
+    "scope":"market|sector|stock|self", "patternFamily":"event_sell_news",
+    "variant":"medicare_price_unknown", "precommit":"PRECOMMIT_TEXT",
+    "falsifyCondition":"FALSIFY_TEXT", "registeredAt":"SYSTEM_TS",
+    "status":"shadow|pending|adopted|retired",
+    "supportN":0, "contradictN":0, "profileTag":[] },
+
+  "conflicts.jsonl":     { "conflictId":"...", "type":"fact_scope|interpretation|stale|value",
+    "claims":["...","..."], "resolvedBy":"deterministic|human|unresolved",
+    "resolution":null, "asOf":"SYSTEM_TS" },
+
+  "counterexamples.jsonl":{ "flagId":"...", "symbol":"...", "triggerTs":"...",
+    "outcome":"rose_after_flag", "source":"...", "asOf":"..." },
+
+  "trades.jsonl":        { "tradeId":"...", "symbol":"...", "side":"buy|sell",
+    "ts":"...", "qty":null, "price":null, "planRef":null, "userNote":null },
+
+  "profile.json":        { "declared":{ "horizon":null, "style":null, "risk":null },
+    "inferred":{ "avgHoldDays":null, "buyPercentile":null, "planDeviation":null },
+    "conflictPolicy":"behavior_wins", "affectsScore":false }
+}</pre>
+  <p class="src">所有时间戳由系统写入，禁止手写硬编码；行情 / 财务数字必须能追溯到来源 + 时点；未核实字段一律 <code>null</code> 或 <code>--</code>，不允许模型补数。现有 <code>data/journal/</code> 结构保持不变，新增文件独立存放。</p>
+
+  <h3>3.3 盘后到次日的数据流时序</h3>
+  <table>
+    <thead><tr><th>时点（北京）</th><th>动作</th><th>执行方</th><th>产出</th></tr></thead>
+    <tbody>
+      <tr><td>18:00</td><td>行情与状态缓存落盘（现有定时器）</td><td>8777</td><td>7 类缓存、日 K</td></tr>
+      <tr><td>18:05</td><td>四象限 / 因子 / Flag / 冲突确定性重算</td><td>L1 确定性层</td><td><code>market-state.jsonl</code> / <code>flag-events.jsonl</code></td></tr>
+      <tr><td>18:10</td><td>读事实账本 → 抽取 → 生成<b>带证伪条件</b>的待审提案 → 网关校验 → 入待审队列</td><td>L2 sidecar（只读）→ L3 网关</td><td>待审提案，<b>不改分、不入池</b></td></tr>
+      <tr><td>20:00</td><td>打开 C 时间线写口语复盘、登记 precommit</td><td>你 + R1</td><td><code>experiences.jsonl</code> 影子态</td></tr>
+      <tr><td>次日 09:05</td><td>审核（二次确认）→ <code>Command(resume)</code> 续跑；采纳才以 ±2 分 / 乘数 0.8–1.25 / 不翻符号回流，冻结基线 v0 对照</td><td>你 → L3</td><td><code>rules.json</code>（有界）</td></tr>
+      <tr><td>T+1 / T+5 / T+20</td><td><code>barOf()</code> / <code>benchRet()</code> 回填，反例计数，提示升降级与失效退役</td><td>L1 确定性层</td><td>校准指标、<code>counterexamples.jsonl</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>四、逻辑闭环：能不能做到「股票专业性 + 个人经验个性化」</h2>
+  <p>能，但需要把「闭环」拆成三个可验证的环和一个明确不可闭环的断点。<b>如果目标是「判断越来越准」，这个系统注定失败；如果目标是「该看见的别漏、提示越来越贴合我、错误不重复犯」，闭环是成立的。</b></p>
+
+  <div class="grid3">
+    <div class="kpi"><div class="k">环 1 · 专业性</div><div class="v" style="color:#0f6e56">可闭环</div>
+      <p style="font-size:12px;margin:6px 0 0">事实 → 可复算 → 可证伪 → 有界回流。每个数字带来源＋时点；冲突交确定性重算；知识卡可版本化与退役。</p>
+      <p style="font-size:11.5px;color:#7c88a0;margin:6px 0 0">指标：IC / IR、样本外劣化、出处覆盖率</p></div>
+    <div class="kpi"><div class="k">环 2 · 个性化</div><div class="v" style="color:#0f6e56">可闭环</div>
+      <p style="font-size:12px;margin:6px 0 0">行为 → 画像 → 提示排序 → 反馈 → 校正。<b>画像只改展示不改分</b>，判错也不伤本金，所以闭环成本低、可反复试。</p>
+      <p style="font-size:11.5px;color:#7c88a0;margin:6px 0 0">指标：提示点开率、忽略率、画像与行为一致率</p></div>
+    <div class="kpi"><div class="k">环 3 · 校准</div><div class="v" style="color:#0f6e56">可闭环</div>
+      <p style="font-size:12px;margin:6px 0 0">Flag → T+1/5/20 回填 → 反例计数 → 升降级 / 退役。反例库常驻，防止确认偏误。</p>
+      <p style="font-size:11.5px;color:#7c88a0;margin:6px 0 0">指标：风险回避价值 <b>与假警报率并列</b></p></div>
+  </div>
+
+  <div class="callout danger" style="margin-top:14px"><b>断点 · 「经验 → 预测准确率」不可闭环</b>：现有样本 18/30，个人样本天然小；市场非平稳，规律会漂移；多维度切样本存在多重比较，校正后大多不显著；且无法对个人做样本外双盲验证。任何「我的经验让胜率提高了」的表述都不可证伪。<b>替代目标</b>：① 降低「可预见错误的复犯率」（同一 patternFamily 再次踩坑的比例）；② 提升提示校准度（强警示之后确实出现不利结果的比例，同时控制假警报率）；③ 提高复盘覆盖率与事前登记率。<b>把这三条写进界面，比选哪个模型更重要。</b></div>
+
+  <h3>4.1 个性化为什么不能靠模型猜</h3>
+  <p>同一条「高开低走」对隔夜短线是强警示，对长线定投可能只是噪音。所以 <code>profile.json</code> 分两块：<code>declared</code> 是你显式声明的周期 / 风格 / 风险偏好，<code>inferred</code> 是从 <code>trades.jsonl</code> 确定性算出的实际持仓周期、买点分位、仓位集中度、计划偏离度。<b>两者冲突时以行为为准</b>（<code>conflictPolicy: behavior_wins</code>），画像只影响提示显示与排序，<code>affectsScore: false</code> 是硬约束。前置缺口：现有 <code>holdings.json</code> 没有卖出记录与买入时点上下文，需新增 <code>trades.jsonl</code>（纯增量，不动现有结构）。</p>
+
+  <h3>4.2 专业性与个性化如何相乘而不互相污染</h3>
+  <p>两者在架构上<b>不共用一条写入路径</b>：专业性走「知识卡 + 确定性计算 + 有界回流」，最终可能微调分数；个性化走「行为账本 + 提示排序」，永不写分数。交汇点只有界面右栏：<b>同一条 Flag，对不同的你显示不同的顺序与措辞，但触发条件与样本数完全一致</b>。这样个性化带来的错误不会影响判断链路，也就不会出现「因为我是短线所以系统替我看空」这种污染。</p>
+</section>
+
+<section>
+  <h2>五、B / C 交互方案与交付的原型</h2>
+  <table>
+    <thead><tr><th>维度</th><th>A 单页驾驶舱（现状）</th><th>B 三栏工作台</th><th>C 复盘时间线</th></tr></thead>
+    <tbody>
+      <tr><td>结构</td><td>左导航 + 右长滚动</td><td><b>224px 导航 + 主视图 + 344px 证据栏</b></td><td>日期轴 + 日卡片 + 经验沉淀栏</td></tr>
+      <tr><td>最擅长</td><td>一屏看今日全貌</td><td>选中一只票时，证据 / 并列假说 / 来源时点 / 反例 / precommit 同屏可对照</td><td>跨日累积、事前登记、事后对照、口语录入</td></tr>
+      <tr><td>弱点</td><td>无限滚动，数字与出处对不上</td><td>屏幕窄时挤，需 ≥1440px</td><td>不适合做实时监控首屏</td></tr>
+      <tr><td>改造量</td><td>零</td><td><b>只补第三栏</b>：现有 <code>#iwShell</code> 已两栏，<code>shell.js</code> 已收 17 面板</td><td>新增一个视图，复用同一套 <code>.iw-</code> 样式</td></tr>
+    </tbody>
+  </table>
+  <div class="callout ok"><b>推荐不是三选一</b>：<b>B 作骨架</b> + <b>A 的 summary 作今日首屏</b> + <b>C 作复盘子页</b> + 复用已有 <code>btnNotify</code> 作提醒通道。原型文件已把 B / C 做成可切换、可点击的真实界面（含表格行选中、右栏四标签、precommit 录入、审核二次确认、智能体一键关闭），见 <code>docs/交互原型-B三栏工作台与C复盘时间线-20261119.html</code>。</div>
+
+  <h3>5.1 PC 端使用习惯的具体约定</h3>
+  <ul>
+    <li><b>宽屏优先</b>：≥1440px 三栏全展开；1180px 以下证据栏自动移到下方，不横向滚动。</li>
+    <li><b>来源时点悬停即见</b>：任何数字都能在悬停或右栏看到「来源 + 取数日 + 口径」，不跳转、不新开页。</li>
+    <li><b>键盘</b>：<code>/</code> 聚焦录入 / 搜索，<code>Esc</code> 收起右栏；审核用二次确认（按钮就地变「确认？」），<b>不弹模态</b>，避免打断连续复盘。</li>
+    <li><b>颜色</b>：红涨绿跌（A 股习惯）；Flag 用琥珀 / 橙 / 红三级，与涨跌色分开，避免误读为买卖信号。</li>
+    <li><b>离线可用</b>：零 CDN、零第三方字体、零外部脚本；原型含约 70 行内联 JS 仅用于演示交互，产品实现仍以现有 <code>.iw-</code> 体系为准。</li>
+    <li><b>一键降级</b>：顶栏「智能体层」开关关闭后，界面只显示确定性结果，待审提案区隐藏 —— 任何时候都能退回纯量化模式。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>六、分阶段路线（延续 v1–v3 的 Step 编号）</h2>
+  <table>
+    <thead><tr><th>阶段</th><th>内容</th><th>是否引入 LLM</th><th>验收标准</th></tr></thead>
+    <tbody>
+      <tr><td><b>Step 0</b><br>零代码 / 少代码</td><td>4 条 pending 标「需复核、暂不采纳」；修 <code>statsOf()</code> 命中率与超额的样本口径（基准缺失时不得退化成 <code>ret &gt; 0</code>）；建 <code>market-state.jsonl</code> 并写入 11-17 冲突；建 <code>flag-events / counterexamples / trades / profile</code> 空账本；手写 3–5 条 precommit</td><td>否</td><td>回流闸门第一次完整走通，<code>rules.json</code> 仍为 0</td></tr>
+      <tr><td><b>Step 1</b></td><td>只读 <code>flag-rules.json</code> 规则表（7 条信号），补确定性因子与事件回贴，实现 T+1/5/20 回填与假警报率</td><td>否</td><td>Flag 默认 <code>affectsScore:false</code>，反例库有记录</td></tr>
+      <tr><td><b>Step 2</b></td><td>Node 薄适配器跑三个纯任务；上线 B 第三栏与 C 时间线；来源分级 A/B/C 落地</td><td>受限（可一键关闭）</td><td>所有模型输出经网关校验，无出处即剔除</td></tr>
+      <tr><td><b>Step 3</b></td><td>满足 1.3 任一触发条件后，上 LangGraph + Pydantic AI sidecar，checkpoint 本地 SQLite，OTel trace 落自有存储</td><td>是，仅复盘链路</td><td>跨天 <code>interrupt/resume</code> 可回放；幂等键生效</td></tr>
+      <tr><td><b>Step 4</b></td><td><b>明确不做自动下单</b></td><td>—</td><td>保持「先报告、后交易」监管框架之外</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>七、风险与合规边界</h2>
+  <ul>
+    <li><b>程序化交易</b>：只要程序不自动下达委托单，回测、信号、人工下单、券商条件单均不落入程序化交易定义、无需报备；一旦脚本自动发单即进入「先报告、后交易」框架（证监会《证券市场程序化交易管理规定（试行）》，2024-10-08 施行）。高频认定阈值媒体口径与正式文本存在分歧，<b>以交易所正式细则为准，本文不采信任一数字作结论</b>。</li>
+    <li><b>数据</b>：行情保持个人自用、注明来源、不对外分发；AI 稿件 / 自媒体数字只进待核实队列，字段一律 <code>null</code>；一手来源（交易所公告、公司定期报告）与非一手来源分级标注。</li>
+    <li><b>提示语</b>：白名单模板，不出现操作判断；异常波动公告不等于基本面反转信号；单日打开跌停不等于恐慌盘出清，必须由后续行情反馈判定。</li>
+    <li><b>安全</b>：sidecar 只读挂载、绑定 loopback、无下单与写库权限；Langflow 有未认证 RCE 历史漏洞（CVE-2025-3248），不裸奔公网；网页内容对智能体一律视为不可信输入（提示注入风险）。</li>
+    <li><b>成本</b>：开源省的是软件许可费，模型 API 或本地算力照付；sidecar 的 checkpoint 存储会随使用增长，1.2.18 起快照更频繁，需监控体积。</li>
+    <li><b>反过拟合纪律</b>：n≥30、IC&gt;0.03、IR&gt;0.5、样本外不劣化、一次只登记一个主假说、冻结基线 v0 永久对照、失效即退役；好经验与踩坑经验<b>同门槛</b>，无 precommit 的「成功经验」一律不采信。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>八、来源清单</h2>
+  <h4>本地项目文件（2026-11-19 逐文件核验，一手）</h4>
+  <ul>
+    <li><code>D:\WorkBuddy\projects\GlobalMarketMonitor\server\journal.js</code>（<code>LESSON_DIMENSIONS</code> 7 维、<code>statsOf()</code> 口径、<code>propose()</code> 乘数）</li>
+    <li><code>data/journal/lessons.jsonl</code>（4 条 pending）、<code>outcomes.jsonl</code>（18 条，首条 <code>bench:null</code>）、<code>picks.jsonl</code>（2 条）、<code>rules.json</code>（<code>count=0</code>）</li>
+    <li><code>data/my-picks.json</code>、<code>holdings.json</code>、<code>market-breadth.json</code>、<code>market-style.json</code>、<code>strength-cache.json</code>、<code>phase-cache.json</code>、<code>flow-cache.json</code>、<code>cycle-cache.json</code>、<code>attribution-cache.json</code></li>
+    <li><code>web/shell.js</code>、<code>web/shell.css</code>、<code>web/interaction.css</code>、<code>web/index.html</code>（现有两栏与 17 面板导航）</li>
+    <li>项目内既有文档：<code>选股方法论规格与程序覆盖矩阵.md</code>、<code>系统现状诊断：自动化、数据、经验回流与事件归因.md</code>、<code>设计方案：因子池与智能体复盘经验池.md</code>，以及 <code>docs/</code> 下 v1 / v2 / v3 三份设计文档</li>
+  </ul>
+  <h4>行情与公告（前序轮次已核实，本版沿用并标注时点）</h4>
+  <ul>
+    <li>深交所公告 2026-40，通化金马（000766）2026-11-15 16:11 挂网；上海证券报 2026-11-16 公告全文转载 —— <b>一手公告 / 一手转载需以交易所原文为准</b></li>
+    <li>westock-data 日 K（000766 与 sh000001），取数 2026-11-19 —— 第三方行情数据，用于形态可复算演示</li>
+    <li>中国证券报 2026-11-19 关于异常波动公告 2026-41 的报道 —— <b>非一手，需核实原文</b></li>
+    <li>三季报具体数字、11-13 龙虎榜、融资余额、PE(TTM)：来源为 AI 异动稿件，<b>未与原文核对，本版一律不引用</b></li>
+  </ul>
+  <h4>框架与开源项目（domain_search，2026-11-19 快照，非一手评测需核实原文）</h4>
+  <ul>
+    <li>Geekflare《LangGraph review》、WTF Radar《LangGraph Review: Durable Agent Graphs for Production》、LangGraph 官方 persistence / interrupts 文档、GitHub <code>ai-system-design-guide</code> 版本追踪</li>
+    <li>CrewAI 官方 Checkpointing 文档（v1.14.1）、ki-agentenkompass《goose》评测（2026-10-10 审阅）、OpenClaw 安全与审计账本公开说明</li>
+    <li>各项目版本号、star 数、下载量为检索快照，随时间变化，<b>不作为本文结论依据</b></li>
+  </ul>
+</section>
+
+<footer>
+  <b>交付物</b>：本文档（<code>docs/智能体选型与技术架构v4-20261119.html</code>）与可交互原型（<code>docs/交互原型-B三栏工作台与C复盘时间线-20261119.html</code>）。两者均为设计稿，<b>未改动任何现有代码或数据文件</b>；原型中的行情数字仅引用前序轮次已核实并标注来源与时点的事实，其余字段一律占位。<br>
+  <b>校验</b>：原型 JS 语法通过、标签配对 0 错、CSS/JS 括号配对、元素 ID 无重复、事件处理器齐全、外部资源 0 个；本文档为零 JS 静态页。<br>
+  <div class="disc"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</footer>
+
+</div>
+</body>
+</html>

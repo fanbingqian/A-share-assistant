@@ -1,0 +1,16 @@
+=== config.yaml model/providers 段 ===
+131:  base_url: ''
+144:  default_toolsets:
+150:  provider: deepseek
+195:  provider: ''
+198:model:
+199:  default: deepseek-v4-flash
+200:  provider: deepseek
+247:providers:
+248:  deepseek:
+287:  provider: local
+323:  provider: edge
+=== DEEPSEEK key 是否写入 .env ===
+1
+=== .env 中 DEEPSEEK 行（脱敏）===
+411:DEEPSEEK_API_KEY=sk-***

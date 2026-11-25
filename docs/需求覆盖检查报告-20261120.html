@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>需求覆盖检查报告（2026-11-20）</title>
+<style>
+  body{margin:0;background:#f7f8fa;color:#1f2937;font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;line-height:1.7;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 60px}
+  header.page{background:#7c2d12;color:#fff;border-radius:14px;padding:26px 30px;margin-bottom:26px}
+  header.page h1{margin:0 0 8px;font-size:22px}
+  header.page p{margin:0;opacity:.92;font-size:13.5px}
+  h2{font-size:18px;border-left:4px solid #7c2d12;padding-left:10px;margin:34px 0 12px}
+  h3{font-size:15.5px;margin:22px 0 8px;color:#7c2d12}
+  p{margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;background:#fff;border-radius:8px;overflow:hidden;font-size:13px}
+  th{background:#fff7ed;color:#7c2d12;text-align:left;padding:7px 9px;border-bottom:2px solid #fed7aa;white-space:nowrap}
+  td{padding:7px 9px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{background:#fff7ed;color:#7c2d12;border-radius:4px;padding:1px 5px;font-size:12px;font-family:Consolas,Menlo,monospace}
+  .card{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:16px 20px;margin:12px 0}
+  .red{background:#fef2f2;border:1px solid #fca5a5}
+  .yellow{background:#fefce8;border:1px solid #facc15}
+  .blue{background:#eff6ff;border:1px solid #93c5fd}
+  .s-code{color:#1b8a5a;font-weight:600}
+  .s-proto{color:#2563eb;font-weight:600}
+  .s-design{color:#7c3aed;font-weight:600}
+  .s-none{color:#dc2626;font-weight:600}
+  footer{margin-top:40px;padding:16px 20px;background:#fff;border:1px solid #d1d5db;border-radius:10px;font-size:12.5px;color:#6b7280}
+  ul{padding-left:22px;margin:8px 0}
+  li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <h1>需求覆盖检查报告</h1>
+  <p>2026-11-20 00:45 · 对照 12 轮对话全部需求 × v1–v9 方案 × 真实代码状态逐条核验 · 数据基线：当日实机检查</p>
+</header>
+
+<h2>0｜总体结论</h2>
+<div class="card red">
+<p><strong>需求覆盖：17/17 全部有方案落点，无遗漏。</strong></p>
+<p><strong>但实现度是最大缺口：设计文档 11 份、可交互原型 7 份、落地代码 0 行。</strong>实机核查确认：11 个关键落地物（watchers / llm-adapter / 9 个 JSONL 账本 / profile）全部未建；<code>rules.json count=0</code>（经验从未影响过任何一次评分）；4 条 lessons 仍 pending；picks 2 条、outcomes 18 条；<strong>自选股池 my-picks 的 items 为空——连一只票都还没加进去</strong>。方案是完整的，系统还停在纸面上。</p>
+</div>
+<p>状态图例：<span class="s-code">【代码】已在运行的服务端代码</span> · <span class="s-proto">【原型】可点击的界面/流程演示</span> · <span class="s-design">【设计】文档契约已定义、待实现</span> · <span class="s-none">【未建】方案有、落地物不存在</span></p>
+
+<h2>1｜需求覆盖矩阵（17 条，按提出顺序）</h2>
+<table>
+  <tr><th>需求</th><th>方案落点</th><th>现状</th><th>缺口</th></tr>
+  <tr><td>R1 每日自动量化选股</td><td>现有 stocks.js 横截面多因子评分 + 13 定时器 + ic.js Rank IC（v1 核验）</td><td><span class="s-code">【代码】</span></td><td>观察池 Top12 截面，非全市场日频；覆盖矩阵 8 项确定性技术因子未实现</td></tr>
+  <tr><td>R2 实时市场评估</td><td>现有盘中监控定时器 + v9 watchers 增量感知</td><td><span class="s-code">【代码】</span>（部分）</td><td>「实时」无明确 SLA：公告观察者 10 分钟轮询、解读有分钟级延迟，延迟容忍度未定义</td></tr>
+  <tr><td>R3 股池双来源 + 实时监控</td><td>holdings/alerts 已有 + mypicks.js CRUD（v1 验证）</td><td><span class="s-code">【代码】</span>（骨架）</td><td><strong>my-picks items 为空</strong>；screened 来源 candidate 审批闸门未实现；自选池未进 09:05/22:00 定格与 T+1 复盘（v1 已发现，至今未修）</td></tr>
+  <tr><td>R4 每日复盘写入知识库</td><td>journal 五段式闭环（picks→outcomes→lessons→审核→回流）</td><td><span class="s-code">【代码】</span>（冷启动）</td><td>4 条 pending 未处置；statsOf() 命中率/超额样本口径矛盾未修（Step 0 拖了 6 轮）</td></tr>
+  <tr><td>R5 智能体入驻与选型</td><td>v1/v4：Node 薄适配器 → 可选 LangGraph sidecar（8788 只读）</td><td><span class="s-design">【设计】</span></td><td>llm-adapter 未建；sidecar 触发条件未满足（属正常）</td></tr>
+  <tr><td>R6 全面因素体系 + 专业辅助</td><td>v2 三层×三类（Gate/Score/Explain）+ v7 F/E/L 三层验证</td><td><span class="s-design">【设计】</span></td><td>F/E/L 三个账本未建；「全面≠都进评分」纪律已写入但需落地为代码</td></tr>
+  <tr><td>R7 经验归纳 + 习惯观察 + 反哺</td><td>v2 四层账本/晋升阶梯/有界回流（±2 分）+ 行为账本</td><td><span class="s-design">【设计】</span></td><td>trades.jsonl 未建 → 行为画像/习惯观察无法启动；experiences.jsonl 未建</td></tr>
+  <tr><td>R8 风险提醒 + 真实数据反馈</td><td>v2 Flag 层三级提示 + T+1/5/20 回填 + 反例库</td><td><span class="s-design">【设计】</span></td><td>flag-events / counterexamples 未建；通化金马 7 条信号未录入</td></tr>
+  <tr><td>R9 双向经验 / 四象限 / 轮动 / 冲突辨别</td><td>v3 双向经验 + 假说卡 + 冲突四分法四层处置</td><td><span class="s-design">【设计】</span></td><td>market-state.jsonl 未建；11-17 叙述冲突未录为第一条样本</td></tr>
+  <tr><td>R10 参考程序 + PC 交互方案</td><td>v3 参考程序分级 + v9 感知层开源落位</td><td><span class="s-design">【设计】</span></td><td>无（信息性需求，已满足）</td></tr>
+  <tr><td>R11 B/C 可视化 + 架构 + 闭环论证</td><td>v4 B/C 原型 + 端到端架构 + 三环闭环与断点论证</td><td><span class="s-proto">【原型】</span></td><td>原型可点，未接真实数据</td></tr>
+  <tr><td>R12 DeepSeek / 零训练 / 股民界面 / 研发视图保留</td><td>v5 四方案原型 + 四层能力栈 + DeepSeek 五条硬约束</td><td><span class="s-proto">【原型】</span></td><td>原型可点；能力栈未装（a-stock-data 等技能未安装验证）</td></tr>
+  <tr><td>R13 经验库关系 / 四渠道 / 自动归类 / 非专业闸门</td><td>v6 并联旁路定位 + 冲突四层处置 + 「以后再说」默认</td><td><span class="s-proto">【原型】</span></td><td>录入/对话/裁决台均为演示，不写数据</td></tr>
+  <tr><td>R14 基本面 / 事件 / 逻辑链验证 + 外部稿拆解</td><td>v7 F/E/L + 五步拆解流水线 + 素材库绑定</td><td><span class="s-proto">【原型】</span></td><td>fundamentals / event-cards / hypotheses / material-library 四账本未建</td></tr>
+  <tr><td>R15 界面统一 + 今日重点前瞻</td><td>v8 统一外壳 8 页 + 该盯什么/重要消息/事件日历</td><td><span class="s-proto">【原型】</span></td><td>事件日历数据源未接（LPR/披露表自动抓取）；8 页均为演示数据</td></tr>
+  <tr><td>R16 分析能力 + 给建议 + 压幻觉</td><td>R5 分析师顾问（第 5 类输出）+ 幻觉抑制五机制</td><td><span class="s-design">【设计】</span></td><td><strong>网关缺「话术校验规则」</strong>：「需关注/若X则Z」与禁买卖建议的边界要写成可校验的规则表，当前只在文档里</td></tr>
+  <tr><td>R17 自动感知 + 五用点 + 双链入库 + 完整方案</td><td>v9 感知三要素 + A1–A5 + 经验/因子双闸门</td><td><span class="s-design">【设计】</span></td><td>watchers.js / events-feed.jsonl / watch-last.json 未建</td></tr>
+</table>
+
+<h2>2｜实现度盘点</h2>
+<table>
+  <tr><th>层</th><th>已运行（代码）</th><th>可点击（原型）</th><th>待实现（设计）</th></tr>
+  <tr><td>数据</td><td>行情源 + 7 类市场缓存 + 13 定时器</td><td>—</td><td>公告/新闻观察者、9 个 JSONL 账本、profile</td></tr>
+  <tr><td>计算</td><td>多因子评分、Rank IC、定格/回填</td><td>—</td><td>四象限标注、冲突重算、确定性网关</td></tr>
+  <tr><td>智能体</td><td>无</td><td>对话分诊（只读）</td><td>llm-adapter、R1–R5、来源锚点网关</td></tr>
+  <tr><td>知识</td><td>journal 五段式（冷启动中）</td><td>录入/裁决演示</td><td>四层账本、Flag 回填、反例库、precommit</td></tr>
+  <tr><td>交互</td><td>17 面板工作台（现有 web）</td><td>v4–v8 七套原型</td><td>统一外壳接真实数据、事件日历、推送</td></tr>
+</table>
+<div class="card yellow">
+<p><strong>成本账未算（v9 写了「预算封顶」但没量化）。</strong>按假设粗估量级（非报价，DeepSeek 价格需当日核实）：A1 感知解读按每日 diff 命中 10 次×约 4k token，A4 复盘处理每日 1 次×约 20k token，A2/A3 按需 20 次×约 6k token —— 合计<strong>每日约 20 万 token 量级</strong>。结论：成本不构成障碍，但要写进配置做硬上限与用量统计。</p>
+</div>
+
+<h2>3｜方案内部张力检查（3 处已化解、2 处需求本身有张力）</h2>
+<h3>已化解但必须写进网关规则，否则会回退</h3>
+<ul>
+  <li><strong>「给建议」vs「禁买卖建议」</strong>：已用「需关注 X / 若 Y 则 Z」话术化解 → 缺一张可校验的话术规则表（禁词清单 + 必带字段），当前只是文档纪律。</li>
+  <li><strong>「复盘结果入库」vs「precommit 才可采纳」</strong>：已在 v9 分为两链路（经验链路不改分、因子链路过 IC 闸门）→ 闸门代码未写。</li>
+  <li><strong>「感知频率」vs「成本/限流」</strong>：已用 diff + 冷却 + 日上限化解 → watchers 未建，参数未定。</li>
+</ul>
+<h3>需求本身的张力（无法完全消除，只能明确取舍）</h3>
+<ul>
+  <li><strong>「实时」vs 公告/数据源的固有延迟</strong>：交易所公告挂网本身有延迟，观察者轮询 10 分钟是务实值；「实时评估」应定义为「盘中监控即时 + 公告感知分钟级 + 复盘盘后」，不要承诺秒级。</li>
+  <li><strong>「因素全面」vs 小样本过拟合</strong>：已用四用途拆解（Gate/Score/Explain/Flag）化解，但要守住「5–10 个强因子优于 30 个弱因子」——这条在实现时最容易破防。</li>
+</ul>
+
+<h2>4｜修复优先级（合并 12 轮全部待办后的行动清单）</h2>
+<table>
+  <tr><th>优先级</th><th>动作</th><th>对应缺口</th><th>规模</th></tr>
+  <tr><td><strong>P0</strong>（当天，零 LLM）</td><td>① 4 条 pending 标「需复核」；② 修 statsOf() 口径；③ 往 my-picks 加 3–5 只真实自选股（当前为空！）</td><td>R3/R4 地基</td><td>半天</td></tr>
+  <tr><td><strong>P1</strong>（本周，零 LLM）</td><td>建 events-feed / market-state / flag-events / trades / experiences 五个 JSONL + 手写录入接口；录入通化金马事件、11-17 冲突、7 条 Flag 为首批样本</td><td>R7/R8/R9/R14</td><td>1–2 天</td></tr>
+  <tr><td><strong>P2</strong>（下周，确定性）</td><td>watchers.js 公告+新闻观察者（只 diff 不调模型）+ mypicks 审批闸门 + 进定格/复盘</td><td>R2/R3/R17</td><td>2–3 天</td></tr>
+  <tr><td><strong>P3</strong>（接入 LLM）</td><td>llm-adapter + 话术规则表 + 来源锚点网关；先上 A1/A4</td><td>R5/R16</td><td>2–3 天</td></tr>
+  <tr><td><strong>P4</strong>（对话与界面接真）</td><td>A2/A3/A5 + v8 外壳接 8777 真实数据 + 事件日历数据源</td><td>R11–R15</td><td>1–2 周</td></tr>
+</table>
+
+<h2>5｜一句话给用户</h2>
+<div class="card blue">
+<p><strong>方案本身没有缺口——17 条需求全部有落点，且互相不打架。</strong>问题只有一个：从第 4 轮就提出的 Step 0 至今没有执行，导致所有闭环（经验回流、风险提示反馈、复盘入库）都卡在同一个地基上。<strong>下一步不该再扩设计，该写代码了。</strong>建议从 P0 的三件半天小事开始，今天就能做完。</p>
+</div>
+
+<footer>
+<p><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。成本估算基于明示假设，实际以服务商当日报价为准。</p>
+</footer>
+
+</div>
+</body>
+</html>

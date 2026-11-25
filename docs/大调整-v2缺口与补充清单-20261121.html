@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大调整 v2 · 缺口与补充清单</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1d2129;background:#f5f6f8;line-height:1.75;margin:0;padding:32px}
+  .wrap{max-width:980px;margin:0 auto;background:#fff;border-radius:14px;padding:36px 42px;box-shadow:0 6px 24px rgba(20,30,60,.06)}
+  h1{font-size:24px;margin:0 0 6px}h2{font-size:18px;margin:30px 0 12px;padding-left:10px;border-left:3px solid #165dff}
+  h3{font-size:15px;margin:18px 0 8px}.sub{color:#86909c;font-size:13px;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  th,td{border:1px solid #e5e6eb;padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:#f7f8fa;font-weight:600;color:#4e5969}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:5px;font-weight:600}
+  .done{background:#e8ffea;color:#00a870}.part{background:#fff7e8;color:#d46b08}.todo{background:#ffece8;color:#f53f3f}
+  .info{background:#e8f3ff;color:#165dff}
+  .box{background:#f7f8fa;border-radius:10px;padding:14px 18px;margin:12px 0;font-size:13px}
+  code{background:#f2f3f5;padding:1px 6px;border-radius:4px;font-size:12px;color:#c9251c}
+  ul{margin:6px 0 6px 20px}li{margin:4px 0}
+  .foot{color:#86909c;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>大调整 v2 · 已完成 / 缺口与补充清单</h1>
+  <div class="sub">生成于 2026-11-21 · 对应本次「简洁外壳 + Hermes 核心智能体 + 五模块」重构</div>
+
+  <h2>一、本次已落地</h2>
+  <table>
+    <tr><th>需求</th><th>状态</th><th>说明</th></tr>
+    <tr><td>简洁外壳 + 侧栏五导航</td><td><span class="tag done">完成</span></td><td>侧栏：日程与事件 / 每日行情 / 我的股池 / 对话 / 个人知识库；旧完整面板保留在 <code>/legacy</code>，数据链路不动。</td></tr>
+    <tr><td>右侧常驻对话</td><td><span class="tag done">完成</span></td><td>全部页面常驻；已注入两市量能、风格结论、涨停、公司事件、观察池、板块、股池快照。</td></tr>
+    <tr><td>智能体贯穿全部</td><td><span class="tag done">完成</span></td><td>统一走 <code>hermes.js</code> 桥接层；日程解读、行情预测、板块分析、选股解读、知识整理全部经同一智能体。</td></tr>
+    <tr><td>Hermes 核心 + DeepSeek 模型</td><td><span class="tag part">桥接就绪/待装</span></td><td>桥接层 + WSL2 安装脚本已备；Hermes 未就绪时自动降级到 Node 直连 DeepSeek（实测已跑通）。</td></tr>
+    <tr><td>万年日历 + 事件 + 提醒</td><td><span class="tag done">完成</span></td><td>任意年月、事件分级(A/B/C)、未来30天、添加自定义事件、告警流 + 弹框提醒（15分钟检查）。</td></tr>
+    <tr><td>两市预测与监控</td><td><span class="tag done">完成</span></td><td>成交额/量比/涨跌/宽度/动力结论；Hermes 生成方向依据 + 证伪条件；15分钟量能播报。</td></tr>
+    <tr><td>板块监控（同花顺细分行业）</td><td><span class="tag done">完成</span></td><td>复用 496 个细分行业强度，输出「持续流入迹象」「长增长候选」+ 智能体分析。</td></tr>
+    <tr><td>三类选股</td><td><span class="tag done">完成</span></td><td>①涨停热度 ②承压不跌(近5日≤1次破MA5) ③防守型板块线索；前两类已接入真实缓存数据。</td></tr>
+    <tr><td>我的股池（关注 + 已卖出）</td><td><span class="tag done">完成</span></td><td>关注清单/持仓沿用既有数据；新建卖出记录账本（含盈亏与卖出原因，供复盘）。</td></tr>
+    <tr><td>个人知识库 + 知识图谱</td><td><span class="tag done">完成</span></td><td>笔记本地 JSONL 落盘；智能体整理为节点/边图谱并可视化；可基于图谱问答。无 LLM 时用关键词规则兜底。</td></tr>
+  </table>
+
+  <h2>二、需要补充 / 缺失的内容</h2>
+
+  <h3>A. 需你本人操作（我无法代做）</h3>
+  <table>
+    <tr><th>项</th><th>为什么</th><th>怎么做</th></tr>
+    <tr>
+      <td><b>正式安装官方 Hermes Agent</b></td>
+      <td>本机 <code>wsl.exe</code> 被安全策略拦截，我无法从这里安装/启动 WSL2；官方 Hermes 原生 Windows 仅实验性支持。</td>
+      <td>在 WSL2(Ubuntu) 里执行 <code>hermes-bridge/setup-wsl2.sh</code>，或在 PowerShell 用官方 <code>iex (irm https://hermes-agent.nousresearch.com/install.ps1)</code>。装好后把 DeepSeek Key 配进去，桥接服务默认监听 <code>127.0.0.1:8765</code>，状态栏会显示 Hermes。</td>
+    </tr>
+    <tr>
+      <td><b>DeepSeek 费用与额度</b></td>
+      <td>对话/预测/整理都按 token 计费；现有软上限 20万 token/日。</td>
+      <td>在设置或 <code>data/config.json</code> 的 <code>agent.maxTokensPerDay</code> 调整。</td>
+    </tr>
+  </table>
+
+  <h3>B. 数据源缺口（决定「实时/全量」程度）</h3>
+  <table>
+    <tr><th>缺口</th><th>影响</th><th>建议</th></tr>
+    <tr><td><b>确定性财经事件的权威日历</b><br>（美联储/各国指标/展会/全球会议的具体日期）</td><td>当前事件日期按制度性规律推算（B级「待核实」），非实时抓取；展会、全球重大会议覆盖不全。</td><td>接入经济日历数据源（如 Investing.com / Trading Economics / 各国央行官网 RSS），把 B 级升级为 A 级已确认日期；展会与会议用行业日历源补充。</td></tr>
+    <tr><td><b>板块真实主力资金净流入</b></td><td>当前「资金持续流入」用多周期相对强度近似，不是真实净流入金额。</td><td>接入东财/同花顺行业资金流接口（按细分行业 dml 净额），把持续性判断从「超额同向」升级为「连续N日净流入」。</td></tr>
+    <tr><td><b>防守型个股与 ETF 池</b></td><td>第三类选股当前只给防御类板块线索，个股/ETF 清单为空（不编造标的）。</td><td>接入股息率、波动率、最大回撤数据与 ETF 全量列表，按「低波+高股息+弱市抗跌」自动筛选；或手工维护一份清单文件。</td></tr>
+    <tr><td><b>全市场日线快照</b></td><td>「承压不跌」与观察池基于候选池（约18只），非全市场扫描。</td><td>用同花顺 Financial-API 的 Market Dumps 每天落一份全市场日线，即可对全市场跑 MA5/防守型筛选（此前调研已确认这是最优路径）。</td></tr>
+    <tr><td><b>海外指标稳定性</b></td><td>实测海外源(LetsVPN 环境)频繁 socket hang up，已自动降级缓存。</td><td>保持程序级故障转移；如需稳定实时，为海外源单独配代理或换源。</td></tr>
+  </table>
+
+  <h3>C. 设计/机制缺口（影响可信度与闭环）</h3>
+  <ul>
+    <li><b>预测的可证伪留痕</b>：Hermes 生成的方向依据目前是即时文本，尚未写入「预测账本」做事后命中检验。建议落 <code>predictions.jsonl</code>，次日复盘核对，纳入经验库。</li>
+    <li><b>事件→板块→个股的因果链</b>：目前给出「相关板块」，但事件到具体受益个股的映射仍需人工确认；建议接映射表并标注证据等级。</li>
+    <li><b>知识图谱的语义质量</b>：无 LLM 时用关键词规则兜底，节点较粗；接上 Hermes 后自动抽取三元组质量更高。冲突边(contradicts)不自动消解，需人工审核——这是刻意设计，不是缺陷。</li>
+    <li><b>弹框提醒的到达率</b>：当前用页面内 toast + 告警流；桌面系统通知需浏览器授予 Notification 权限，且页面需保持打开。若要「关页面也提醒」，需接消息网关（Hermes 支持 Telegram/企业微信等 20+ 平台）。</li>
+    <li><b>权限与安全</b>：Hermes 桥接默认只监听 127.0.0.1；生产使用建议给桥接加 token 校验，并限制 Hermes 的工具集（<code>hermes tools</code>）为只读，避免智能体误操作文件。</li>
+  </ul>
+
+  <h2>三、怎么切换成 Hermes 正式核心</h2>
+  <div class="box">
+    1）WSL2 跑通 <code>hermes chat -q "你好"</code>；<br>
+    2）启动桥接 <code>python3 hermes_bridge.py --port 8765</code>；<br>
+    3）Windows 侧确认 <code>http://127.0.0.1:8765/health</code> 能通（WSL2 与 Windows 网络互通需按脚本提示设置 IP 或端口转发）；<br>
+    4）在 <code>data/config.json</code> 把 <code>agent.hermes.backend</code> 设为 <code>official</code>（当前 auto 会自动探测）；<br>
+    5）重启程序，左侧状态栏显示「Hermes」即切换成功；失败仍自动回 DeepSeek，不会中断服务。
+  </div>
+
+  <div class="foot">本清单随实现推进更新。所有数值来自程序实时抓取或既有缓存；智能体输出禁买卖建议、禁编造数字、不改任何评分。市场有风险，投资需谨慎。</div>
+</div>
+</body>
+</html>

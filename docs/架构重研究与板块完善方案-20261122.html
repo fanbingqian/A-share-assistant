@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>架构重研究与板块完善方案 · 2026-11-22</title>
+<style>
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#1d2129;background:#f5f6f8;line-height:1.75;margin:0;padding:32px}
+  .wrap{max-width:1120px;margin:0 auto;background:#fff;border-radius:14px;padding:34px 42px;box-shadow:0 6px 24px rgba(20,30,60,.06)}
+  h1{font-size:25px;margin:0 0 6px} h2{font-size:18px;margin:34px 0 12px;padding-bottom:8px;border-bottom:2px solid #e8f0ff}
+  h3{font-size:15px;margin:22px 0 8px;color:#165dff}
+  h4{font-size:13.5px;margin:16px 0 6px;color:#374151}
+  .sub{color:#86909c;font-size:13px;margin-bottom:24px}
+  table{border-collapse:collapse;width:100%;font-size:12.6px;margin:10px 0 16px}
+  th,td{border:1px solid #e5e6eb;padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f7f8fa;font-weight:600}
+  code{background:#f2f3f5;padding:1px 6px;border-radius:4px;font-size:12px;color:#c2185b}
+  .ok{background:#e8ffea;color:#1a7f37;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .half{background:#fff3e8;color:#d25f00;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .no{background:#ffece8;color:#cb2634;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p0{background:#ffece8;color:#cb2634;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p1{background:#fff3e8;color:#d25f00;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p2{background:#e8f0ff;color:#165dff;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .p3{background:#f2f3f5;color:#4e5969;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+  .box{background:#f8fafc;border-left:4px solid #165dff;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+  .warn{background:#fff8e8;border-left-color:#ff7d00}
+  .danger{background:#fff0ef;border-left-color:#f53f3f}
+  .good{background:#f0fff4;border-left-color:#00b42a}
+  ul,ol{margin:6px 0 10px;padding-left:22px} li{margin:3px 0}
+  .arch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0;font-size:12px}
+  .arch .node{background:#e8f0ff;border:1px solid #bed3ff;border-radius:8px;padding:9px 12px;min-width:120px;text-align:center}
+  .arch .node.hot{background:#fff0ef;border-color:#ffcdc9}
+  .arch .node.done{background:#e8ffea;border-color:#b7ebc2}
+  .arch .arr{color:#86909c;font-weight:700}
+  .small{font-size:12px;color:#6b7280}
+  .tag{display:inline-block;background:#f2f3f5;border-radius:4px;padding:1px 6px;margin-right:4px;font-size:11px;color:#4e5969}
+  .footer{margin-top:36px;padding-top:16px;border-top:1px solid #e5e6eb;color:#86909c;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>全球市场监测系统 · 架构重研究与板块完善方案</h1>
+<div class="sub">审计日期：2026-11-22 20:40 · 基于真实代码、真实缓存与实测接口 · 本文只做分析与方案，未改动业务代码</div>
+
+<div class="box good">
+<strong>一句话结论：</strong>五模块的「外壳和本地数据链路」基本搭好了，但你的需求里真正有价值的三件事——<b>事件历史统计与主动提醒、9 点预测快照与自动复盘、三类选股规则</b>——目前都还没有真正跑起来。阻塞原因不是智能体不行，而是<b>数据底座缺生产者、缺定时调度、缺统计引擎、缺前端订阅</b>。智能体对话链路今天已修复并验证走官方 Hermes。
+</div>
+
+<h2>一、各板块实际运行情况体检</h2>
+
+<table>
+<thead><tr><th style="width:19%">模块 / 功能</th><th style="width:8%">状态</th><th style="width:36%">现在实际能做什么</th><th>不能做什么 / 技术原因</th></tr></thead>
+<tbody>
+<tr><td>对话（右侧常驻）</td><td><span class="ok">能运行</span></td><td>注入全局快照 + 板块 + 股池 + 近 45 天日程；一问一答落盘并进入知识库消息流。<b>实测 backend=hermes-official</b>。</td><td>断网时回落 DeepSeek；两者都断则 502。状态标签只看桥接探针，不能代表 LLM 真可用。</td></tr>
+<tr><td>我的股池</td><td><span class="ok">能运行</span></td><td>关注 / 持仓 / 卖出记录增删查，本地 JSON/JSONL，闭环完整。</td><td><code>removeSold()</code> 有一次冗余写盘，最终结果正确，不影响使用。</td></tr>
+<tr><td>知识库 · 本地部分</td><td><span class="ok">能运行</span></td><td>笔记 CRUD、图谱、去重、别名、冲突、反馈、衰减、消息流，全部有真实落盘。</td><td>图谱初次为空，需要点「整理为图谱」。</td></tr>
+<tr><td>知识库 · 智能整理</td><td><span class="half">部分运行</span></td><td>先价值门控，再尝试 Hermes 结构化抽取。</td><td>LLM 失败会降级为规则抽取，可用但质量下降。</td></tr>
+<tr><td>知识库 · 智能问答</td><td><span class="half">部分运行</span></td><td>基于知识库回答。</td><td>纯 LLM、<b>无降级</b>，断网即失败。</td></tr>
+<tr><td>日程 · 日历与提醒</td><td><span class="half">部分运行</span></td><td>14 条周期性规则展开万年日历、未来 N 天、A/B 级提醒、用户自定义事件；服务端每 30 分钟推告警。</td><td>规则是推算，不是真实事件库；<b>前端 v2.js 没有订阅 SSE</b>，不点「查看提醒」就看不到主动弹框。</td></tr>
+<tr><td>日程 · 事件影响统计</td><td><span class="no">不能运行</span></td><td>只有「智能体解读」按钮，返回一段 LLM 文字。</td><td><b>没有近 2 年事件库，没有历史涨跌统计</b>。<code>calendar.js</code> 不读任何行情/K 线，无法算 T+1/T+3/T+5 胜率与 AR/CAR。</td></tr>
+<tr><td>每日行情 · 实时监控</td><td><span class="half">部分运行</span></td><td>量能、风格、板块强度、涨停结构、观察池评分都能显示。</td><td>依赖缓存；<code>market-style.json</code> 停在 11-20，外网刷新失败时只能回退旧数据。<code>technical-cache.json</code> 显示 <code>barsOk:0 / barsFail:14</code>。</td></tr>
+<tr><td>每日行情 · 9 点预测快照</td><td><span class="no">不能运行</span></td><td>只有点「智能体解读」时才临时生成一次。</td><td><b>没有 9 点定时任务</b>，没有独立快照文件。文本只进 <code>predictions.jsonl</code>，目前仅 1 条且未复盘。</td></tr>
+<tr><td>每日行情 · 复盘</td><td><span class="half">部分运行</span></td><td><code>predictions.js</code> 的 record / judge / review 代码本身完整，能用本地实际值判命中。</td><td>无定时、无报告模板、无「今日复盘」生成；<code>predictions-actual.json</code> 只有 1 天，样本不足；复盘后无自动知识入库。</td></tr>
+<tr><td>选股① 热度 / 独立行情牛股</td><td><span class="half">部分运行</span></td><td>现有的是「涨停板热度」：连板数 + 封单占比 + 首封时间 − 炸板次数。</td><td><b>不是你要的独立行情牛股</b>。缺少个股 vs 行业 / 大盘的超额独立性字段。</td></tr>
+<tr><td>选股② 趋势股</td><td><span class="no">不能运行</span></td><td><code>pickResilient()</code> 只读 <code>ma5-screen.json</code> 做 <code>breaks≤1</code> 过滤。</td><td>文件停在 11-21 且<b>全项目无生成器</b>；字段只有 <code>d/c/ma5/below</code>，<b>没有 high</b>，无法判断「期间创新高」；也没有「连续 3 日不破 MA5」专门判定。</td></tr>
+<tr><td>选股③ 强势反弹股</td><td><span class="no">不能运行</span></td><td>当前第三类叫「防守型个股 / ETF」。</td><td>与需求完全不同。无超跌判定、无长下影判定；<code>data/defensive-cache.json</code> 根本不存在，返回空数组。</td></tr>
+<tr><td>前端提醒卡片 / 弹框</td><td><span class="half">部分运行</span></td><td>事件卡片内嵌「智能体解读」结果；toast 轻提示。</td><td>服务端推了 <code>v2-volume</code> / <code>v2-calendar</code> SSE，<b>前端未订阅</b>，所以没有「事件出现自动弹框」。</td></tr>
+</tbody>
+</table>
+
+<div class="box warn">
+<strong>最关键的四个「看着有、其实没有」：</strong>
+① <code>ma5-screen.json</code> 没有生产者，是死数据；② <code>defensive-cache.json</code> 不存在，第三类选股恒空；③ forecast 没有定时器，只有点击触发；④ 事件模块没有历史统计引擎，LLM 解读不等于经验统计。
+</div>
+
+<h2>二、智能体对话与数据流验证</h2>
+
+<h3>2.1 实测结果</h3>
+<table>
+<thead><tr><th>检查项</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td><code>GET /api/v2/hermes/status</code></td><td><code>official.online=true</code>，<code>active=hermes-official</code></td></tr>
+<tr><td><code>POST /api/v2/chat</code></td><td><code>ok=true</code>，<code>backend=hermes-official</code>，耗时约 19–20 秒</td></tr>
+<tr><td>回答质量</td><td>正确引用快照数字，区分「事实 / 程序计算 / 推测」，给出证伪条件，无买卖建议</td></tr>
+<tr><td>落盘</td><td><code>conversations.jsonl</code> 与 <code>knowledge/messages.jsonl</code> 均为 <code>hermes-official</code></td></tr>
+</tbody>
+</table>
+
+<h3>2.2 当前真实数据流</h3>
+<div class="arch">
+  <div class="node">浏览器 v2</div><div class="arr">→</div>
+  <div class="node">Node 8777<br><span class="small">server.js 注入上下文</span></div><div class="arr">→</div>
+  <div class="node done">hermes.js<br><span class="small">system + 安全网关</span></div><div class="arr">→</div>
+  <div class="node done">Windows 桥接<br>127.0.0.1:8765</div><div class="arr">→</div>
+  <div class="node hot">wsl.exe → Hermes CLI<br><span class="small">记忆 / 技能 / MCP</span></div><div class="arr">→</div>
+  <div class="node">DeepSeek</div>
+</div>
+
+<div class="box">
+<strong>「是否符合官方标准」要分两层看：</strong><br>
+<b>① 进程与能力层：是。</b>请求确实进入官方 Hermes CLI，Hermes 的持久记忆、技能、MCP 在 WSL 内执行；Node 侧只做上下文注入和安全网关。此前因为 Hyper-V 防火墙入站默认 Block，Windows 连不到 WSL 的 8765，全部走了 DeepSeek 直连；今天已用 Windows 侧桥接 + <code>wsl.exe</code> 调用修复。<br>
+<b>② 接口与工具调用层：还不是。</b>现在是把完整 messages 拼成一段 prompt 交给 Hermes 一次性回答，<b>没有把知识库/行情模块暴露成 function-calling 工具让模型自主多轮拉取</b>。也就是说，AI-Hel2 那种「模型自己决定调用哪个 MCP 工具取数」的模式尚未实现。当前是「系统先喂数据、模型再解读」，不是「模型按需取数」。
+</div>
+
+<h2>三、按你的需求重定义三个板块</h2>
+
+<h3>3.1 日程与事件：从「日历」升级为「事件研究 + 主动提醒」</h3>
+
+<h4>数据结构（新增 <code>data/events/registry.jsonl</code>）</h4>
+<table>
+<thead><tr><th>字段</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>event_id / name / category</code></td><td>会议、展会、政府工作会议、指标发布、财报窗口、医保目录、调研访谈等</td></tr>
+<tr><td><code>country / scheduled_at / source_url / verified</code></td><td>国家、发布时间、信源、是否已由官方确认；未确认必须标「待核实」</td></tr>
+<tr><td><code>sectors[] / symbols[]</code></td><td>影响板块与个股映射</td></tr>
+<tr><td><code>importance / repeat_rule</code></td><td>A/B/C 级与年度重复规则</td></tr>
+<tr><td><code>forecast / actual / prior</code></td><td>指标类事件的前值、预期、实际值</td></tr>
+</tbody>
+</table>
+
+<h4>历史统计引擎（新增 <code>server/eventstudy.js</code>）</h4>
+<p>每个事件发生后自动计算并落盘 <code>data/events/stats.json</code>：</p>
+<ul>
+<li><b>窗口收益</b>：T−5 / T−1 / T0 / T+1 / T+3 / T+5 / T+10 的相关板块指数与个股收益。</li>
+<li><b>超额收益</b>：以沪深 300 为基准，计算 AR 与累计 CAR；方法参考 <code>lixia1118/Event-study-calculator</code> 的市场模型与统计检验。</li>
+<li><b>经验概率</b>：按「事件类型 × 板块 × 重要级别」分组，给出上涨比例、样本数 n、平均涨幅、最好/最差、胜率。<b>n&lt;5 必须标「样本不足，仅供参考」</b>。</li>
+<li><b>走势形态</b>：T+1 高开低走 / 低开高走 / 连续放量等归类，供智能体写卡片时引用。</li>
+</ul>
+
+<h4>智能体工作流</h4>
+<div class="arch">
+  <div class="node">监测新闻 / 公告 / 日程变更</div><div class="arr">→</div>
+  <div class="node">去重 + 核实 + 事件抽取</div><div class="arr">→</div>
+  <div class="node">映射板块 / 个股</div><div class="arr">→</div>
+  <div class="node">查历史统计</div><div class="arr">→</div>
+  <div class="node hot">生成提醒卡片</div><div class="arr">→</div>
+  <div class="node">SSE 推送 + 弹框</div>
+</div>
+<p>卡片固定三段：<b>① 什么事情</b>（事件、时间、信源、是否已确认）→ <b>② 对这件事的分析</b>（历史 n 次、上涨概率、平均走势、相似事件）→ <b>③ 观察建议</b>（只写「若…则…」的验证条件与证伪点，不写买卖指令）。</p>
+<p>实现要点：前端 <code>v2.js</code> 需要订阅 <code>v2-calendar</code> SSE；后端在事件入库时调用 <code>eventImpact()</code> 并把结果作为卡片内容推送，而不是只在用户点击时生成。</p>
+
+<h3>3.2 每日行情：三任务 + 报告模板 + 知识回流</h3>
+
+<h4>任务拆解</h4>
+<table>
+<thead><tr><th style="width:16%">任务</th><th>目标形态</th><th>必须新增</th></tr></thead>
+<tbody>
+<tr><td>① 实时监控</td><td>两市 / 行业板块 / 高分个股实时刷新</td><td>刷新失败时显示「数据截止时点 + 已降级」，不能静默用旧数据冒充实时。</td></tr>
+<tr><td>② 9 点预测</td><td>交易日 09:00 自动生成预测并冻结快照</td><td><code>server/scheduler.js</code> 定时；<code>data/daily/YYYY-MM-DD/forecast.json</code> 落盘；快照含方向倾向、板块热度、Top 个股、证伪条件。</td></tr>
+<tr><td>③ 复盘</td><td>今日复盘 + 预测复盘 → 报告 → 知识候选</td><td>16:00 数据冻结、16:30 今日复盘、18:30 报告；报告落盘 <code>report.html/md</code>；智能体产出「知识候选」经价值门控后入知识库。</td></tr>
+</tbody>
+</table>
+
+<div class="box warn">
+<strong>不要预测点位和涨跌概率</strong>是现有安全纪律。你的需求写的是「预测板块、方向倾向」，可以用「偏向 / 触发条件 / 证伪条件」表达；如果需要历史胜率，必须明确标注为「历史经验统计 n=X」，而不是对未来价格的确定性概率承诺。
+</div>
+
+<h4>建议采用的「全面复盘报告模板」（12 节）</h4>
+<p>这是综合 GitHub 多个项目后，适配本系统数据口径的版本：</p>
+<table>
+<thead><tr><th style="width:6%">#</th><th style="width:23%">章节</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>摘要与一句话定性</td><td>指数、成交、宽度、情绪各一句；红涨绿跌；数据日与生成时间。</td></tr>
+<tr><td>2</td><td>指数与量能</td><td>沪深创科创收盘、涨跌幅、成交额、较 20 日均量、封闭/放量方向。</td></tr>
+<tr><td>3</td><td>市场宽度与情绪</td><td>上涨占比、涨停/跌停、炸板率、最高连板、情绪阶段。</td></tr>
+<tr><td>4</td><td>行业 / 概念热点</td><td>涨幅榜与跌幅榜、代表股、外部催化；区分「事实」与「媒体归因」。</td></tr>
+<tr><td>5</td><td>资金结构</td><td>主力净流入、分档；<b>无数据就写「待补充」，禁止估算冒充实测</b>。</td></tr>
+<tr><td>6</td><td>主线延续与五日对照</td><td>前日强势方向的延续 / 分化 / 退潮，五日序列。</td></tr>
+<tr><td>7</td><td>预测兑现检验</td><td>昨日预测的方向、触发条件、证伪条件逐条对照今日实际；给出命中 / 部分 / 未命中。</td></tr>
+<tr><td>8</td><td>三类选股观察池</td><td>热度牛股 / 趋势股 / 反弹股，每类列入选理由与次日验证条件（非推荐）。</td></tr>
+<tr><td>9</td><td>风险预警</td><td>破位、宽度塌陷、资金背离、事件冲击；按严重程度排序。</td></tr>
+<tr><td>10</td><td>明日三情景与触发条件</td><td>乐观 / 基准 / 悲观三档，每档列可勾稽条件，<b>不给点位和买卖动作</b>。</td></tr>
+<tr><td>11</td><td>数据来源与口径</td><td>接口、数据日、缺失/降级项、统计口径、样本数 n。</td></tr>
+<tr><td>12</td><td>知识入库候选</td><td>事实 / 经验 / 待验证三类候选，等待价值门控与人工确认。</td></tr>
+</tbody>
+</table>
+
+<h4>复盘后如何判断「有用的」纳入知识库</h4>
+<ol>
+<li>程序生成结构化候选：事实（已发生）、经验（可复制规律）、待验证（有证伪条件）。</li>
+<li>过 <code>knowledge.js</code> 现有价值门控：闲聊 / 纯情绪 / 无信息量直接丢弃。</li>
+<li>智能体给每条候选打标签、关联板块与个股、写明适用市场状态。</li>
+<li>与已有笔记做去重 / 冲突检测；命中冲突进入 <code>pending-merge</code> 裁决，不自动覆盖。</li>
+<li>默认只写 <code>extracted:false</code> 候选，用户确认后才 <code>confirmNode</code> 进正式图谱。</li>
+</ol>
+
+<h3>3.3 选股三类：把口径写死成可计算规则</h3>
+
+<table>
+<thead><tr><th style="width:15%">类型</th><th style="width:43%">精确定义（建议）</th><th>需要新增的数据 / 文件</th></tr></thead>
+<tbody>
+<tr><td>① 热度 / 独立行情牛股</td><td><b>独立性</b>：近 5 日个股收益 − 所属行业收益 − 沪深 300 收益 &gt; 阈值；且行业本身未同步大涨。<br><b>热度</b>：换手率分位 + 连板高度 + 首封时间 + 封单占比 − 炸板次数。<br>两者同时满足才入选。</td><td>个股行业归属、行业指数日收益、个股换手率、涨停明细（已有 <code>limitup-cache</code> 部分字段）。</td></tr>
+<tr><td>② 趋势股</td><td><b>规则 A</b>：最近 3 个连续交易日 <code>close ≥ MA5</code>。<br><b>规则 B</b>：最近 5 个交易日中 <code>close &lt; MA5</code> 不超过 1 天，且窗口内 <code>max(high) &gt; 前 20 日 max(high)</code>（创新高）。<br>满足 A 或 B，并排除 ST / 停牌。</td><td>必须生成带 <code>high / low / volume</code> 的日线快照 <code>data/trend-screen.json</code>；新增 <code>server/screener.js</code> 生成器。</td></tr>
+<tr><td>③ 强势反弹股</td><td><b>超跌</b>（满足其一）：20 日收益 ≤ −15%；RSI(14) ≤ 30；收盘价低于 MA20 达 10% 以上。<br><b>长下影</b>：<code>lowerShadow = min(open,close) − low</code>，要求 ≥ 2×ATR(14) 且 ≥ 1.5% 股价；且 <code>close</code> 位于当日振幅上 40%（收在下影线之上）。<br>有分钟数据时，「尾盘」限定为 14:30 后；无分钟数据时用日线收盘位置作代理并显式标注。</td><td>日线 OHLC + ATR + RSI；新增 <code>data/rebound-screen.json</code>。<b>「超跌」阈值需先用 2 年历史回测校准，不能直接写死。</b></td></tr>
+</tbody>
+</table>
+
+<div class="box danger">
+<strong>当前 <code>technical.js</code> 里已有 <code>holdMa5NewHigh</code> / <code>resilience</code> 等因子代码，但算不出来</strong>：<code>technical-cache.json</code> 显示 14 只标的 <code>barsOk:0, barsFail:14</code>，全部 <code>calc:null</code>，错误是 <code>socket hang up</code>。所以先把 K 线源修复或换备用源，是三类选股的前置条件。
+</div>
+
+<h2>四、GitHub 可复用项目调研结果</h2>
+
+<table>
+<thead><tr><th style="width:27%">项目</th><th style="width:10%">可复用度</th><th>可移植内容</th></tr></thead>
+<tbody>
+<tr><td><code>quantskills/skill-market-daily-review</code></td><td><span class="ok">高</span></td><td>固定报告模板 + 统一采集顺序 + T+1 数据标注 + <code>validate_report.py</code> 章节/来源/免责声明校验脚本。最适合直接移植为我们的报告骨架，数据源换成自己的快照即可。</td></tr>
+<tr><td><code>RyanLiu777/asharedailysummary</code></td><td><span class="ok">高</span></td><td>12 模块规格、HTML 模板、<code>verdicts</code> 单一事实源、五日序列、前日情景兑现检验、红涨绿跌规范。取其结构，不取其重数据源依赖。</td></tr>
+<tr><td><code>Andy-TJH/Event2Sector</code></td><td><span class="ok">高</span></td><td>新闻→事件抽取→板块映射→个股→Markdown 报告，含 T+1/T+3/T+5 后验验证设计。正好补我们日程事件模块缺的「事件→板块→验证」链路。</td></tr>
+<tr><td><code>lixia1118/Event-study-calculator</code></td><td><span class="ok">高</span></td><td>市场模型 AR/CAR、t 检验 / Wilcoxon / 符号检验、非交易日顺延规则。可直接作为事件历史统计算法的参考实现。</td></tr>
+<tr><td><code>zxl7/quant-review</code></td><td><span class="ok">高</span></td><td>数据层 / 加工层 / 渲染层三层分离，中间只用 <code>marketData-YYYYMMDD.json</code> 一个接口协议解耦。与本项目 Node + 快照的架构最一致。</td></tr>
+<tr><td><code>icekale/stock-fupan</code></td><td><span class="half">中</span></td><td>强势主线识别、前日主线延续/退潮、新闻催化、HTML/PNG 输出、复盘源交叉校验。适合补「次日观察」章节。</td></tr>
+<tr><td><code>bikeread/ashare-recap-agent</code></td><td><span class="half">中</span></td><td>LangGraph 七段式报告、SQLite + artifacts 持久化、结构校验清洗。编排思路可参考，但依赖 Tushare / 搜索 provider，较重。</td></tr>
+<tr><td><code>tinylion1024/a-share-profit-helper</code></td><td><span class="half">中</span></td><td>「学习报告 / 进化报告」模板，适合我们复盘后把经验沉淀进知识库。</td></tr>
+<tr><td><code>LeoYeAI/openclaw-master-skills</code>（trader-daily）</td><td><span class="no">低</span></td><td>有日终 / 周末模板，但含买卖点与仓位表，<b>与我们的安全底线冲突</b>，只可参考排版结构。</td></tr>
+</tbody>
+</table>
+<p class="small">注意：以上项目的许可证与使用条款需在实际复制代码前逐一确认；本报告建议只移植「模板结构、算法口径、校验清单」，不整仓复制。</p>
+
+<h2>五、智能体如何贯穿三个板块</h2>
+
+<table>
+<thead><tr><th style="width:13%">触发方式</th><th style="width:24%">场景</th><th>智能体职责</th></tr></thead>
+<tbody>
+<tr><td>事件驱动</td><td>监测到新事件 / 事件日期临近 / 事件实际值公布</td><td>抽取结构化事件 → 映射板块 → 查历史统计 → 生成提醒卡片 → SSE 弹框；不自行下单、不改评分。</td></tr>
+<tr><td>定时</td><td>09:00 预测、16:30 今日复盘、18:30 报告</td><td>读取确定性快照，写「方向倾向 / 触发条件 / 证伪条件」；复盘时逐条回评昨日判断；产出知识候选。</td></tr>
+<tr><td>按需</td><td>右侧对话、模块内「智能体解读」</td><td>回答基于快照与知识库，所有数字可溯源；不足就说无数据。</td></tr>
+</tbody>
+</table>
+
+<h3>5.1 感知层设计（技能 / MCP）</h3>
+<p>按你之前确定的方向：<b>不把模块数据直接塞进 system prompt，而是导出共享快照文件，让智能体按需读取</b>。</p>
+<ul>
+<li>新增 <code>data/agent-perception/calendar.json</code>、<code>market.json</code>、<code>picks.json</code>、<code>knowledge.json</code>，由各业务模块定时写出。</li>
+<li>在 <code>~/.hermes/skills/market-modules/SKILL.md</code> 写明读取路径与字段含义，桥接调用时加 <code>-s market-modules</code>（Windows shim 的 <code>args</code> 数组里追加）。</li>
+<li>MCP 作为第二阶段：把快照查询封装成工具，让模型通过 <code>tool_calls</code> 自主拉取，这才真正达到 AI-Hel2 式的「模型 ↔ 知识库」关系。</li>
+</ul>
+<p>当前的安全纪律（Node 侧 BASE_SYSTEM + finalize 拦截、桥接 GUARDRAIL、Hermes SOUL.md）保持不变；所有智能体输出 <code>affectsScore=false</code>。</p>
+
+<h2>六、实施优先级与验收标准</h2>
+
+<table>
+<thead><tr><th style="width:8%">优先级</th><th style="width:26%">任务</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td><span class="p0">P0</span></td><td>数据底座修复</td><td>K 线源恢复或有备用源；<code>trend-screen.json</code> 与 <code>rebound-screen.json</code> 每日自动生成且含 high/low/ATR/RSI；删除第三类「防守型」旧口径。</td></tr>
+<tr><td><span class="p0">P0</span></td><td>定时与快照</td><td>交易日 09:00 自动生成预测快照；16:30 今日复盘；预测复盘命中判定可跑；<code>data/daily/YYYY-MM-DD/</code> 下有 forecast / review / report。</td></tr>
+<tr><td><span class="p0">P0</span></td><td>前端主动提醒</td><td><code>v2.js</code> 订阅 <code>v2-calendar</code> SSE；事件临近时弹出卡片，卡片含事件、分析、观察点三段。</td></tr>
+<tr><td><span class="p1">P1</span></td><td>事件研究引擎</td><td>近 2 年事件库落盘；每个事件有 T+1/T+3/T+5 统计与样本数；卡片能引用历史胜率与平均走势。</td></tr>
+<tr><td><span class="p1">P1</span></td><td>全面报告模板</td><td>12 节报告自动生成；「预测兑现检验」与「知识入库候选」为必备节；缺数据显式标注，不编造。</td></tr>
+<tr><td><span class="p2">P2</span></td><td>知识自动回流</td><td>复盘候选经价值门控、去重、冲突检测后写入知识库；每条经验带适用状态与证伪条件。</td></tr>
+<tr><td><span class="p3">P3</span></td><td>技能 / MCP 感知</td><td><code>market-modules</code> 技能可读取四类快照；第二阶段改造为 MCP 工具调用，模型可主动取数。</td></tr>
+</tbody>
+</table>
+
+<h3>建议新增 / 修改的文件</h3>
+<table>
+<thead><tr><th>动作</th><th>文件</th></tr></thead>
+<tbody>
+<tr><td>新增</td><td><code>server/screener.js</code>、<code>server/scheduler.js</code>、<code>server/eventstudy.js</code>、<code>server/report.js</code></td></tr>
+<tr><td>修改</td><td><code>server/daily.js</code>、<code>server/calendar.js</code>、<code>server/predictions.js</code>、<code>server/server.js</code></td></tr>
+<tr><td>修改</td><td><code>web/v2/v2.js</code>、<code>web/v2/index.html</code>、<code>hermes-bridge/hermes-bridge-win.js</code>（加 <code>-s market-modules</code>）</td></tr>
+<tr><td>新增数据</td><td><code>data/events/</code>、<code>data/daily/YYYY-MM-DD/</code>、<code>data/agent-perception/</code></td></tr>
+</tbody>
+</table>
+
+<div class="box">
+<strong>下一步建议：</strong>先做 P0 的「数据底座 + 定时 + 前端订阅」。这三件不做，事件统计、报告模板、知识回流都只是空壳；做完之后，智能体才会从「被动问答」变成「主动感知 + 定时复盘 + 经验沉淀」。
+</div>
+
+<div class="footer">全球市场监测与报警系统 · 架构重研究 · 2026-11-22 · 仅用于个人研究，不构成投资建议</div>
+
+</div>
+</body>
+</html>

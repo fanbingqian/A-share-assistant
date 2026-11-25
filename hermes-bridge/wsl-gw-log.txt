@@ -1,0 +1,50 @@
+=== gateway.log 最新 30 行 ===
+2026-11-21 15:44:48,742 INFO gateway.run: Channel directory built: 0 target(s)
+2026-11-21 15:44:49,745 INFO gateway.run: Press Ctrl+C to stop
+2026-11-21 15:44:49,749 INFO gateway.run: Cron ticker started (interval=60s)
+2026-11-21 15:44:54,751 INFO gateway.run: kanban dispatcher: embedded in gateway (interval=60.0s)
+2026-11-21 16:04:28,140 INFO gateway.run: Received SIGTERM — initiating shutdown
+2026-11-21 16:04:28,140 WARNING gateway.run: Shutdown context: signal=SIGTERM under_systemd=yes parent_pid=228 parent_name=systemd loadavg_1m=0.11 parent_cmdline='/usr/lib/systemd/systemd --user'
+2026-11-21 16:04:28,265 INFO gateway.run: Stopping gateway...
+2026-11-21 16:04:30,384 WARNING gateway.platforms.weixin: [Weixin] rate limited for o9cq80yb; backing off 3.0s before retry
+2026-11-21 16:04:33,626 WARNING gateway.platforms.weixin: [Weixin] rate limited for o9cq80yb; backing off 3.0s before retry
+2026-11-21 16:04:45,355 INFO gateway.session_authority: Stamped 302 legacy session row(s) with owner profile 'default'
+2026-11-21 16:04:45,436 INFO gateway.control_socket: Gateway control socket listening at /home/freddy19871122/.hermes/gateway.sock
+2026-11-21 16:04:53,852 INFO gateway.run: Starting Hermes Gateway...
+2026-11-21 16:04:53,856 INFO gateway.run: Session storage: /home/freddy19871122/.hermes/sessions
+2026-11-21 16:04:53,975 INFO gateway.run: Agent budget: max_iterations=90 (agent.max_turns from config.yaml, else the HERMES_MAX_ITERATIONS bridge)
+2026-11-21 16:04:53,975 INFO gateway.run: Secret redaction: ENABLED (tool output, logs, and chat responses are scrubbed before delivery)
+2026-11-21 16:04:53,993 WARNING gateway.run: No env user allowlists configured. Messaging platforms default to pairing/allowlist policies and will deny unknown senders unless you configure platform allowlists (e.g., TELEGRAM_ALLOWED_USERS=your_id) or explicitly opt in with GATEWAY_ALLOW_ALL_USERS=true plus dm_policy/group_policy: open on the platform.
+2026-11-21 16:04:54,043 INFO gateway.run: Connecting to weixin...
+2026-11-21 16:04:54,076 INFO hermes_plugins.platforms__weixin.adapter: weixin: restored 1 context token(s) for 5a555ed7
+2026-11-21 16:04:54,078 INFO hermes_plugins.platforms__weixin.adapter: [Weixin] Connected account=5a555ed7 base=https://ilinkai.weixin.qq.com
+2026-11-21 16:04:54,091 INFO gateway.run: ✓ weixin connected
+2026-11-21 16:04:54,345 INFO gateway.run: Gateway running with 1 platform(s)
+2026-11-21 16:04:54,371 INFO gateway.run: Channel directory built: 0 target(s)
+2026-11-21 16:04:55,079 INFO gateway.run: Model context warmed: deepseek-v4-flash -> 1000000 tokens (detected)
+2026-11-21 16:04:55,080 INFO gateway.run: Turn machinery warmed in 1.0s (19 tool schema(s) materialized)
+2026-11-21 16:04:55,404 INFO gateway.run: Press Ctrl+C to stop
+2026-11-21 16:04:55,408 INFO gateway.run: kanban dispatcher: holding singleton dispatcher lock (/home/freddy19871122/.hermes/kanban/.dispatcher.lock)
+2026-11-21 16:04:55,409 INFO gateway.run: kanban dispatcher: kanban.max_in_progress unset; using memory-derived default max_in_progress=8 (set kanban.max_in_progress in config.yaml to override)
+2026-11-21 16:04:55,416 INFO gateway.run: Cron scheduler will tick 1 profile(s): ['default']
+2026-11-21 16:04:55,441 INFO gateway.run: Gateway housekeeping started (interval=60s)
+2026-11-21 16:05:00,409 INFO gateway.run: kanban dispatcher: embedded in gateway (interval=60.0s)
+=== agent.log 最新 15 行 ===
+2026-11-21 16:04:55,072 INFO tools.tool_search: tool_search activated (tier 1): 16 core/visible tools kept, 8 deferred (~5909 tokens), listing full (budget ~4000 tokens)
+2026-11-21 16:04:55,079 INFO gateway.run: Model context warmed: deepseek-v4-flash -> 1000000 tokens (detected)
+2026-11-21 16:04:55,080 INFO gateway.run: Turn machinery warmed in 1.0s (19 tool schema(s) materialized)
+2026-11-21 16:04:55,404 INFO gateway.run: Press Ctrl+C to stop
+2026-11-21 16:04:55,408 INFO gateway.run: kanban dispatcher: holding singleton dispatcher lock (/home/freddy19871122/.hermes/kanban/.dispatcher.lock)
+2026-11-21 16:04:55,409 INFO gateway.run: kanban dispatcher: kanban.max_in_progress unset; using memory-derived default max_in_progress=8 (set kanban.max_in_progress in config.yaml to override)
+2026-11-21 16:04:55,416 INFO gateway.run: Cron scheduler will tick 1 profile(s): ['default']
+2026-11-21 16:04:55,425 INFO cron.scheduler_provider: In-process cron scheduler started (interval=60s)
+2026-11-21 16:04:55,430 INFO cron.scheduler_provider: Multiplex cron scheduler started for 1 profile(s): ['default'] (re-enumerated every cycle)
+2026-11-21 16:04:55,441 INFO gateway.run: Gateway housekeeping started (interval=60s)
+2026-11-21 16:04:55,756 INFO hermes_cli.mem_trim: memory trim: reason=messaging gateway housekeeping malloc_trim=1 collected=False rss_kib=295856->280160 rss_anon_kib=262704->247008 threads=20 duration_ms=10.5
+2026-11-21 16:04:56,052 INFO hermes_cli.web_server: Mounted plugin API routes: /api/plugins/hermes-achievements/
+2026-11-21 16:04:56,123 INFO hermes_cli.web_server: Mounted plugin API routes: /api/plugins/kanban/
+2026-11-21 16:05:00,409 INFO gateway.run: kanban dispatcher: embedded in gateway (interval=60.0s)
+2026-11-21 16:05:58,994 INFO hermes_cli.mem_trim: memory trim: reason=messaging gateway housekeeping malloc_trim=1 collected=False rss_kib=308320->302988 rss_anon_kib=274784->269452 threads=19 duration_ms=1.2
+=== gunicorn/gateway 主进程状态 ===
+    PID STAT     ELAPSED CMD
+    278 Ssl        01:33 /home/freddy19871122/.hermes/tools/python-3.14.9+20261021-linux-x64/bin/python3 -I -c import sys, runpy; sys.path.insert(0, '/home/freddy19871122/.hermes/hermes-agent'); sys.argv = ['/home/freddy19871122/.hermes/hermes-agent/hermes_cli/main.py', 'gateway', 'run', '--replace']; sys._hermes_relaunched = True; runpy.run_module('hermes_cli.main', run_name='__main__', alter_sys=True)

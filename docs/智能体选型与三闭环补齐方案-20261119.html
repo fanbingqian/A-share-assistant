@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能体选型与三闭环补齐方案 · 2026-11-19</title>
+<style>
+:root{--ink:#2C2C2A;--muted:#5F5E5A;--line:#D3D1C7;--bg:#FFFFFF;--soft:#F7F7F4;--blue:#0C447C;--blueBg:#E6F1FB;--teal:#085041;--tealBg:#E1F5EE;--amber:#854F0B;--amberBg:#FAEEDA;--red:#A32D2D;--redBg:#FCEBEB}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.75}
+.wrap{max-width:1060px;margin:0 auto;padding:36px 28px 64px}
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px}
+h1{font-size:24px;font-weight:600;margin:0 0 8px;letter-spacing:.2px}
+.meta{font-size:12px;color:var(--muted)}
+h2{font-size:18px;font-weight:600;margin:38px 0 14px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:15px;font-weight:600;margin:24px 0 10px;color:var(--blue)}
+p{margin:10px 0}
+small{font-size:12px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0 8px}
+.card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card .n{font-size:12px;color:var(--muted);letter-spacing:1px}
+.card h4{font-size:14px;font-weight:600;margin:6px 0 8px;line-height:1.5}
+.card p{font-size:13px;margin:0;color:#444441}
+.card.b{background:var(--blueBg);border-color:#B5D4F4}
+.card.t{background:var(--tealBg);border-color:#9FE1CB}
+.card.a{background:var(--amberBg);border-color:#FAC775}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{background:var(--soft);text-align:left;font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td{padding:9px 10px;border-bottom:1px solid #E8E7E2;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.src{font-size:11px;color:var(--muted);display:block;margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--line);background:var(--soft);white-space:nowrap}
+.tag.ok{background:var(--tealBg);border-color:#9FE1CB;color:var(--teal)}
+.tag.no{background:var(--redBg);border-color:#F7C1C1;color:var(--red)}
+.tag.mid{background:var(--amberBg);border-color:#FAC775;color:var(--amber)}
+.box{border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0;background:#fff}
+.warn{background:var(--redBg);border:1px solid #F7C1C1;border-radius:10px;padding:14px 18px;margin:16px 0}
+.note{background:var(--blueBg);border:1px solid #B5D4F4;border-radius:10px;padding:14px 18px;margin:16px 0}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.6;margin:10px 0}
+code{font-family:Consolas,"Courier New",monospace;font-size:12.5px;background:var(--soft);padding:1px 4px;border-radius:3px}
+.layers{margin:16px 0}
+.layer{border-radius:9px;padding:12px 16px;margin:0 auto;width:88%}
+.layer h4{margin:0 0 4px;font-size:14px;font-weight:600}
+.layer p{margin:0;font-size:12.5px}
+.l1{background:var(--blueBg);border:1px solid #85B7EB;color:var(--blue)}
+.l2{background:var(--tealBg);border:1px solid #5DCAA5;color:var(--teal)}
+.l4{background:var(--soft);border:1px solid var(--line);color:var(--ink)}
+.down{text-align:center;color:var(--muted);font-size:16px;line-height:1.4;margin:2px 0}
+ul,ol{padding-left:22px;margin:10px 0}
+li{margin:5px 0}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--muted)}
+.disc{background:var(--soft);border-left:4px solid var(--red);padding:12px 16px;margin:18px 0;font-size:13px}
+@media(max-width:760px){.cards{grid-template-columns:1fr}.layer{width:100%}table{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>智能体选型与三闭环补齐方案</h1>
+<div class="meta">2026-11-19 ｜ 承接项目：<code>D:\WorkBuddy\projects\GlobalMarketMonitor</code> ｜ 性质：增量设计，不推翻现有系统<br>
+现状数字均来自项目内已有文档的真实代码核验（2026-11-19），设计态内容一律标明「拟建」；本页不含任何实时行情数值。</div>
+</header>
+
+<h2>结论先行（TL;DR）</h2>
+<div class="cards">
+<div class="card b"><div class="n">01 · 要不要智能体入驻</div><h4>要「受限编排层」，不要「常驻通用助理」</h4><p>OpenClaw / Hermes / Goose 这类个人助理权限面太大、行为不可审计，不适合接进一个已有判断链路的投研系统。需要的只是一个可一键关闭、只读事实账本、只写提案的薄层。</p></div>
+<div class="card t"><div class="n">02 · 选哪个</div><h4>首选 Node 原生薄适配器；LangGraph 留作第二阶段 sidecar</h4><p>现有系统是 Node 零第三方依赖的单服务。首选不引入任何框架，用内置 fetch 调 OpenAI-compatible 接口跑 3 个纯任务；确需多角色长流程时，再上 LangGraph（MIT）作为独立 Python sidecar。</p></div>
+<div class="card a"><div class="n">03 · 三大需求现状</div><h4>不是「没做」，是「闭环没走通」</h4><p>自动选股与实时监控已有真实代码；经验库五段式已建，但 <code>rules.json count=0</code>、4 条经验全 pending、样本 18/30。先把闭环跑通，比重建一套系统重要得多。</p></div>
+</div>
+<div class="note"><strong>一句话判断：</strong>你 11-18 的《设计方案：因子池与智能体复盘经验池》已经把架构方向定对了（智能体永不进入判断链路、只写提案、人工审核、有界回流）。本页不重复造轮子，只补齐三件事：<strong>框架选型结论、三大需求的现状对账、可执行落地顺序</strong>。<span class="src">依据：该项目设计文档 §0.2 / §2，2026-11-18（本地一手）</span></div>
+
+<h2>一、三大需求 × 系统现状对账</h2>
+<p>下表「已实现」只记录代码里真实存在的模块，设计意图不算实现。所有计数以 2026-11-19 项目内核验文档为准。</p>
+<table>
+<thead><tr><th style="width:16%">你的需求</th><th style="width:34%">系统里已有什么（真实代码）</th><th style="width:34%">真正缺口</th><th style="width:16%">依据 / 时点</th></tr></thead>
+<tbody>
+<tr><td><strong>① 每日自动量化选股<br>实时按市场评估</strong></td><td><span class="tag ok">基本已实现</span><br>13 个定时器分层轮询（行情 15s、新闻 60s、评分 15min、量能 5min、涨停 3min 等）；<code>stocks.js</code> 12 项指标三组加权 + 五项方向修正（合计 ±22 封顶）+ 按市值层切换权重；<code>ic.js</code> 用 Rank IC 滚动自检评分有效性；<code>marketStyle.js</code> 判量价配合。</td><td>当前「每日选股」是<strong>观察池 Top12 + 09:05/22:00 定格名单</strong>，不是可回测的全市场日频截面；因子有效性复检与权重版本回滚未成常态；覆盖矩阵列出的 <strong>8 项确定性技术因子（KDJ 金叉死叉、连续两日收盘低于 MA5、阶段量能对比等）目前一行代码都没有</strong>。</td><td>《系统现状诊断》§1.1，2026-11-19；<br>《选股方法论规格与程序覆盖矩阵》§5/§6，2026-11-19 18:05；<br>《设计方案》§0.1，2026-11-18<span class="src">均为本地代码核验，一手</span></td></tr>
+<tr><td><strong>② 股池：自选 + 从选股结果选，实时监控</strong></td><td><span class="tag mid">半实现</span><br>今天 17:49 新增 <code>data/my-picks.json</code> + <code>server/mypicks.js</code>，增删改查与非法代码拒绝已实测；<code>holdings.js</code> 持仓 30 秒盈亏与 ATR 止损；<code>alerts.js</code> 告警。</td><td>覆盖矩阵 §7 明确「我的选股与系统观察池严格分离，人工清单不参与评分、不改规则」，§8 待拍板第 3 条明确<strong>「目前只在界面展示、未进 09:05/22:00 定格与 T+1 复盘」</strong>——即股池还没进闭环。另缺<strong>来源双通道</strong>（manual / screened）与「AI 推荐 → 待确认 → 人工确认」的入池闸门。</td><td>《选股方法论规格与程序覆盖矩阵》§0 / §7 / §8，2026-11-19<span class="src">本地一手</span></td></tr>
+<tr><td><strong>③ 个人经验库<br>每日复盘写入知识库</strong></td><td><span class="tag mid">库已建，内容冷启动</span><br><code>data/journal/</code> 五段式：picks → outcomes → lessons → 人工审核 → rules/live；自动归纳 7 维、n≥8 才出结论；审核 API 已实现；有界回流 ±2 分 / 乘数 [0.8,1.25] / 不翻符号。</td><td>计数：picks <strong>2 条</strong>、outcomes <strong>18 条</strong>、lessons <strong>4 条且全部 pending</strong>、<strong>rules.json count=0</strong>（回流闭环从未走通一次）、score-history 仅 1 天、就绪度 <strong>18/30</strong>。另：复盘 outcomes 丢了 3 个事件字段，归纳 7 维无事件维；个人经验录入是设计态、无提交入口；库是 JSONL，缺人可读的知识库文档层与检索。</td><td>《系统现状诊断》§2.1 / §2.2 / §3 / §4，2026-11-19<span class="src">本地一手，逐文件清点</span></td></tr>
+</tbody>
+</table>
+<div class="warn"><strong>最容易被忽略的一点：</strong>三个需求里，最该先做的不是「接大模型」，而是《系统现状诊断》§5 第 1 条——把 4 条 pending 经验人工采纳或驳回，让 <code>rules.json count</code> 第一次大于 0。<strong>零代码，今天就能做</strong>。闭环没走通就上智能体，等于让 LLM 在一个没有反馈信号的系统里生成更多待审噪声。</div>
+
+<h2>二、智能体选型：要不要入驻，选哪个</h2>
+<h3>2.1 结论</h3>
+<p><strong>需要「编排」，不需要「驻场助理」。</strong>选股与监控是确定性、可回测、可归因的计算任务，必须由规则与因子引擎完成；LLM 不可复现、无法回测、无法审计，让它参与打分会把「不出现幻觉」这条铁律直接破掉。LLM 在这个系统里只配做三件事：<strong>把用户的话分类、把已发生的事实写成复盘草稿、把术语说成人话</strong>。</p>
+<p>更要紧的是栈的匹配：现有后端是 <strong>Node 内置模块、零第三方依赖、无 package.json、8777 单服务</strong>。上一轮清单里最主流的 LangGraph / CrewAI / Pydantic AI 都是 Python，直接引入就要维护第二套运行时、进程间通信与部署边界，对一个已经跑稳的系统是净负担。</p>
+
+<h3>2.2 候选对比</h3>
+<table>
+<thead><tr><th style="width:25%">方案</th><th style="width:12%">栈</th><th style="width:12%">结论</th><th style="width:51%">理由</th></tr></thead>
+<tbody>
+<tr><td><strong>A. Node 原生薄适配器</strong><br>内置 fetch → OpenAI-compatible</td><td>Node</td><td><span class="tag ok">首选 · 现在装</span></td><td>零新依赖、零新进程，完全贴合现有铁律；3 个纯函数式任务（分诊 / 归因草稿 / 说人话）用结构化 prompt + schema 校验即可，不需要图编排；<code>config</code> 无 key 时整层不加载，系统退回纯确定性 L0。代价是长流程、断点恢复要自己写——但当前不需要。</td></tr>
+<tr><td><strong>B. LangGraph</strong>（MIT）</td><td>Python</td><td><span class="tag mid">第二阶段备选</span></td><td>状态图、checkpoint 持久化、human-in-the-loop 与「提案 → 人工审核 → 有界回流」天然同构，可重放可审计，是这类场景最合适的<strong>框架</strong>。但必须以<strong>独立 sidecar</strong> 形式部署（只暴露 <code>/proposal</code> 一个 HTTP 口），不得侵入 8777 的判断链路。等复盘讨论团真的需要多角色、长流程时再上。</td></tr>
+<tr><td>Pydantic AI（MIT）/ OpenAI Agents SDK（MIT）</td><td>Python / TS</td><td><span class="tag">可选</span></td><td>Pydantic AI 的类型安全结构化输出适合做「事实账本校验」这一层；Agents SDK 最轻，但 tracing 默认指向厂商面板，自用系统要注意数据外发边界。</td></tr>
+<tr><td>Mastra</td><td>TypeScript</td><td><span class="tag">可选</span></td><td>若坚持留在 Node 生态且需要工作流编排，它是同语言选择；但会引入 npm 依赖链，破坏「零第三方依赖」这条已经带来稳定性的约束。</td></tr>
+<tr><td>CrewAI（MIT）</td><td>Python</td><td><span class="tag no">不选</span></td><td>角色化多 Agent 对确定性流水线是过度设计；默认开启匿名遥测，投研数据场景要先关。</td></tr>
+<tr><td>AutoGen</td><td>Python/.NET</td><td><span class="tag no">不选</span></td><td>已停止维护，微软不再修 bug 与安全问题，README 把新用户指向 Microsoft Agent Framework。</td></tr>
+<tr><td>OpenClaw / Hermes Agent / Goose</td><td>常驻个人助理</td><td><span class="tag no">不选</span></td><td>它们解决的是「7×24 在聊天软件里替你干活」，天然持有消息通道、文件、凭证的广权限，行为不可逐条审计。放进投研系统会与「智能体不进判断链路、不产生数字」直接冲突。若只想要手机收提醒，用现成的企微/飞书 webhook 即可，不需要引入助理本体。</td></tr>
+<tr><td>TradingAgents / ai-hedge-fund</td><td>投研多智能体</td><td><span class="tag no">只借鉴角色</span></td><td>决策核心依赖 LLM，与本项目铁律冲突。仅参考其「分析师角色划分 + 结构化报告传递 + 反幻觉审计员」，README §5.9.5 已记录同一结论。</td></tr>
+<tr><td>smolagents</td><td>Python</td><td><span class="tag no">不选</span></td><td>让模型写代码并执行，在涉及行情与账户数据的场景权限不可控。</td></tr>
+</tbody>
+</table>
+<p><small>框架许可证与维护状态来自 2026 年 10–11 月公开对比资料（agpt.co、geekflare、rework、octomind 等），属二手来源，落地前请核对各仓库 README 与 LICENSE 原文。上一轮会话已就这些项目做过一轮检索。</small></p>
+
+<h3>2.3 LLM 只做三个「纯任务」，产出都是提案</h3>
+<table>
+<thead><tr><th style="width:18%">任务</th><th style="width:36%">输入（只读）</th><th style="width:46%">输出（结构化，先入待审）</th></tr></thead>
+<tbody>
+<tr><td><strong>分诊 Triage</strong></td><td>用户一句自然语言</td><td><code>{intent: add_factor|add_experience|query_pool|review_ask, confidence, need_clarify}</code>；低置信度进「待澄清」，<strong>不猜</strong>。</td></tr>
+<tr><td><strong>复盘草稿 Scribe</strong></td><td><code>outcomes</code> + <code>eventFacts[]</code> + 事实账本</td><td><code>{facts[], observations[], hypotheses[], no_data[]}</code>；<strong>禁止写「因为 X 所以涨」</strong>，只允许「当日检索到以下事实」+「分组统计差异」。</td></tr>
+<tr><td><strong>说人话 Explainer</strong></td><td>因子定义 / 评分明细 / 经验条目</td><td>白话解释，每个数字旁挂 <code>factId</code>；找不到出处即剔除并显式标「无数据支撑」。</td></tr>
+</tbody>
+</table>
+<div class="box"><strong>确定性网关（永远加载，不依赖 LLM）四道校验：</strong><ol><li>事实账本核对：每个数字 / 日期 / 事件必须挂 <code>factId</code>，查不到即剔除并标注；</li><li>schema 校验：缺字段、越界、不可计算 → 直接拒绝；</li><li>幂等去重：同主题同日不重复入队；</li><li>一律落「待审队列」，绝不直接写生效态。</li></ol>这四道正是你 11-18 设计文档 §2 的「一道闸」，此处把它固定成永远加载的独立模块 <code>server/agent-gate.js</code>。</div>
+
+<h2>三、增量架构（拟建，现有 21 模块一行不改）</h2>
+<div class="layers">
+<div class="layer l1"><h4>① 受限智能体适配层 · <code>server/agent-adapter.js</code>（可选加载）</h4><p>Node 内置 fetch → OpenAI-compatible；只读 <code>/api/agent/facts</code>；只写 <code>/api/agent/proposal</code>；config 无 key 时不加载。</p></div>
+<div class="down">↓ 全部产出必须穿过</div>
+<div class="layer l2"><h4>② 确定性网关 / 反幻觉闸 · <code>server/agent-gate.js</code>（永远加载）</h4><p>事实账本核对 → schema 校验 → 幂等去重 → 一律入 <code>data/agent/proposals.jsonl</code> 待审队列。</p></div>
+<div class="down">↓</div>
+<div class="layer l2"><h4>③ 人工审核台 · 复用现有 <code>POST /api/journal/audit</code></h4><p>采纳才生效，驳回留痕不删除；LLM 全程拿不到写权限。</p></div>
+<div class="down">↓ 采纳后仅以有界方式回流（单股 ±2 分 · 乘数 0.8–1.25 · 不翻符号）</div>
+<div class="layer l4"><h4>④ 现有 GlobalMarketMonitor（保持不动）</h4><p>13 定时器 · stocks 评分 · ic Rank IC 自检 · journal 五段式 · holdings · alerts · mypicks · 8777 单服务 · 零第三方依赖</p></div>
+</div>
+<p><strong>新增文件清单（最小集）</strong>：<code>server/agent-adapter.js</code>、<code>server/agent-gate.js</code>、<code>server/technical.js</code>（P0 确定性因子）、<code>server/pool.js</code>（股池双来源）、<code>data/agent/proposals.jsonl</code>、<code>data/agent/fact-ledger.jsonl</code>、<code>docs/knowledge/</code>（人读知识库）。新增接口只有两个：<code>GET /api/agent/facts</code>（只读）、<code>POST /api/agent/proposal</code>（只写待审）。</p>
+<div class="note"><strong>关于云端后端：</strong>当前架构是本地单机 + 文件型账本，<strong>不需要</strong>开通云数据库或登录体系。只有当你要把它做成多设备可访问的网页应用时，才考虑托管后端（数据库 + 免密钥 LLM 调用）；那时也应保留本地事实账本为主，云端只放同步副本，避免行情与账户数据外发。</div>
+
+<h2>四、股池与经验库的数据契约（拟建）</h2>
+<h3>4.1 股池：双来源 + 入池闸门</h3>
+<pre>pool_item {
+  code, name,
+  source: 'manual' | 'screened',          // 自己选的 / 从每日选股结果选的
+  addedAt, addedBy: 'user' | 'agent-proposal',
+  thesis, refRunId, refRank, refScore,   // screened 时必须回溯到那次运行的 factId
+  status: 'candidate' | 'confirmed' | 'archived',
+  costBasis?, tags[], alertProfile,
+  evidence: { factIds[] },
+  audit: { reviewedBy, reviewedAt }
+}</pre>
+<ul><li><strong>screened</strong> 来源一律先落 <code>candidate</code>，<strong>人工确认后</strong>才转 <code>confirmed</code> 并纳入 09:05 / 22:00 定格与 T+1 复盘——AI 不能自己往股池塞票。</li><li><strong>manual</strong> 来源直接 <code>confirmed</code>，但守住覆盖矩阵 §7：人工清单<strong>不参与评分、不改规则</strong>。</li><li>股票代码必须由数据源查证后写入，禁止凭记忆猜代码；名称从本地缓存补全，不推一串代码给用户。</li></ul>
+
+<h3>4.2 经验库：先补字段，再谈向量检索</h3>
+<pre>lesson {                       // 沿用现有 lessons.jsonl schema，新增 4 个字段
+  id, source: 'auto' | 'personal' | 'agent',   // 新增：区分经验来源
+  hypothesis,                  // 必须可证伪
+  evidence: { factIds[], n, sampleWindow },    // 新增：证据挂 factId
+  counterExamples[],                           // 新增：反例，防自我强化
+  status: 'pending' | 'approved' | 'rejected',
+  verification: { hitRate, rankIC, forwardWindow },
+  knowledgeDocPath,            // 新增：指向人读 Markdown
+  createdAt, reviewedBy
+}</pre>
+<p><strong>知识库落地分两层</strong>：<code>data/journal/*.jsonl</code> 继续当<strong>机器读的事实账本</strong>；另按交易日生成 <code>docs/knowledge/YYYY-MM-DD.md</code>、按经验生成 <code>docs/knowledge/经验卡/&lt;id&gt;.md</code>（Obsidian 兼容，带 frontmatter + 来源 + 时点）。<strong>先不要上向量库</strong>——样本 18/30 尚未就绪时做语义检索，只会把噪声包装成「规律」；等经验条目超过约 200 条再考虑本地 Chroma / LanceDB。</p>
+
+<h2>五、调度时序（北京时间，沿用现有定时器）</h2>
+<table>
+<thead><tr><th style="width:15%">时点</th><th style="width:55%">任务</th><th style="width:14%">层级</th><th style="width:16%">状态</th></tr></thead>
+<tbody>
+<tr><td>08:30</td><td>交易日历判定（节假日停轮询）+ 盘前资讯与股池扫描</td><td>确定性</td><td>拟补日历探针</td></tr>
+<tr><td>09:05</td><td>定格名单（把 confirmed 股池一并纳入）</td><td>确定性</td><td>已有，需扩对象</td></tr>
+<tr><td>09:15–09:25</td><td>竞价异动 / 跳空缺口</td><td>确定性</td><td>拟补</td></tr>
+<tr><td>盘中</td><td>15s 行情 / 3min 涨停 / 5min 量能与事件 / 15min 评分重算</td><td>确定性</td><td>已有 13 定时器</td></tr>
+<tr><td>15:10</td><td><code>reviewPending()</code> 复盘 → outcomes（回贴事件字段）</td><td>确定性</td><td>已有，缺事件字段</td></tr>
+<tr><td>15:30</td><td>自动归纳 → lessons(pending)，n≥8 才出结论</td><td>确定性</td><td>已有</td></tr>
+<tr><td>16:30</td><td>生成复盘草稿 + 写人读知识库 Markdown（<strong>提案，待审</strong>）</td><td>智能体层</td><td>拟建</td></tr>
+<tr><td>22:00</td><td>定格次日前瞻 + 候选股池提议（<code>candidate</code>）</td><td>混合</td><td>部分已有</td></tr>
+<tr><td>周末</td><td>因子有效性复检（Rank IC / ICIR / 分层单调性 / 衰减）+ 权重版本评估与回滚</td><td>确定性</td><td>拟补常态化</td></tr>
+</tbody>
+</table>
+<p><strong>告警分级</strong>：盘中级（价位异动）/ 日级（复盘）/ 事件级（公告、停牌）分通道，同策略 10 分钟内去重，避免噪音淹没核心信号；开启 MA / RSI / MACD / KDJ 这类需逐只拉历史 K 线的指标时，<strong>同时监控标的建议不超过 20 只</strong>。价格、涨跌幅、资金流走批量查询，无此限制。<span class="src">阈值来源：金融场景方法论 reference《监控告警与停复牌》《每日投研简报》默认可配置口径，2026-11-19；非行情数据，可按你的偏好调整。</span></p>
+<div class="warn"><strong>复盘纪律：</strong>不写「每日预测涨跌方向」，改为「观察重点 + 风险/机会框架」；单日大涨大跌不等于趋势反转；事件归因只做<strong>事实回贴 + 分组统计</strong>，不写因果结论；检索不到事件就写「当日未检索到关联事件」，绝不补全。<span class="src">依据：《每日投研简报》避坑条目 + 本项目《系统现状诊断》§4.3，2026-11-19</span></div>
+
+<h2>六、落地路线（按依赖与风险从低到高）</h2>
+<table>
+<thead><tr><th style="width:12%">阶段</th><th style="width:52%">做什么</th><th style="width:18%">是否碰 LLM</th><th style="width:18%">验收标准</th></tr></thead>
+<tbody>
+<tr><td><strong>Step 0</strong><br>今天</td><td>人工采纳/驳回 4 条 pending 经验，让 <code>rules.json count</code> 第一次大于 0；继续每日定格 + 复盘，约 6 个交易日后把样本从 18 补到 30。</td><td><span class="tag ok">零代码</span></td><td>回流闭环走通一次；经验库就绪度达标</td></tr>
+<tr><td><strong>Step 1</strong><br>零幻觉优先</td><td>① outcomes 回贴 3 个事件字段（约 3 处改动，不碰评分）；② 新增 <code>server/technical.js</code> 落地 P0 的 8 项确定性技术因子，只做只读标注不改 <code>stocks.js</code>；③ mypicks 纳入 09:05/22:00 定格与 T+1 复盘；④ 股池双来源 + candidate 闸门。</td><td><span class="tag ok">完全不碰</span></td><td>每条判断可逐条溯源到日期、数据源、计算口径</td></tr>
+<tr><td><strong>Step 2</strong><br>薄智能体</td><td><code>agent-adapter.js</code> + <code>agent-gate.js</code>，只跑分诊 / 归因草稿 / 说人话三个纯任务，全部落待审；config 无 key 自动降级 L0 纯确定性。</td><td><span class="tag mid">受限接入</span></td><td>关掉 LLM 后全部功能照常可用；每个数字都有 factId</td></tr>
+<tr><td><strong>Step 3</strong><br>可选</td><td>仅当多角色复盘讨论团真的需要长流程、断点恢复、人工介入节点时，上 LangGraph 独立 sidecar。</td><td><span class="tag mid">可选</span></td><td>8777 主服务零改动，sidecar 只有一个 /proposal 入口</td></tr>
+<tr><td><strong>Step 4</strong></td><td><strong>明确不做：自动下单。</strong>系统只出信号与提案，下单由人手动完成（或用券商 APP 条件单）。</td><td><span class="tag no">不做</span></td><td>守住合规边界与项目铁律</td></tr>
+</tbody>
+</table>
+
+<h2>七、合规与反幻觉边界</h2>
+<ul>
+<li><strong>不自动下达委托单</strong>：证监会《证券市场程序化交易管理规定（试行）》把程序化交易定义为「通过计算机程序自动生成或者下达交易指令」，自 2024-10-08 施行；按此定义，回测、信号展示、人工按信号下单、券商 APP 条件单均不落入该定义。<strong>一旦脚本自动发单，即须「先报告、后交易」</strong>，报告内容含交易策略类型、最高申报速率、单日最高申报笔数、软件名称及版本号（第七条）。报备通道为券商会员端，个人无直报入口。<span class="src">来源：中国证监会官网 csrc.gov.cn 发布稿与规定原文 PDF，2024-05-15 发布 / 2024-10-08 施行，一手；报备流程细节来自券商公开答疑 2026-10-27，非一手，需核实。</span></li>
+<li><strong>高频认定口径存在分歧，本页不采信任一数值作结论</strong>：2025-07-07 起的交易所细则正式文本为每秒 300 笔或单日 20000 笔；多家媒体（央视网财经 2026-07-30、中国新闻周刊 2026-07-24）报道 2026 年新版收紧至每秒 15 笔并附带撤单率等约束。<strong>请以沪深北交易所最新公布的正式细则为准</strong>。你的系统日频、不自动报单，距任何一条认定线都很远。<span class="src">二手来源，需核实原文；此处只作风险提示，不作数值依据。</span></li>
+<li><strong>行情数据授权边界</strong>：交易所行情信息归交易所所有；个人学习、研究使用已公开信息可免费，但应指明来源、不得擅自出版发行；未获许可擅自传播、增值开发、对外提供服务或再分发，可能被追责。<strong>个人自用 + 本地落盘 + 注明来源 + 不对外分发/不收费</strong>是安全区间。<span class="src">来源：上海期货交易所《信息管理办法》（2024 修订）第 42–45 条，证监会法规库收录，一手；A 股证券行情请以沪深交易所对应规则为准。</span></li>
+<li><strong>反幻觉四条</strong>：LLM 不产生数字，无出处即剔除并显式标「无数据支撑」；事件归因只做事实回贴 + 分组统计，不写因果；被证伪的经验保留记录不删除；任何时刻可一键关掉智能体层，系统退回确定性状态继续跑。</li>
+<li><strong>工程边界</strong>：API Key 只放本地 config / 环境变量，不进版本库、不进日志、不进前端；免费行情接口控制频率、做缓存与多源降级；部署在 7×24 在线的机器上（本地笔记本合盖即停）；事实账本定期备份；回测必须处理 T+1、涨跌停不可成交、复权口径、幸存者偏差、费用与滑点，回测收益不等于实盘收益。</li>
+</ul>
+
+<h2>八、依据与来源清单</h2>
+<table>
+<thead><tr><th style="width:38%">来源</th><th style="width:14%">类型</th><th style="width:14%">时点</th><th style="width:34%">本页用途</th></tr></thead>
+<tbody>
+<tr><td><code>server/*.js</code>、<code>data/*.json</code> 逐文件核验</td><td>本地一手</td><td>2026-11-19</td><td>模块清单、文件型库、定时器</td></tr>
+<tr><td>《系统现状诊断：自动化、数据、经验回流与事件归因》</td><td>本地一手</td><td>2026-11-19</td><td>13 定时器、picks 2 / outcomes 18 / lessons 4 pending / rules 0 / 18-30 就绪度、事件字段缺口</td></tr>
+<tr><td>《选股方法论规格与程序覆盖矩阵》</td><td>本地一手</td><td>2026-11-19 18:05</td><td>mypicks 状态、§7 不变式、§8 待拍板、P0 八项因子</td></tr>
+<tr><td>《设计方案：因子池与智能体复盘经验池》</td><td>本地设计态</td><td>2026-11-18</td><td>三条铁律、两层一闸、因子/经验 schema 草案</td></tr>
+<tr><td><code>README.md</code> §5.9.5</td><td>本地一手</td><td>2026-11-17</td><td>TradingAgents / ai-hedge-fund / qlib+RD-Agent 既有调研结论</td></tr>
+<tr><td>证监会《证券市场程序化交易管理规定（试行）》</td><td>一手法规</td><td>2024-10-08 施行</td><td>程序化交易定义、先报告后交易、报告字段</td></tr>
+<tr><td>上期所《信息管理办法》（2024 修订）第 42–45 条</td><td>一手法规</td><td>2024</td><td>行情数据授权与个人研究豁免边界</td></tr>
+<tr><td>央视网财经 / 中国新闻周刊 等报道</td><td>二手媒体</td><td>2026-07</td><td>2026 年监管方向；<strong>需核实交易所正式原文</strong></td></tr>
+<tr><td>开源框架对比资料（agpt.co / geekflare / rework / octomind 等）</td><td>二手资料</td><td>2026-10 ~ 11</td><td>框架许可证与维护状态；<strong>需核对仓库 README / LICENSE 原文</strong></td></tr>
+<tr><td>金融场景方法论 reference（因子研究 / 监控告警 / 每日简报 / 量化策略库）</td><td>方法论</td><td>2026-11-19</td><td>IC/IR 与分层回测、告警默认阈值、复盘纪律、回测避坑</td></tr>
+<tr><td>技术实现与合规综合检索（domain_search）</td><td>混合（含二手）</td><td>2026-11-19</td><td>分层架构、SQLite/增量/向量化实践、数据源与实盘通道边界；技术文章部分需核实原文</td></tr>
+</tbody>
+</table>
+<p><small>本页未接入任何实时行情数据源，也未输出任何个股代码、价格、涨跌幅或收益数字；所有「现状数字」都是对项目本地文件与代码的清点结果，并已标注文件与时点。</small></p>
+
+<div class="disc"><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+
+<footer>智能体选型与三闭环补齐方案 · 2026-11-19 · 增量设计文档，与项目内《系统现状诊断》《选股方法论规格与程序覆盖矩阵》《设计方案：因子池与智能体复盘经验池》配套阅读。<br>文档性质：设计方案，文中标注「拟建 / 拟补」的内容均尚未实现，不代表系统现状。</footer>
+
+</div>
+</body>
+</html>

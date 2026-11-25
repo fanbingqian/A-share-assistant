@@ -1,0 +1,167 @@
+=== hermes 包装脚本 ===
+#!/bin/sh
+exec /home/freddy19871122/.hermes/hermes-agent/.hermes/bin/hermes "$@"
+=== chat --help ===
+usage: hermes chat [-h] [-q QUERY | --query-file PATH] [--oneshot]
+                   [--image IMAGE] [-m MODEL] [-t TOOLSETS]
+                   [--reasoning LEVEL] [-s SKILLS] [--provider PROVIDER]
+                   [--base-url URL] [--api-key KEY] [-v] [-Q]
+                   [--format {text,stream-json}] [--resume SESSION_ID]
+                   [--no-restore-cwd] [--in DIR] [--continue [SESSION_NAME]]
+                   [--create-if-missing] [--worktree] [--accept-hooks]
+                   [--checkpoints] [--max-turns N] [--run-budget SECONDS]
+                   [--yolo] [--pass-session-id] [--ignore-user-config]
+                   [--ignore-rules] [--safe-mode] [--source SOURCE] [--tui]
+                   [--native] [--cli] [--dev]
+
+Start an interactive chat session with Hermes Agent
+
+options:
+  -h, --help            show this help message and exit
+  -q, --query QUERY     Query to run. On a real TTY the prompt seeds an
+                        interactive session (submitted literally as the first
+                        turn); combined with --oneshot or -Q, or on a non-TTY,
+                        it answers and exits.
+  --query-file PATH     Read the single query from a file instead of the
+                        command line ('-' reads stdin). Safe for arbitrary
+                        text: nothing is shell-interpreted, so quotes, $(...),
+                        and backticks are preserved verbatim. Mutually
+                        exclusive with -q.
+  --oneshot             With -q/--query-file: answer the query and exit
+                        (legacy single-query behavior) instead of seeding an
+                        interactive session. Implied on non-TTY stdio and by
+                        -Q/--quiet.
+  --image IMAGE         Optional local image path to attach to a single query
+  -m, --model MODEL     Model to use (e.g., anthropic/claude-sonnet-4)
+  -t, --toolsets TOOLSETS
+                        Comma-separated toolsets to enable
+  --reasoning LEVEL     Reasoning effort for this session: none, minimal, low,
+                        medium, high, xhigh, max, or ultra. Overrides
+                        agent.reasoning_effort for this run only (same levels
+                        as the /reasoning slash command).
+  -s, --skills SKILLS   Preload one or more skills for the session (repeat
+                        flag or comma-separate)
+  --provider PROVIDER   Inference provider (default: auto). Built-in or a
+                        user-defined name from `providers:` in config.yaml.
+  --base-url URL        OpenAI-compatible endpoint for --provider custom (e.g.
+                        http://127.0.0.1:8000/v1).
+  --api-key KEY         API key for this launch only; not persisted.
+  -v, --verbose         Verbose output
+  -Q, --quiet           Quiet mode for programmatic use: suppress banner,
+                        spinner, and tool previews. Only output the final
+                        response and session info.
+  --format {text,stream-json}
+                        Output format for single-query mode (-q). 'text'
+=== 顶层 --help ===
+usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH]
+              [--cpu-profile PATH] [-m MODEL] [--provider PROVIDER]
+              [--reasoning LEVEL] [-t TOOLSETS] [--resume SESSION]
+              [--no-restore-cwd] [--in DIR] [--continue [SESSION_NAME]]
+              [--worktree] [--accept-hooks] [--skills SKILLS] [--yolo]
+              [--pass-session-id] [--checkpoints] [--ignore-user-config]
+              [--ignore-rules] [--safe-mode] [--tui] [--native] [--cli]
+              [--dev]
+              <command> ...
+
+Hermes Agent - AI assistant with tool-calling capabilities
+
+positional arguments:
+  <command>             Command to run
+    chat                Interactive chat with the agent
+    model               Select default model and provider
+    moa                 Configure Mixture of Agents provider/model slots
+    fallback            Manage fallback providers (tried when the primary
+                        model fails)
+    worktree            Audit and reclaim accumulated git worktrees and merged
+                        branches
+    browser             Real-profile browsing helpers (close a browser locking
+                        its profile)
+    secrets             Manage external secret sources (Bitwarden, 1Password)
+    egress              Manage the iron-proxy egress credential-injection
+                        firewall
+    migrate             Move over from another agent, or migrate retired
+                        models and deprecated settings
+    codex-runtime       Manage the optional codex app-server runtime (migrate
+                        MCP config)
+    gateway             Messaging gateway management
+    proxy               Local OpenAI-compatible proxy to OAuth providers
+    lsp                 Language Server Protocol management
+    setup               Interactive setup wizard
+    whatsapp            Set up WhatsApp integration
+    whatsapp-cloud      Set up WhatsApp Business Cloud API integration
+    slack               Slack integration helpers (manifest generation, etc.)
+    send                Send a message to a configured platform (scripts, cron
+                        jobs, CI).
+    logout              Clear authentication for an inference provider
+=== 当前 .env（脱敏）===
+# Hermes Agent Environment Configuration
+# Copy this file to .env and fill in your API keys
+
+# =============================================================================
+# LLM PROVIDER (OpenRouter)
+# =============================================================================
+# OpenRouter provides access to many models through one API
+# All LLM calls go through OpenRouter - no direct provider keys needed
+# Get your key at: https://openrouter.ai/keys
+# OPENROUTER_API_KEY=
+
+# Default model is configured in ~/.hermes/config.yaml (model.default).
+# Use 'hermes model' or 'hermes setup' to change it.
+# LLM_MODEL is no longer read from .env — this line is kept for reference only.
+# LLM_MODEL=anthropic/claude-opus-4.6
+
+# =============================================================================
+# LLM PROVIDER (Google AI Studio / Gemini)
+# =============================================================================
+# Native Gemini API via Google's OpenAI-compatible endpoint.
+# Get your key at: https://aistudio.google.com/app/apikey
+# GOOGLE_API_KEY=your_google_ai_studio_key_here
+# GEMINI_API_KEY=your_gemini_key_here  # alias for GOOGLE_API_KEY
+# Optional base URL override (default: Google's OpenAI-compatible endpoint)
+# GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+
+# =============================================================================
+# LLM PROVIDER (z.ai / GLM)
+# =============================================================================
+# z.ai provides access to ZhipuAI GLM models (GLM-4-Plus, etc.)
+=== 当前 config.yaml ===
+_config_version: 54
+agent:
+  gateway_notify_interval: 600
+  gateway_timeout: 1800
+  gateway_timeout_warning: 900
+  max_turns: 90
+  personalities:
+    catgirl: "You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and cat-like expressions to your speech. Use kaomoji like (=^･ω･^=) and ฅ^•ﻌ•^ฅ. Be playful and curious like a cat, nya~!"
+    concise: You are a concise assistant. Keep responses brief and to the point.
+    creative: You are a creative assistant. Think outside the box and offer innovative solutions.
+    helpful: You are a helpful, friendly AI assistant.
+    hype: "YOOO LET'S GOOOO!!! 🔥🔥🔥 I am SO PUMPED to help you today! Every question is AMAZING and we're gonna CRUSH IT together! This is gonna be LEGENDARY! ARE YOU READY?! LET'S DO THIS! 💪😤🚀"
+    kawaii: "You are a kawaii assistant! Use cute expressions like (◕‿◕), ★, ♪, and ~! Add sparkles and be super enthusiastic about everything! Every response should feel warm and adorable desu~! ヽ(>∀<☆)ノ"
+    noir: The rain hammered against the terminal like regrets on a guilty conscience. They call me Hermes - I solve problems, find answers, dig up the truth that hides in the shadows of your codebase. In this city of silicon and secrets, everyone's got something to hide. What's your story, pal?
+    philosopher: Greetings, seeker of wisdom. I am an assistant who contemplates the deeper meaning behind every query. Let us examine not just the 'how' but the 'why' of your questions. Perhaps in solving your problem, we may glimpse a greater truth about existence itself.
+    pirate: 'Arrr! Ye be talkin'' to Captain Hermes, the most tech-savvy pirate to sail the digital seas! Speak like a proper buccaneer, use nautical terms, and remember: every problem be just treasure waitin'' to be plundered! Yo ho ho!'
+    shakespeare: Hark! Thou speakest with an assistant most versed in the bardic arts. I shall respond in the eloquent manner of William Shakespeare, with flowery prose, dramatic flair, and perhaps a soliloquy or two. What light through yonder terminal breaks?
+    surfer: "Duuude! You're chatting with the chillest AI on the web, bro! Everything's gonna be totally rad. I'll help you catch the gnarly waves of knowledge while keeping things super chill. Cowabunga! 🤙"
+    teacher: You are a patient teacher. Explain concepts clearly with examples.
+    technical: You are a technical expert. Provide detailed, accurate technical information.
+    uwu: hewwo! i'm your fwiendwy assistant uwu~ i wiww twy my best to hewp you! *nuzzles your code* OwO what's this? wet me take a wook! i pwomise to be vewy hewpful >w<
+  reasoning_effort: medium
+  restart_drain_timeout: 60
+  service_tier: ''
+  tool_use_enforcement: auto
+  verbose: false
+approvals:
+  mode: manual
+  timeout: 60
+auxiliary:
+  approval:
+    api_key: ''
+    base_url: ''
+    model: ''
+    provider: auto
+    timeout: 30
+  compression:
+    api_key: ''
+    base_url: ''
+    enabled: true

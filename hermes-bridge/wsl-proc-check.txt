@@ -1,0 +1,11 @@
+=== 杀掉卡住的安装脚本 ===
+=== hermes 命令位置 ===
+PATH 中无 hermes
+-rwxr-xr-x 1 freddy19871122 freddy19871122 81 Nov 21 15:55 /home/freddy19871122/.local/bin/hermes
+-rwxr-xr-x 1 freddy19871122 freddy19871122 339 May 12  2026 /home/freddy19871122/.hermes/hermes-agent/venv/bin/hermes
+=== 用完整路径测版本 ===
+Hermes Agent v0.23.3 (2026.9.24) · stable · local caafe5389ae5
+Install directory: /home/freddy19871122/.hermes/hermes-agent
+Install method: git
+Python: 3.11.15
+OpenAI SDK: 2.54.0

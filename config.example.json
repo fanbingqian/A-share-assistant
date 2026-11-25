@@ -1,0 +1,278 @@
+{
+  "quoteIntervalSec": 15,
+  "newsIntervalSec": 60,
+  "cooldownSec": 300,
+  "staleAfterSec": 180,
+  "sound": {
+    "enabled": false,
+    "volume": 0.55,
+    "minLevel": "warning"
+  },
+  "notification": {
+    "enabled": true,
+    "minLevel": "critical"
+  },
+  "quietHours": {
+    "enabled": false,
+    "from": "23:00",
+    "to": "07:00"
+  },
+  "newsAlert": {
+    "enabled": true,
+    "keywords": [
+      "war",
+      "invasion",
+      "missile",
+      "nuclear",
+      "attack",
+      "default",
+      "collapse",
+      "crisis",
+      "emergency rate",
+      "bank failure",
+      "战争",
+      "入侵",
+      "导弹",
+      "核",
+      "袭击",
+      "违约",
+      "崩盘",
+      "金融危机",
+      "倒闭",
+      "军事冲突",
+      "opec",
+      "fed",
+      "fomc",
+      "rate cut",
+      "rate hike",
+      "nonfarm",
+      "payrolls",
+      "recession",
+      "tariff",
+      "sanctions",
+      "shutdown",
+      "cpi",
+      "inflation",
+      "treasury yield",
+      "yield curve",
+      "safe haven",
+      "supply cut",
+      "美联储",
+      "降息",
+      "加息",
+      "非农",
+      "衰退",
+      "关税",
+      "制裁",
+      "减产",
+      "增产",
+      "国债收益率",
+      "通胀",
+      "避险",
+      "央行",
+      "停摆"
+    ]
+  },
+  "analysis": {
+    "enabled": true,
+    "autoTranslate": true,
+    "translateDescLimit": 40,
+    "refreshSec": 180
+  },
+  "stocks": {
+    "enabled": true,
+    "maxStocks": 18,
+    "refreshMin": 15,
+    "valueTrapEnabled": true,
+    "stageWeights": true
+  },
+  "attention": {
+    "enabled": true,
+    "refreshMin": 5
+  },
+  "marketStyle": {
+    "enabled": true,
+    "refreshMin": 5,
+    "breadthEnabled": true,
+    "maxAdjust": 12
+  },
+  "events": {
+    "enabled": true,
+    "refreshMin": 5,
+    "lookbackDays": 14,
+    "alertEnabled": true,
+    "maxAdjust": 12,
+    "volumeThresholdYi": 25000,
+    "leaderCapYi": 500,
+    "riskOffEnabled": true,
+    "macroMaxAdjust": 10,
+    "maxTotalAdjust": 22
+  },
+  "limitUp": {
+    "enabled": true,
+    "refreshMin": 3,
+    "maxAdjust": 12,
+    "cycleEnabled": true
+  },
+  "journal": {
+    "enabled": true,
+    "openTime": "09:05",
+    "eveTime": "22:00",
+    "reviewTime": "15:10",
+    "liveEnabled": true,
+    "liveLimit": 12
+  },
+  "cycle": {
+    "enabled": true,
+    "refreshMin": 360,
+    "alertEnabled": true
+  },
+  "flow": {
+    "enabled": true,
+    "refreshMin": 5,
+    "hfSeatMin": 20
+  },
+  "riskoff": {
+    "enabled": true
+  },
+  "edge": {
+    "enabled": true,
+    "refreshMin": 10,
+    "valuationLimit": 30
+  },
+  "attribution": {
+    "enabled": true,
+    "refreshMin": 360,
+    "maxStocks": 30,
+    "gapMs": 1300
+  },
+  "technical": {
+    "enabled": true,
+    "refreshMin": 30
+  },
+  "agent": {
+    "enabled": true,
+    "apiKey": "",
+    "model": "deepseek-chat",
+    "baseUrl": "https://api.deepseek.com",
+    "hermes": {
+      "enabled": true,
+      "backend": "auto",
+      "officialUrl": "http://127.0.0.1:8765",
+      "model": "hermes",
+      "timeoutMs": 120000,
+      "fallbackToDeepSeek": true,
+      "contextModules": null,
+      "_note": "backend=auto 优先走 WSL2 Hermes 桥接(8765)，失败自动降级 Node 直连 DeepSeek；officialUrl 若 127.0.0.1 不通，用 WSL IP"
+    },
+    "maxTokensPerDay": 200000,
+    "a1": {
+      "enabled": true,
+      "maxPerRun": 4
+    },
+    "a4": {
+      "enabled": true,
+      "hour": "22:00"
+    },
+    "_readme": "首次使用请在 设置 → 智能体 中填入自己的 DeepSeek API Key，或直接编辑 data/config.json 的 agent.apiKey。本模板不含任何密钥。"
+  },
+  "ic": {
+    "enabled": true,
+    "snapshots": [
+      "pm"
+    ],
+    "horizons": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "rollDays": 20,
+    "minDays": 5,
+    "keepDays": 400,
+    "maxLabelsPerTick": 60
+  },
+  "rules": {
+    "gold": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": 0.35,
+      "dayPct": 1.5,
+      "moveBp": null,
+      "dayBp": null
+    },
+    "xau": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": 0.35,
+      "dayPct": 1.5,
+      "moveBp": null,
+      "dayBp": null
+    },
+    "wti": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": 0.6,
+      "dayPct": 2.5,
+      "moveBp": null,
+      "dayBp": null
+    },
+    "brent": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": 0.6,
+      "dayPct": 2.5,
+      "moveBp": null,
+      "dayBp": null
+    },
+    "ust10y": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": null,
+      "dayPct": null,
+      "moveBp": 4,
+      "dayBp": 10
+    },
+    "ust2y": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": null,
+      "dayPct": null,
+      "moveBp": 5,
+      "dayBp": 12
+    },
+    "ust30y": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": null,
+      "dayPct": null,
+      "moveBp": 4,
+      "dayBp": 10
+    },
+    "dxy": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": 0.25,
+      "dayPct": 0.8,
+      "moveBp": null,
+      "dayBp": null
+    },
+    "spread": {
+      "enabled": true,
+      "upper": null,
+      "lower": null,
+      "movePct": null,
+      "dayPct": null,
+      "moveBp": 6,
+      "dayBp": 15
+    }
+  }
+}

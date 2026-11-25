@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>合并后交互界面 · 可视化原型（设计稿）</title>
+<style>
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#fafbfc; --line:#e2e6ec; --line-2:#d3d9e2;
+  --tx:#1d2733; --tx-2:#5c6878; --tx-3:#8b95a3; --brand:#1a56a8; --brand-soft:#e8f0fb;
+  --up:#c0392b; --down:#1e8e5a; --ok:#1e8e5a; --ok-soft:#e6f4ec; --info:#1a56a8; --info-soft:#e8f0fb;
+  --warn:#a5680b; --warn-soft:#fbf1dc; --shadow:0 1px 2px rgba(20,32,48,.05);
+}
+html[data-theme="dark"]{
+  --bg:#12181f; --surface:#1a222c; --surface-2:#161e27; --line:#2a3542; --line-2:#39485a;
+  --tx:#e6ecf3; --tx-2:#9aa8b8; --tx-3:#6f7d8d; --brand:#6fa8f5; --brand-soft:#1d2c40;
+  --up:#f0736a; --down:#4cc38a; --ok:#4cc38a; --ok-soft:#17302a; --info:#6fa8f5; --info-soft:#1d2c40;
+  --warn:#e0b25c; --warn-soft:#33291a; --shadow:0 1px 2px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;font-size:13px;line-height:1.6}
+button{font-family:inherit;cursor:pointer}
+.pb-banner{background:var(--warn-soft);color:var(--warn);border-bottom:1px solid var(--line);padding:7px 18px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pb-banner b{font-weight:600}
+.pb-banner .sp{flex:1}
+.pb-banner button{background:transparent;border:1px solid var(--line-2);color:var(--warn);border-radius:6px;padding:2px 10px;font-size:12px}
+.app{max-width:1500px;margin:0 auto;padding:14px 16px 26px}
+
+.topbar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 15px;box-shadow:var(--shadow);flex-wrap:wrap}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--brand-soft);display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:6px;flex:none}
+.mark i{background:var(--brand);border-radius:2px}
+.brand-t{font-size:15px;font-weight:600;letter-spacing:.2px}
+.brand-s{font-size:11px;color:var(--tx-3)}
+.sp{flex:1}
+.stat{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx-2);white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+.dot.gray{background:var(--tx-3)}
+.tbtn{border:1px solid var(--line-2);background:var(--surface);color:var(--tx-2);border-radius:7px;padding:5px 11px;font-size:12px;white-space:nowrap}
+.tbtn:hover{border-color:var(--brand);color:var(--brand)}
+.tbtn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tbtn.primary:hover{opacity:.9;color:#fff}
+
+.body{display:grid;grid-template-columns:206px minmax(0,1fr) 258px;gap:12px;margin-top:12px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+
+.side{padding:12px 10px;position:sticky;top:14px}
+.side-lab{font-size:11px;color:var(--tx-3);padding:2px 8px 8px;letter-spacing:.04em}
+.nv{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx-2);border-radius:9px;padding:9px 10px;margin-bottom:3px}
+.nv:hover{background:var(--surface-2)}
+.nv.on{background:var(--brand-soft);color:var(--brand);border-color:var(--line)}
+.nv .ico{width:22px;height:22px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;color:var(--tx-2)}
+.nv.on .ico{background:var(--surface);color:var(--brand);border-color:var(--line)}
+.nv b{font-size:13px;font-weight:600;display:block}
+.nv small{font-size:11px;color:var(--tx-3);display:block;margin-top:1px}
+.nv.on small{color:var(--brand);opacity:.8}
+.side-note{border-top:1px solid var(--line);margin-top:12px;padding:11px 8px 2px;font-size:11px;color:var(--tx-3);line-height:1.7}
+
+.work{padding:16px 18px;min-height:560px}
+.w-head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:13px;margin-bottom:14px}
+.w-h1{font-size:18px;font-weight:600;margin:0}
+.w-sub{font-size:12px;color:var(--tx-2);margin:3px 0 0;max-width:660px}
+.w-tools{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.chip{border:1px solid var(--line-2);background:var(--surface);color:var(--tx-2);border-radius:20px;padding:3px 11px;font-size:11px}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.grp-t{font-size:11px;color:var(--tx-3);letter-spacing:.04em;margin:16px 0 9px;display:flex;align-items:center;gap:8px}
+.grp-t:first-child{margin-top:0}
+.grp-t:after{content:"";height:1px;background:var(--line);flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:var(--surface);text-align:left;color:inherit;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--brand);transform:translateY(-1px)}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:10px;padding:1px 7px;border-radius:20px;white-space:nowrap;flex:none}
+.b-live{background:var(--ok-soft);color:var(--ok)}
+.b-ro{background:var(--info-soft);color:var(--info)}
+.b-design{background:var(--warn-soft);color:var(--warn)}
+.card-src{font-size:11px;color:var(--tx-3);margin-top:5px;font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-desc{font-size:11px;color:var(--tx-2);margin-top:8px;line-height:1.6;border-top:1px dashed var(--line);padding-top:8px}
+.card-foot{font-size:10px;color:var(--tx-3);margin-top:8px}
+.empty{border:1px dashed var(--line-2);border-radius:10px;padding:26px;text-align:center;color:var(--tx-3);font-size:12px}
+
+.dock{padding:13px 12px;position:sticky;top:14px}
+.dock h3{font-size:12px;font-weight:600;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.dock h3:before{content:"";width:3px;height:12px;background:var(--brand);border-radius:2px}
+.al{font-size:11px;color:var(--tx-2);border-left:2px solid var(--line-2);padding:5px 0 5px 9px;margin-bottom:9px;line-height:1.55}
+.al b{color:var(--tx);font-weight:600}
+.al .lvl{font-size:10px;padding:0 5px;border-radius:4px;margin-right:5px}
+.lvl.w{background:var(--warn-soft);color:var(--warn)}
+.lvl.i{background:var(--info-soft);color:var(--info)}
+.dock-sep{height:1px;background:var(--line);margin:14px 0}
+.dock-note{font-size:11px;color:var(--tx-3);line-height:1.7;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px}
+
+.status{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 15px;font-size:11px;color:var(--tx-3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.status b{color:var(--tx-2);font-weight:600}
+.status .sp{flex:1}
+
+.mask{position:fixed;inset:0;background:rgba(12,20,30,.42);display:none;z-index:20}
+.mask.show{display:block}
+.drawer{position:fixed;top:0;right:0;height:100%;width:390px;max-width:92vw;background:var(--surface);border-left:1px solid var(--line);z-index:21;transform:translateX(102%);transition:transform .22s;display:flex;flex-direction:column}
+.drawer.show{transform:translateX(0)}
+.drawer-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
+.drawer-h h2{font-size:15px;font-weight:600;margin:0}
+.drawer-h p{font-size:11px;color:var(--tx-3);margin:3px 0 0}
+.drawer-b{padding:16px 18px;overflow:auto;flex:1}
+.kv{margin-bottom:14px}
+.kv .k{font-size:11px;color:var(--tx-3);margin-bottom:3px}
+.kv .v{font-size:12px;color:var(--tx);line-height:1.7}
+.kv .v code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+.mono-block{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:11px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--tx-2);white-space:pre-wrap;line-height:1.7}
+.flow{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:11px;margin:10px 0}
+.flow span.s{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.flow span.a{color:var(--tx-3)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--tx);color:var(--surface);padding:9px 16px;border-radius:8px;font-size:12px;opacity:0;transition:all .2s;z-index:30;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:1080px){.body{grid-template-columns:180px minmax(0,1fr)}.dock{display:none}}
+@media(max-width:720px){.body{grid-template-columns:1fr}.side{position:static;display:flex;flex-wrap:wrap;gap:4px}.side-lab,.side-note{width:100%}.nv{width:auto;flex:1 1 130px}}
+</style>
+</head>
+<body>
+
+<div class="pb-banner">
+  <b>设计原型 · 非运行程序</b>
+  <span>本页只演示「合并后交互界面」的布局与交互，<b>不连接 8777 后端、不读取任何真实行情</b>；卡片内文字为结构说明，数值一律不编造。</span>
+  <span class="sp"></span>
+  <button id="btnHelp">设计说明</button>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="mark"><i></i><i></i><i></i><i></i></div>
+    <div><div class="brand-t">全球市场监测与报警系统</div><div class="brand-s">一个程序 · 统一工作区</div></div>
+    <span class="sp"></span>
+    <span class="stat"><span class="dot"></span>链路正常</span>
+    <span class="stat">行情 <b id="qTime">--:--</b></span>
+    <span class="stat">新闻 <b id="nTime">--:--</b></span>
+    <button class="tbtn" data-toast="设计原型不触发真实刷新（未连接后端）">立即刷新</button>
+    <button class="tbtn" data-toast="声音开关：原型仅示意">声音</button>
+    <button class="tbtn" data-toast="通知开关：原型仅示意">通知</button>
+    <button class="tbtn" id="btnTheme">深/浅</button>
+    <button class="tbtn primary" id="btnAgent">智能体工作台</button>
+    <button class="tbtn" data-toast="告警设置沿用现有抽屉，本原型不重写">告警设置</button>
+  </div>
+
+  <div class="body">
+    <nav class="side panel" id="nav"><div class="side-lab">工作域 · 按任务分组</div></nav>
+
+    <main class="work panel">
+      <div class="w-head">
+        <div><h1 class="w-h1" id="wH">总览驾驶舱</h1><p class="w-sub" id="wSub"></p></div>
+        <div class="w-tools" id="filters">
+          <button class="chip on" data-f="all">全部</button>
+          <button class="chip" data-f="live">实时</button>
+          <button class="chip" data-f="ro">只读</button>
+          <button class="chip" data-f="design">设计态</button>
+        </div>
+      </div>
+      <div id="wBody"></div>
+    </main>
+
+    <aside class="dock panel">
+      <h3>常驻告警带</h3>
+      <div class="al"><span class="lvl w">警告</span><b>示意占位</b><br>真实告警由 alerts.js / SSE 推送，切换工作域不会被遮罩盖住</div>
+      <div class="al"><span class="lvl i">提示</span><b>示意占位</b><br>每条标注来源与数据时点；取不到数据显式「数据源不可达」</div>
+      <div class="al"><span class="lvl i">提示</span><b>示意占位</b><br>本原型不生成任何数值，避免把设计当成事实</div>
+      <div class="dock-sep"></div>
+      <h3>全球新闻（常驻）</h3>
+      <div class="al"><b>示意占位</b><br>英文标题自动中文化并标「译」</div>
+      <div class="al"><b>示意占位</b><br>中文原生新闻保持原文</div>
+      <div class="dock-sep"></div>
+      <h3>三级状态徽标</h3>
+      <div style="margin-bottom:10px"><span class="badge b-live">实时</span> <span class="badge b-ro">只读</span> <span class="badge b-design">设计态</span></div>
+      <div class="dock-note">状态是<b>每张卡片的属性</b>，不再用来把界面劈成「原有系统 / 交互增量」两半——这是"合并成一个程序"在观感上成立的关键。</div>
+    </aside>
+  </div>
+
+  <div class="status">
+    <b>一个项目</b> · 一个 8777 服务 · 一份 config.json · 一套 SSE · 一个桌面入口
+    <span>|</span> 定格 <b>09:05 / 22:00</b> · 复盘 15:10
+    <span>|</span> 模式 <b>L0 确定性（未接 LLM）</b>
+    <span class="sp"></span>
+    <span>所有 AI 提案标记「未生效」</span>
+  </div>
+</div>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-h"><div><h2 id="dTitle">详情</h2><p id="dSub"></p></div><span class="sp" style="flex:1"></span><button class="tbtn" id="dClose">关闭</button></div>
+  <div class="drawer-b" id="dBody"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var BN={live:'b-live',ro:'b-ro',design:'b-design'}, BT={live:'实时',ro:'只读',design:'设计态'};
+  var WS=[
+    {k:'总览驾驶舱',ico:'◎',s:'实时态势',
+     sub:'全球行情、新闻与告警的实时态势。原「核心监测 / 扩展指标 / 走势监测 / 新闻解读」等面板收拢在此，告警与全球新闻同时常驻右栏。',
+     g:[
+       {t:'实时行情与新闻',c:[
+         {n:'核心监测',src:'sources.js · 行情卡片',st:'live',d:'黄金 / 原油 / 美债 / 美元指数等，红涨绿跌，逐卡标注来源与时点',p:'核心监测',a:'/api/snapshot'},
+         {n:'扩展指标',src:'sources.js · bp 口径',st:'live',d:'收益率与利差变动以基点计，不混用百分比',p:'扩展指标',a:'/api/snapshot'},
+         {n:'走势监测',src:'state.json · 图表',st:'live',d:'多标的切换的时间序列，数据源不可达时显示骨架而非编造曲线',p:'走势监测',a:'/api/snapshot'},
+         {n:'新闻解读',src:'analysis.js · 规则推理',st:'live',d:'基于公开词典的可解释推理，方向倾向不是涨跌预测',p:'新闻解读',a:'/api/analysis'}
+       ]},
+       {t:'全局保障',c:[
+         {n:'数据源状态',src:'sources.js · 主备降级',st:'live',d:'主源异常自动降级，失败即生成系统告警；stale 缓存显式标注',p:'数据源状态',a:'/api/health'},
+         {n:'告警中心',src:'alerts.js · SSE',st:'live',d:'右栏常驻，任何工作域都可见，不被遮罩盖住',p:'告警中心',a:'/api/alerts'},
+         {n:'全球新闻',src:'translate.js · 自动中文化',st:'live',d:'右栏常驻，英文标题机器翻译并标「译」',p:'全球新闻',a:'/api/snapshot'}
+       ]}
+     ]},
+    {k:'选股与因子',ico:'◇',s:'监控 + 自动选股',
+     sub:'原有自动选股能力完整融入，一个不删：观察池评分、市值风格、涨停结构、事件驱动、IC 自检；新增因子池与登记草案并列呈现。',
+     g:[
+       {t:'原有自动选股（已上线，完整保留）',c:[
+         {n:'当日观察池',src:'stocks.js · 多因子评分',st:'live',d:'横截面相对排序 + 量化指标行 + 一句话看多理由，不是买卖建议',p:'当日观察池',a:'/api/stocks'},
+         {n:'A 股量能与市值风格',src:'marketStyle.js · 四层规模',st:'live',d:'沪深300/500/1000/2000 代理大小微盘，同层横截面相对分',p:'A 股量能与市值风格',a:'/api/style'},
+         {n:'涨停结构与市场情绪',src:'limitup.js · 连板梯队',st:'live',d:'板型 / 封单占比 / 炸板池，接力失败的直接证据',p:'涨停结构与市场情绪',a:'/api/limitup'},
+         {n:'市场状态与事件驱动',src:'events.js · 利多 / 利空',st:'live',d:'重组 / 收购 / 回购 / 减持 / 业绩超预期，公告标题不等于事实',p:'市场状态与事件驱动',a:'/api/events'},
+         {n:'评分有效性自检',src:'ic.js · Rank IC',st:'live',d:'T+1/3/5/10 前瞻收益的横截面秩相关，结论只认滚动均值',p:'评分有效性自检',a:'/api/ic'}
+       ]},
+       {t:'因子池（增量）',c:[
+         {n:'因子池',src:'/api/stocks · 真实因子',st:'ro',d:'只读展示系统现在真的在算的 indicators / groups，不登记外部因子库为可用',p:'交互工作区 · 因子池视图',a:'/api/stocks'},
+         {n:'自定义因子登记',src:'draft → 白名单 → shadow → IC → 审核 → live',st:'design',d:'状态机为设计态，后端未实现；只生成本页草案、无提交按钮',p:'交互工作区 · 因子池视图',a:'—'}
+       ]}
+     ]},
+    {k:'持仓与风控',ico:'▣',s:'我的持仓',
+     sub:'持仓盈亏与确定性建议，叠加资金主体画像与四层避险识别，回答「钱是去了别的板块，还是出了股市」。',
+     g:[
+       {t:'持仓',c:[
+         {n:'持仓监控',src:'holdings.js · ATR14×2',st:'live',d:'实时盈亏 + 七条确定性建议；录入代码 / 成本价 / 股数',p:'持仓监控',a:'/api/holdings'}
+       ]},
+       {t:'资金与避险',c:[
+         {n:'资金主体画像',src:'flow.js · 龙虎榜 / 两融',st:'live',d:'游资 / 机构 / 社保 / 国家队按席位归纳，近一年回填',p:'资金主体与避险识别',a:'/api/flow'},
+         {n:'避险识别',src:'riskoff.js · L1–L4',st:'live',d:'轮动 / 风格 / 离场 / 离境四层，明确资金去向',p:'资金主体与避险识别',a:'/api/riskoff'}
+       ]}
+     ]},
+    {k:'复盘与经验',ico:'↻',s:'闭环回流',
+     sub:'五段式闭环（定格 → 复盘 → 归纳 → 审核 → 有界回流）与研究层同域呈现；回流终点落回「选股与因子」的评分链路，闭环在一个程序里合拢。',
+     g:[
+       {t:'定格与研究（已上线）',c:[
+         {n:'评估数据库与经验库',src:'journal.js · 五段式',st:'live',d:'09:05 / 22:00 冻结名单，此后不改；实时池只作观察不作基准',p:'评估数据库与经验库',a:'/api/journal'},
+         {n:'周期事件日历',src:'cycle.js · 三段 CAR',st:'live',d:'事件前 / 中 / 后超额收益，日期只来自制度规律或人工录入',p:'周期事件日历',a:'/api/cycle'},
+         {n:'预期研究与多因素叠加',src:'strength / valuation / phase / stack',st:'live',d:'主线 / 重估 / 阶段 / 共振；叠加不改任何评分，只写定格存证',p:'预期研究与多因素叠加',a:'/api/edge'}
+       ]},
+       {t:'复盘与审核（交互视图 · 只读）',c:[
+         {n:'今日复盘',src:'/api/journal/picks + /api/holdings',st:'ro',d:'复盘对象 = 持仓 ∪ 定格名单 ∪ 实时观察池；命中 = 跑赢同市值层基准',p:'交互工作区 · 今日复盘视图',a:'/api/journal/picks'},
+         {n:'审核台',src:'/api/journal · 只读',st:'ro',d:'待审经验只读展示；审核操作仍回原面板，避免同一份数据被两处改写',p:'交互工作区 · 审核台视图',a:'/api/journal'},
+         {n:'对话分诊',src:'L0 本地确定性规则',st:'ro',d:'关键词命中判「因子候选 / 经验候选 / 待澄清」，不猜语义、不写文件',p:'交互工作区 · 对话分诊视图',a:'—'},
+         {n:'经验池',src:'/api/journal · 只读',st:'ro',d:'现有经验库真实统计 + 个人 / 自动 / 讨论三类来源草案',p:'交互工作区 · 经验池视图',a:'/api/journal'}
+       ]}
+     ]},
+    {k:'智能体工作台',ico:'✦',s:'设计态 · 未接 LLM',
+     sub:'唯一入口，替代原来「交互方案 / 交互工作区」两个重复按钮。以下全部为设计态，未实现后端；未配置模型时自动降级 L0 纯确定性，两池 / 复盘 / 审核照常可用。',
+     g:[
+       {t:'设计态能力（后端未实现）',c:[
+         {n:'多智能体复盘讨论',src:'12 技能排布 · 未实现',st:'design',d:'事实冻结 → 多维归因 → 多空辩论 → fact-audit 纯代码一票否决 → 归纳 → 白话转述',p:'交互工作区 · 今日复盘视图',a:'—'},
+         {n:'因子状态机',src:'影子运行 / IC 复检 · 未实现',st:'design',d:'shadow 只算不进分，Rank IC 复检 + 人工审核后才谈有界上架',p:'交互工作区 · 因子池视图',a:'—'},
+         {n:'经验录入',src:'个人 / 自动 / 讨论 · 未实现',st:'design',d:'要求可证伪、n≥8 才归纳、被证伪保留记录不删除',p:'交互工作区 · 经验池视图',a:'—'},
+         {n:'选型与模型设置',src:'DeepSeek 薄适配器 · 设计态',st:'design',d:'quick / deep 分工，模型名配置化不写死；密钥只进环境变量，默认不外发',p:'交互工作区 · 智能体设置视图',a:'—'}
+       ]},
+       {t:'铁律',c:[
+         {n:'判断链路不进 LLM',src:'stocks.js 确定性评分 · 零改动',st:'ro',d:'智能体永不进入评分链路；产出须经审核台人工采纳后才沿 journal 五段式有界回流',p:'全局约束',a:'—'}
+       ]}
+     ]}
+  ];
+
+  var cur=0, filter='all';
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('show')},2200)}
+  function renderNav(){
+    var n=document.getElementById('nav'),h='<div class="side-lab">工作域 · 按任务分组</div>';
+    WS.forEach(function(w,i){h+='<button class="nv'+(i===cur?' on':'')+'" data-w="'+i+'"><span class="ico">'+w.ico+'</span><span><b>'+esc(w.k)+'</b><small>'+esc(w.s)+'</small></span></button>'});
+    h+='<div class="side-note">五个工作域按<b>你的任务</b>分组，而不是按「原有系统 / 新增功能」分组。切换域只切换主区内容，SSE 订阅与所有面板 DOM 保持不动。</div>';
+    n.innerHTML=h;
+    Array.prototype.forEach.call(n.querySelectorAll('.nv'),function(b){b.onclick=function(){cur=+b.getAttribute('data-w');filter='all';renderNav();renderWork();renderFilters()}});
+  }
+  function renderFilters(){
+    Array.prototype.forEach.call(document.querySelectorAll('#filters .chip'),function(c){c.classList.toggle('on',c.getAttribute('data-f')===filter)});
+  }
+  function renderWork(){
+    var w=WS[cur];
+    document.getElementById('wH').textContent=w.k;
+    document.getElementById('wSub').textContent=w.sub;
+    var h='',total=0,shown=0;
+    w.g.forEach(function(g){
+      var cs=g.c.filter(function(c){return filter==='all'||c.st===filter});
+      total+=g.c.length;shown+=cs.length;
+      if(!cs.length)return;
+      h+='<div class="grp-t">'+esc(g.t)+'</div><div class="cards">';
+      cs.forEach(function(c){
+        h+='<button class="card" data-n="'+esc(c.n)+'"><div class="card-top"><span class="card-name">'+esc(c.n)+'</span><span class="badge '+BN[c.st]+'">'+BT[c.st]+'</span></div>'+
+           '<div class="card-src">'+esc(c.src)+'</div><div class="card-desc">'+esc(c.d)+'</div><div class="card-foot">点击查看归位详情 →</div></button>';
+      });
+      h+='</div>';
+    });
+    if(!shown)h='<div class="empty">当前工作域没有「'+BT[filter]+'」状态的卡片。切换筛选查看全部。</div>';
+    else h+='<div class="grp-t" style="margin-top:18px">共 '+shown+' / '+total+' 张卡片'+(filter!=='all'?'（已按「'+BT[filter]+'」筛选）':'')+'</div>';
+    document.getElementById('wBody').innerHTML=h;
+    Array.prototype.forEach.call(document.querySelectorAll('#wBody .card'),function(b){b.onclick=function(){detail(b.getAttribute('data-n'))}});
+  }
+  function detail(name){
+    var c=null;WS.forEach(function(w){w.g.forEach(function(g){g.c.forEach(function(x){if(x.n===name)c=x})})});
+    if(!c)return;
+    document.getElementById('dTitle').textContent=c.n;
+    document.getElementById('dSub').textContent=BT[c.st]+' · '+WS[cur].k;
+    document.getElementById('dBody').innerHTML=
+      '<div class="kv"><div class="k">状态</div><div class="v"><span class="badge '+BN[c.st]+'">'+BT[c.st]+'</span></div></div>'+
+      '<div class="kv"><div class="k">白话说明</div><div class="v">'+esc(c.d)+'</div></div>'+
+      '<div class="kv"><div class="k">归位前对应的现有面板 / 视图</div><div class="v">'+esc(c.p)+'</div></div>'+
+      '<div class="kv"><div class="k">数据来源</div><div class="v"><code>'+esc(c.src)+'</code></div></div>'+
+      '<div class="kv"><div class="k">接口</div><div class="v"><code>'+esc(c.a)+'</code></div></div>'+
+      '<div class="grp-t">合并闭环</div><div class="flow"><span class="s">外部数据源</span><span class="a">→</span><span class="s">server 21 模块</span><span class="a">→</span><span class="s">8777 / SSE</span><span class="a">→</span><span class="s">统一 App Shell</span></div>'+
+      '<div class="flow"><span class="s">09:05 定格</span><span class="a">→</span><span class="s">15:10 复盘</span><span class="a">→</span><span class="s">n≥8 归纳</span><span class="a">→</span><span class="s">人工审核</span><span class="a">→</span><span class="s">有界回流 ±2 分 / [0.8,1.25] / 不翻符号</span><span class="a">→</span><span class="s">回到 stocks.js 评分</span></div>'+
+      '<div class="grp-t">反幻觉边界</div><div class="mono-block">本卡片展示的是「结构与归位」，不是运行结果。\n· 取不到数据 → 显示「暂无 / 数据源不可达」，不编造数值\n· 设计态能力 → 标注「未实现 / AI 提案 · 未生效」，无提交按钮\n· 智能体永不进入 stocks.js 确定性评分链路\n· 叠加形态（第 7 维 stack）为 observeOnly，不回流</div>';
+    document.getElementById('mask').classList.add('show');
+    document.getElementById('drawer').classList.add('show');
+  }
+  function closeDrawer(){document.getElementById('mask').classList.remove('show');document.getElementById('drawer').classList.remove('show')}
+  function help(){
+    document.getElementById('dTitle').textContent='设计说明 · 合并前 / 合并后';
+    document.getElementById('dSub').textContent='本页为设计原型，非运行程序';
+    document.getElementById('dBody').innerHTML=
+      '<div class="kv"><div class="k">工程层：已经是一个程序</div><div class="v">一个 8777 进程、21 个 server 模块、唯一 <code>web/index.html</code>、唯一 <code>data/config.json</code>、一套 SSE、桌面一个 .bat。这一层不需要再合并。</div></div>'+
+      '<div class="kv"><div class="k">体验层：这是本次要解决的</div><div class="v">现状 = 17 个长滚动面板 + 右滑抽屉 + 全屏遮罩工作区；顶栏两个重复入口；状态带把界面劈成「原有系统 / 交互增量」。<b>按代码来源分组，而用户按任务思考</b>，所以看起来仍像两个程序。</div></div>'+
+      '<div class="grp-t">合并前 → 合并后</div><div class="mono-block">分组依据   代码来源        →  用户任务（5 个工作域）\n导航形态   长滚动 + 2 浮层  →  单一 App Shell + 左导航\n顶栏入口   交互方案 / 交互工作区（重复）→ 智能体工作台（唯一）\n状态标注   界面级「原有 vs 增量」→ 卡片级 实时/只读/设计态\n告警新闻   藏在浮层背面    →  右常驻带，任何域都可见\n原有监控选股  保留但无组织   →  完整归入「选股与因子」域</div>'+
+      '<div class="grp-t">五层结构 + 一条回流闭环</div><div class="mono-block">入口层  桌面启动器 → 8777 → 浏览器单页 → 单一进程\n视图层  统一 App Shell（index.html + 交互视图 + 导航）\n服务层  server.js：定时器 / 27 GET / 24 写 / SSE 广播\n计算层  21 模块：采集分析 · stocks 评分 · edge · journal\n数据层  config.json · *-cache.json · journal 五段式\n\n回流    journal 五段式 → 有界回流（±2 分 / [0.8,1.25] / 不翻符号）→ stocks.js</div>'+
+      '<div class="grp-t">非破坏式落地 P0–P3</div><div class="mono-block">P0 收敛顶栏重复入口\nP1 新增工作域导航（纯增量 DOM）\nP2 告警/新闻改右常驻，遮罩改主区内嵌\nP3 卡片级状态徽标 + 白话层\n\napp.js / styles.css / server/*.js 全程零改动；\n17 个 section.panel 的 id 与 renderAll() 原样；\n不新增依赖、服务、第二个 HTML 程序。</div>'+
+      '<div class="grp-t">待拍板</div><div class="v" style="font-size:12px;line-height:1.9">① 落地范围（只 P0 / 到 P1 / 到 P3）<br>② 主区内嵌切换 还是 长滚动 + 锚点定位<br>③ 是否接入 DeepSeek<br>④ 右常驻栏默认展开还是可折叠</div>';
+    document.getElementById('mask').classList.add('show');
+    document.getElementById('drawer').classList.add('show');
+  }
+  renderNav();renderWork();renderFilters();
+  document.getElementById('btnAgent').onclick=function(){cur=4;filter='all';renderNav();renderWork();renderFilters();toast('已切到「智能体工作台」——设计态能力，未接 LLM')};
+  document.getElementById('btnHelp').onclick=help;
+  document.getElementById('dClose').onclick=closeDrawer;
+  document.getElementById('mask').onclick=closeDrawer;
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDrawer()});
+  document.getElementById('btnTheme').onclick=function(){var r=document.documentElement;r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark')};
+  Array.prototype.forEach.call(document.querySelectorAll('#filters .chip'),function(c){c.onclick=function(){filter=c.getAttribute('data-f');renderFilters();renderWork()}});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-toast]'),function(b){b.onclick=function(){toast(b.getAttribute('data-toast'))}});
+})();
+</script>
+</body>
+</html>

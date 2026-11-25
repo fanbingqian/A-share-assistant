@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>完整技术方案 v9：事件感知与智能体落地（2026-11-20）</title>
+<style>
+  body{margin:0;background:#f7f8fa;color:#1f2937;font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;line-height:1.75;font-size:15px}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 60px}
+  header.page{background:#1e40af;color:#fff;border-radius:14px;padding:26px 30px;margin-bottom:26px}
+  header.page h1{margin:0 0 8px;font-size:22px}
+  header.page p{margin:0;opacity:.92;font-size:13.5px}
+  h2{font-size:18px;border-left:4px solid #1e40af;padding-left:10px;margin:34px 0 12px}
+  h3{font-size:15.5px;margin:22px 0 8px;color:#1e3a8a}
+  p{margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;background:#fff;border-radius:8px;overflow:hidden;font-size:13.5px}
+  th{background:#eef2ff;color:#1e3a8a;text-align:left;padding:8px 10px;border-bottom:2px solid #c7d2fe;white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  code{background:#eef2ff;color:#1e3a8a;border-radius:4px;padding:1px 5px;font-size:12.5px;font-family:Consolas,Menlo,monospace}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.6}
+  .card{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:16px 20px;margin:12px 0}
+  .blue{background:#eff6ff;border:1px solid #93c5fd}
+  .yellow{background:#fefce8;border:1px solid #facc15}
+  .warn{color:#b45309}
+  .ok{color:#1b8a5a}
+  .tag{display:inline-block;background:#eef2ff;color:#1e3a8a;border-radius:10px;padding:1px 10px;font-size:12px;margin-right:6px}
+  footer{margin-top:40px;padding:16px 20px;background:#fff;border:1px solid #d1d5db;border-radius:10px;font-size:12.5px;color:#6b7280}
+  ul{padding-left:22px;margin:8px 0}
+  li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <h1>完整技术方案 v9：事件感知与智能体落地</h1>
+  <p>2026-11-20 · 承接 v4–v8：智能体选型 / 模型接入 / 股民交互 / 经验库与冲突闸门 / 验证层 F/E/L / 统一外壳 · 本轮新增「感知层」与完整落地设计 · 衔接 GlobalMarketMonitor 现有代码</p>
+</header>
+
+<h2>0｜一句话结论</h2>
+<div class="card blue">
+<p><strong>智能体的「感知」不是天生的，是三件确定性组件拼出来的：观察者（定时轮询数据源）→ 变化检测（diff）→ 触发（只把增量喂给大模型解读）。</strong>你的系统已有 13 个定时器，感知地基已存在；本轮只需新增「公告观察者 + 新闻观察者」两个模块，大脑接 DeepSeek，数据层直接复用开源技能 <code>a-stock-data</code>（Apache-2.0，公告/新闻/龙虎榜/题材归因全覆盖）。事件解读后按已有设计分四路：Flag 提示 / 假说卡 / 事实账本 / 仅通知。对话内容与每日复盘结果均可入库，但走两条闸门不同的链路——经验链路快而不改分，因子链路慢而能改分。</p>
+</div>
+
+<h2>1｜概念校准：智能体怎么「感知」到一个突发利好</h2>
+<p>大模型确实没有感知能力，但智能体也不会自动拥有——所谓 Agent 感知，在所有成熟系统里都是同一个模式（GitHub 上的 <code>Pi Durable News Agent</code>、<code>daily_stock_analysis</code>、<code>PanWatch</code> 全是这么做的）：</p>
+<table>
+  <tr><th>三要素</th><th>做什么</th><th>在本项目的实现</th></tr>
+  <tr><td><strong>① 观察者</strong></td><td>定时轮询/接收推送：公告源（巨潮/东财）、新闻源（东财/财联社/华尔街见闻）、股池价格异动</td><td>新增 <code>watchers.js</code>（公告观察者、新闻观察者）；股池价格异动已在现有定时器里</td></tr>
+  <tr><td><strong>② 变化检测</strong></td><td>与上次快照 diff，只留增量；带冷却时间、日触发上限（借鉴 PanWatch 的较真设计）</td><td>新增快照缓存 <code>data/watch-last.json</code>；diff 纯代码实现，LLM 不参与</td></tr>
+  <tr><td><strong>③ 触发</strong></td><td>增量 ≥ 阈值才唤醒 LLM 解读；无增量不花钱、不产生幻觉机会</td><td>DeepSeek 调用发生在 diff 命中之后；每日解读预算封顶</td></tr>
+</table>
+<div class="card yellow">
+<p class="warn"><strong>为什么这个顺序重要：</strong>如果让大模型「自己去看」全量数据再判断有没有新闻，每次轮询都在烧 token、每次都在制造幻觉机会；让代码先 diff、模型只看增量，成本降一个量级，幻觉面也缩到最小。这正是 <code>Pi Durable News Agent</code> 的「cron 扫源 → 相关性门槛 → 同故事去重 → 重要性排序」模式，可直接借鉴其门槛判定思路。</p>
+</div>
+
+<h2>2｜开源项目落位（2026-11 检索核验，star 数仅供参考）</h2>
+<table>
+  <tr><th>项目</th><th>状态 / 许可</th><th>在本方案中的角色</th><th>注意事项</th></tr>
+  <tr><td><strong>a-stock-data</strong><br>simonlin1212（约 9–10k★，两源口径不一）</td><td>活跃，Apache-2.0<br>SKILL.md 自包含零鉴权</td><td><strong>观察者的数据层，直接用</strong>：15 层架构 54+ 端点——公告层（巨潮）、新闻层（东财/财联社/华尔街见闻）、龙虎榜、题材归因、互动易、涨停池、宏观，主源被封有备用源降级，内置限流防封</td><td>免费接口可能因字段调整失效；自带「重点监控池/异动规则」可复用为触发条件</td></tr>
+  <tr><td><strong>daily_stock_analysis</strong><br>ZhuLinsen（约 61k★）</td><td>活跃（周更），MIT</td><td><strong>「定时智能体」整体范本</strong>：定时跑 → 读行情+新闻 → 生成报告 → 推送到微信/飞书/TG/邮件，含对话追问模式；覆盖 A 股等六市场，数据用 AkShare/Baostock</td><td><span class="warn">其输出含买卖点位与评级（决策内容），只借「定时+推送+对话」架构，不借结论；免费数据源限速不稳</span></td></tr>
+  <tr><td><strong>PanWatch</strong>（TNT-Likely，约 2.3k★）</td><td>更新至 2026-11-04；许可证需核实</td><td><strong>盯盘触发规则设计参考</strong>：价格/涨跌幅/成交额/量比 AND/OR 组合、交易时段限定、冷却时间、日触发上限、按规则指定通知渠道；盘前/盘中/盘后/新闻四时段分工；推理链全程可见</td><td>内部接 TradingAgents 跑决策书——我们只要它的触发与推送层设计</td></tr>
+  <tr><td><strong>Pi Durable News Agent</strong>（disler，MIT）</td><td>小而精（约 89★）</td><td><strong>新闻感知门槛模式教科书</strong>：cron 扫源 → LLM 门槛判相关性/去重/重要性 → 只留 top N 卡片 → 状态落 SQLite 可恢复</td><td>规模小，主要借鉴模式不引入代码</td></tr>
+  <tr><td><strong>stock-announcements</strong>（freestylefly/wesight，约 970★）</td><td>活跃</td><td>备选公告技能：AkShare 走东财当日公告，支持代码+关键词过滤</td><td>与 a-stock-data 公告层二选一或互为备份</td></tr>
+  <tr><td><strong>DojoAgents</strong>（Alpha-Dojo，新兴）</td><td>极新（一周千星）；许可证需核实</td><td>观察项：A/美/港三市场主题扫描、新闻→机会挖掘，支持 DeepSeek，本地 dashboard</td><td>太新、未稳定，暂不引入，持续观察</td></tr>
+  <tr><td><strong>Crucix</strong>（约 12.2k★）</td><td><span class="warn">AGPL-3.0</span></td><td>不引入（网络服务使用也触发传染条款），仅作多源监控的思路参考</td><td>若只是本机自用不对外提供服务，风险较低，但仍不建议引入</td></tr>
+  <tr><td>上轮已核验：STORM / GPT Researcher / ai-hedge-fund / TradingAgents / FinRobot</td><td>MIT / Apache 为主</td><td>R5 分析师顾问的压幻觉与建议形态参照（见 v4/v8 结论）</td><td>PyPI 有同名假包（tradingagents 为 3★ 假包、真包 aihf）；不整体引入，只借架构</td></tr>
+</table>
+
+<h2>3｜完整技术架构：复用、已有、新增</h2>
+<table>
+  <tr><th>层</th><th>组件</th><th>状态</th></tr>
+  <tr><td>数据层</td><td><code>sources.js</code> 行情源 + 7 类市场缓存（breadth/style/strength/phase/flow/cycle/attribution）</td><td class="ok">已有，不动</td></tr>
+  <tr><td>数据层（新增）</td><td><strong>公告观察者 + 新闻观察者</strong>：<code>watchers.js</code>，经 a-stock-data 技能口径拉取 → diff → <code>data/watch-last.json</code> + <code>data/journal/events-feed.jsonl</code></td><td><strong>本轮新增</strong></td></tr>
+  <tr><td>确定性计算层</td><td>stocks.js 多因子评分、ic.js Rank IC、四象限/冲突重算、确定性网关（查出处/格式/幂等）</td><td class="ok">已有/按 v4 落地</td></tr>
+  <tr><td>智能体层</td><td>R1 抽取 · R2 假说 · R3 冲突分拣 · R4 翻译 · <strong>R5 分析师顾问（本轮确认升级）</strong>；大脑 DeepSeek（OpenAI 兼容），Node 薄适配器；二期可选 LangGraph sidecar（8788，只读）</td><td class="ok">设计沿用 + R5 升级</td></tr>
+  <tr><td>技能层</td><td><code>a-stock-data</code>（数据）、<code>ml4t/skills</code>（防未来函数）、<code>claude-for-financial-services-cn</code>（中国口径降级链）、<code>claude-trading-skills</code>（方法模板，只装纯 Markdown 技能）</td><td><strong>本轮落位</strong></td></tr>
+  <tr><td>知识层</td><td>经验四层账本（L0 事实/L1 规则/L2 假说/L3 叙事）、Flag 层、知识卡、反例库、precommit</td><td class="ok">v1–v7 已定契约</td></tr>
+  <tr><td>交互层</td><td>v8 统一外壳 8 页（今日重点/股池看板/复盘时间线/经验库/素材库/流水线/裁决台/推导视图）+ 对话问答入口 + 推送（浏览器通知，复用 <code>btnNotify</code>）</td><td class="ok">v8 已交付</td></tr>
+</table>
+
+<h2>4｜智能体的五个用点（大脑 = DeepSeek）</h2>
+<table>
+  <tr><th>用点</th><th>输入</th><th>技能/数据配合</th><th>输出</th><th>禁止项</th></tr>
+  <tr><td><strong>A1 感知解读</strong>（新增）</td><td>diff 出的公告/新闻增量、股池异动</td><td>a-stock-data 补财务/题材背景；知识卡补机制</td><td>四路分流：Flag / 假说卡 / 事实账本 / 通知</td><td>禁算数字、禁买卖建议、每句挂来源锚点</td></tr>
+  <tr><td><strong>A2 对话问答</strong>（R5）</td><td>你的任何提问</td><td>先查自有账本与缓存；a-stock-data 拉实时数据</td><td>带来源锚点的四层分析（事实/背景/并列假说/跟进建议）</td><td>无来源即拒答；不出买卖指令</td></tr>
+  <tr><td><strong>A3 对话筛选入库</strong></td><td>沉淀型对话（「我当时是看到 XX 才买的」）</td><td>interaction.js 分诊原型已有；四元组抽取</td><td>因子候选（navplan 草稿）/ 经验候选（待审区）/ 仅聊天</td><td>自动归类可以、自动生效不行；对话数字日期置 null</td></tr>
+  <tr><td><strong>A4 复盘二次处理</strong></td><td>两市四象限/板块轮动/股池的确定性统计结果</td><td>7 类缓存统计 → DeepSeek 写成假说卡 + 人话日报</td><td>假说卡（带证伪条件）、经验候选、今日重点文案</td><td>统计数字由代码给；模型只组织语言与提假说</td></tr>
+  <tr><td><strong>A5 复盘口语助手</strong></td><td>你口述今天怎么操作的</td><td>R1 抽四元组 → precommit 登记</td><td>trades.jsonl 上下文 + 事前预判存档</td><td>不补全你没说的；不推断你的意图</td></tr>
+</table>
+<div class="card blue">
+<p><strong>DeepSeek 接入硬约束（v5 已核验，此处汇总执行）：</strong>① 结构化抽取一律 <code>thinking=False</code>（V4 思考模式拒绝强制 <code>tool_choice</code>，会改用散文作答）；② JSON 模式遇非 JSON 输出会把 content 替换成空格而 <code>finish_reason</code> 仍是 stop——必须空白兜底 + 重试；③ MODEL_ID 写配置不硬编码（旧 ID 已退役，以调用当日官方列表为准）；④ 只传脱敏事实（账户/资金量/持仓市值/身份信息不发）；⑤ 历史由本地自己回传，不用有状态的 Responses API。</p>
+</div>
+
+<h2>5｜两条入库链路（对话内容、复盘结果都能进库，但闸门不同）</h2>
+<h3>链路一：经验入库 —— 快，但永不改分</h3>
+<p>对话内容、复盘分析结果、粘贴的外部稿件，经 R1 抽取「主张/证据/来源/时点」四元组后进待审区 → 数据回填 + 反例计数 → 人工采纳后只变成 Flag 提示、假说卡、L3 叙事案例（<code>affectsScore=false</code>）。对话原文永久保留于 <code>conversations.jsonl</code> 可删除；对话里出现的数字/日期一律置 null。</p>
+<p>复盘结果比对话天然可信一层——因为它的入口是确定性统计（7 类缓存），不是模型猜的。但要让复盘分析结果升级为「经验」，仍需 <strong>precommit</strong>：结果出来前先登记预判与证伪条件，事后对照才有采纳资格。</p>
+<h3>链路二：因子入库 —— 慢，但能改分</h3>
+<p>任何来源的因子候选（对话分诊出的、复盘总结出的、素材卡里的）统一进 navplan 状态机：<code>draft → 字段白名单校验 → 影子运行（只算不进分）→ Rank IC 复检（复用 ic.js）→ n≥30 / IC&gt;0.03 / IR&gt;0.5 / 样本外不劣化 → 人工最后否决 → 有界上架（±2 分、乘数 0.8–1.25、不翻符号）</code>。统计闸门是代码，模型替代不了；默认鼓励变成 Flag 而不是新因子。</p>
+<h3>新增数据契约</h3>
+<pre>{
+  "data/journal/events-feed.jsonl":  { "eventId":"EV-20261115-000766-medicare",
+    "symbol":"000766", "type":"announcement|news|flash",
+    "headline":"纳入2026版国家医保目录", "sourceGrade":"A",
+    "sourceRefs":["公告2026-40@巨潮@2026-11-15T16:11"],
+    "firstSeenAt":"&lt;系统时间&gt;", "dedupeKey":"2026-40" },
+  "data/watch-last.json": { "announcements":{"000766":"2026-40"},
+    "newsSeenIds":[...], "updatedAt":"&lt;系统时间&gt;" }
+}
+</pre>
+<p>既有契约全部沿用：v6 的 <code>experiences / conversations / conflicts</code>，v7 的 <code>fundamentals / event-cards / hypotheses / material-library</code>，v2 的 <code>flag-events / counterexamples</code>，v3 的 <code>market-state / trades / profile</code>。</p>
+
+<h2>6｜交易日调度时序</h2>
+<table>
+  <tr><th>时间</th><th>动作</th><th>执行者</th></tr>
+  <tr><td>08:45</td><td>公告观察者轮询隔夜+早盘公告（股池优先），新闻观察者拉财联社/东财要闻，diff 后触发 A1 解读</td><td>watchers.js + DeepSeek</td></tr>
+  <tr><td>09:05</td><td>现有定格定时器（不动）</td><td>server 现有 13 定时器</td></tr>
+  <tr><td>盘中 每 10 分钟</td><td>公告/新闻轮询（冷却 10 分钟、日触发上限防轰炸）；股池异动沿用现有监控</td><td>watchers.js</td></tr>
+  <tr><td>15:10</td><td>T+1 行情回填（Flag/假说的验证投票）</td><td>现有定时器</td></tr>
+  <tr><td>16:00</td><td>A4 复盘二次处理：四象限/轮动/股池统计 → 假说卡 + 人话日报 → 推送</td><td>DeepSeek</td></tr>
+  <tr><td>22:00</td><td>现有定格（不动）</td><td>server 定时器</td></tr>
+  <tr><td>随时</td><td>A2 对话问答 / A5 口语复盘，经 v8 外壳「问一句」入口</td><td>按需触发</td></tr>
+</table>
+
+<h2>7｜安全与合规边界</h2>
+<ul>
+  <li><strong>不自动下单</strong>：全套系统不产生委托指令，不落入程序化交易报备框架；券商 MCP 只读、禁挂交易类工具。</li>
+  <li><strong>可整体关闭</strong>：智能体开关在 v8 顶栏；watchers 与 DeepSeek 调用全停时，8777 主服务选股监控照常。</li>
+  <li><strong>隐私</strong>：发给 DeepSeek 的只有脱敏事实（代码、价格、公告标题），无账户/持仓金额/身份信息。</li>
+  <li><strong>数据自用</strong>：行情/公告数据个人自用、注明来源、不对外分发。</li>
+  <li><strong>技能安全</strong>：只装纯 Markdown 技能（公开技能约 26.1% 含漏洞、带脚本的风险高 2.12 倍），装前通读。</li>
+</ul>
+
+<h2>8｜分阶段路线</h2>
+<table>
+  <tr><th>阶段</th><th>内容</th><th>前置</th></tr>
+  <tr><td><strong>Step 0</strong>（零 LLM）</td><td>4 条 pending 标「需复核」；修 <code>statsOf()</code> 命中率/超额样本口径；建 <code>events-feed.jsonl</code> 并录入通化金马事件为第一条</td><td>无</td></tr>
+  <tr><td><strong>Step 1</strong>（确定性）</td><td>watchers.js 公告+新闻观察者（只 diff 不调模型）；触发规则/冷却/日上限；推送通道接 v8</td><td>a-stock-data 口径验证</td></tr>
+  <tr><td><strong>Step 2</strong>（薄智能体）</td><td>Node 薄适配器接 DeepSeek；先上 A1 感知解读 + A4 复盘二次处理（低风险）；网关校验来源锚点</td><td>Step 1</td></tr>
+  <tr><td><strong>Step 3</strong>（对话与入库）</td><td>A2 问答（R5 四层分析）+ A3 分诊入库 + A5 口语复盘；interaction.js 原型转正式接口</td><td>Step 2</td></tr>
+  <tr><td><strong>Step 4</strong>（可选）</td><td>LangGraph sidecar（仅当待审&gt;30/需跨天恢复/需回放）；明确不做自动下单</td><td>触发条件满足</td></tr>
+</table>
+
+<h2>9｜来源清单</h2>
+<ul>
+  <li>a-stock-data：github.com/simonlin1212/a-stock-data，Apache-2.0，15 层/54+ 端点/19 数据源（2026-09–11 检索；两源 star 口径不一，标需复核）</li>
+  <li>daily_stock_analysis：github.com/ZhuLinsen/daily_stock_analysis，MIT，2026-01 发布、周更（2026-11 检索）</li>
+  <li>PanWatch：github.com/TNT-Likely/PanWatch，更新 2026-11-04，许可证需核实</li>
+  <li>Pi Durable News Agent：github.com/disler/pi-durable-news-agent，MIT（2026-10-21 快照）</li>
+  <li>stock-announcements：github.com/freestylefly/wesight（2026-11-08 快照）</li>
+  <li>DojoAgents：github.com/Alpha-Dojo/DojoAgents（2026-11 检索，极新）</li>
+  <li>Crucix：github.com/calesthio/Crucix，AGPL-3.0（2026-11-15 快照）</li>
+  <li>STORM / GPT Researcher / ai-hedge-fund / TradingAgents / FinRobot：见 v4/v8 文档来源清单</li>
+  <li>DeepSeek 接入约束：《DeepSeek 开放平台隐私政策》2026-11-04 发布、11-11 生效；模型退役公告 2026-07-24</li>
+</ul>
+
+<footer>
+<p><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。文中标注「需核实」的信息在核实前不得作为依据。</p>
+</footer>
+
+</div>
+</body>
+</html>

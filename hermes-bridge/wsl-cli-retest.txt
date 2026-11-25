@@ -1,0 +1,10 @@
+=== 测试1: 默认配置 CLI ===
+在线
+
+session_id: local-a8b73ea8b51947ffb28c40f9e9190280b3c2da77184f73ea60c271a65c0a4c03
+EXIT1=0
+=== 测试2: 显式有效 key ===
+在线2
+
+session_id: local-f1946e83dc49b206b25c865c80125d482ce0714f9c6018466333d9ebbe377b02
+EXIT2=0

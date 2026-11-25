@@ -1,0 +1,62 @@
+/* shell.css — 主界面模式壳（纯增量，不覆盖任何现有样式）
+ * 目标：交互工作区默认作为主界面；全球监测 17 个面板收进导航。
+ * 与 app.js / styles.css / interaction.css / navplan.css 零冲突。
+ * 回退：删掉 index.html 里 /shell.css 与 /shell.js 两行即完全恢复原状。
+ */
+
+/* 顶部模式切换条 */
+.gm-switch{position:fixed;top:0;left:0;right:0;height:46px;z-index:9500;
+  display:flex;align-items:center;gap:10px;padding:0 16px;
+  background:#fff;border-bottom:1px solid #e2e8f2;
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#1c2431}
+.gm-switch .gm-logo{font-weight:800;font-size:13px;white-space:nowrap;margin-right:4px}
+.gm-tabs{display:flex;gap:4px}
+.gm-tab{border:1px solid transparent;background:transparent;border-radius:7px;padding:6px 12px;
+  cursor:pointer;font-size:12.5px;color:#5a6780;white-space:nowrap}
+.gm-tab:hover{background:#f0f4fc}
+.gm-tab.on{background:#e8f0ff;color:#1746ad;font-weight:700;border-color:#d6e4ff}
+.gm-tab .gm-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#1d9e75;margin-right:6px;vertical-align:middle}
+.gm-tab.monitor .gm-dot{background:#378add}
+.gm-sp{flex:1}
+.gm-hint{font-size:11.5px;color:#8a95aa;white-space:nowrap}
+.gm-set{border:1px solid #d3dceb;background:#fff;color:#25304a;border-radius:7px;
+  padding:6px 12px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.gm-set:hover{border-color:#8fa8d4;background:#f6f9ff}
+.gm-back{display:none;border:1px solid #d3dceb;background:#fff;color:#25304a;border-radius:7px;
+  padding:6px 12px;cursor:pointer;font-size:12.5px}
+body.mode-monitor .gm-back{display:inline-block}
+
+/* 主界面下把原有浮层提到切换条之上，保证设置 / 导航抽屉照常可用（纯增量覆盖，不改原 CSS） */
+body.mode-interaction #settingsMask{z-index:9600}
+body.mode-interaction #settings{z-index:9601}
+body.mode-interaction #npMask{z-index:9600}
+body.mode-interaction #npDrawer{z-index:9601}
+body.gm-on #toastWrap{z-index:9700}
+
+/* 全局留白与两种模式的可见性 */
+body.gm-on{padding-top:46px}
+body.mode-interaction .app{display:none}
+body.mode-monitor .iw-shell{display:none!important}
+body.mode-monitor .iw-mask{display:none!important}
+
+/* 交互工作区作为主界面：去掉遮罩感、下移到切换条之下 */
+body.mode-interaction .iw-mask{display:none!important}
+body.mode-interaction .iw-shell{top:46px;z-index:1}
+body.mode-interaction .iw-shell .iw-side{padding-bottom:30px}
+
+/* 全球监测分组导航（注入到 .iw-side） */
+.gm-group{font-size:11px;letter-spacing:1px;color:#8a95aa;padding:13px 10px 5px;font-weight:700}
+.gm-group:first-child{padding-top:5px}
+.gm-nav{display:flex;width:100%;align-items:center;gap:8px;text-align:left;border:0;background:transparent;
+  padding:6px 10px;border-radius:7px;cursor:pointer;color:#33405c;font-size:12.5px;margin-bottom:1px}
+.gm-nav:hover{background:#f0f4fc;color:#1746ad}
+.gm-nav .gm-ico{font-size:13px;width:17px;text-align:center;opacity:.75}
+.gm-flash{outline:2px solid #2559c9;outline-offset:3px;border-radius:6px}
+body.gm-dark .gm-switch{background:#1a2233;border-bottom-color:#2b3750;color:#e6ebf5}
+body.gm-dark .gm-tab{color:#93a2bd}
+body.gm-dark .gm-tab.on{background:#243559;color:#9dc0ff;border-color:#2d4670}
+body.gm-dark .gm-group{color:#8fa0be}
+body.gm-dark .gm-nav{color:#c8d3e8}
+body.gm-dark .gm-nav:hover{background:#222d43;color:#9dc0ff}
+body.gm-dark .gm-back{background:#202b40;border-color:#39496a;color:#dce6f7}
+@media(max-width:720px){.gm-hint{display:none}.gm-logo{display:none}}

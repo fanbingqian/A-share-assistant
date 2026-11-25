@@ -1,0 +1,60 @@
+================================================================
+Hermes 核心智能体 — 安装状态与运维手册
+================================================================
+
+【当前状态：已安装并跑通】2026-11-21
+  ✓ 官方 Hermes Agent v0.23.3 已装在 WSL2 Ubuntu
+  ✓ DeepSeek 作为底层模型（用当前有效 key，已同步到全部配置）
+  ✓ 桥接服务 systemd 常驻，监听 0.0.0.0:8765
+  ✓ Node 8777 状态显示 hermes-official（绿点 + Hermes 核心）
+  ✓ 对话实测走 Hermes 全链路：Windows → 桥接 → Hermes → DeepSeek
+
+架构：
+  浏览器(8777) → Node 主服务 → Hermes 桥接(WSL2:8765) → Hermes CLI → DeepSeek
+  Hermes 未就绪时自动降级 Node 直连 DeepSeek，主服务不中断。
+
+----------------------------------------------------------------
+【验收记录】
+  - 单轮自检：hermes chat -q "在线" --oneshot -Q  → 回复"在线" ✓
+  - 桥接 health：http://127.0.0.1:8765/health → 200 ✓
+  - 全链路：POST /v1/chat/completions → 4.6s 返回，答案正确 ✓
+  - 状态接口：active = hermes-official ✓
+  - 业务对话：backend = hermes-official ✓
+
+----------------------------------------------------------------
+【本次修复的三个坑】（已固化进 setup-wsl2.sh）
+  1) key 不一致：安装脚本原来只读一次且读到过期 key（尾 610131，401 失效）。
+     有效 key 在 Windows data/config.json（尾 4efd35）。现已同步到
+     Hermes 的 .env 和 config.yaml 两处。
+  2) 交互向导卡死：官方安装脚本首次运行问"是否从 Claude/Codex 导入"，
+     非交互环境无人回答会挂住。已装则直接复用，不重跑交互安装。
+  3) 桥接随会话回收：nohup 启动的进程会随 wsl.exe 会话结束被杀。
+     已改用 systemd user service（Restart=always）常驻。
+
+----------------------------------------------------------------
+【日常运维】
+
+Q: 桥接掉了 / 状态变黄怎么办？
+A: 重新跑一次修复脚本（幂等，会自动同步 key + 重启服务）：
+     bash /mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/setup-wsl2.sh
+   或只重启桥接：
+     systemctl --user restart hermes-bridge.service
+
+Q: 怎么看桥接日志？
+A: tail -f /mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/bridge-systemd.log
+
+Q: 怎么看 Hermes 自身日志？
+A: tail -f ~/.hermes/logs/gateway.log
+
+Q: DeepSeek key 以后换了怎么办？
+A: 改 Windows 的 data/config.json 里 agent.apiKey，然后重跑一次
+   setup-wsl2.sh，脚本会自动同步到 WSL2 的全部配置。
+
+Q: WSL2 的 127.0.0.1:8765 偶尔连不上？
+A: 查 WSL IP：hostname -I，若需要用 IP，把 data/config.json 里
+   agent.hermes.officialUrl 改成 http://<那个IP>:8765 并重启 8777。
+
+Q: 本机 wsl.exe 黑名单如果再次拦截？
+A: 设置 → 安全中心 → 命令安全 → 程序黑名单，移除 wsl.exe。
+
+================================================================

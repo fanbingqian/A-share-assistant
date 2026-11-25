@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>智能体选型：免 WSL 方案筛选（2026-11-21）</title>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--ink:#1f2329;--sub:#5b6472;--line:#e3e7ed;--accent:#2b5cd9;--ok:#c0392b;--warn:#b7791f;--mute:#8a94a3}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+  h1{font-size:26px;margin:0 0 6px}
+  .lead{color:var(--sub);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 18px}
+  h2{font-size:18px;margin:0 0 12px;padding-left:10px;border-left:3px solid var(--accent)}
+  h3{font-size:15px;margin:16px 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#f1f4f9;color:var(--sub);font-weight:600;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;line-height:18px;white-space:nowrap}
+  .t-first{background:#e8f0fe;color:#2b5cd9}
+  .t-alt{background:#fff4e5;color:#96620d}
+  .t-no{background:#f2f3f5;color:#7a828e}
+  .ok{color:var(--ok);font-weight:600}
+  .warn{color:var(--warn)}
+  code{background:#f1f3f6;padding:1px 5px;border-radius:4px;font-family:Consolas,monospace;font-size:12px}
+  pre{background:#f5f7fa;border:1px solid var(--line);border-radius:6px;padding:12px 14px;overflow:auto;font:12px/1.6 Consolas,monospace}
+  ul{margin:6px 0;padding-left:20px}
+  li{margin:3px 0}
+  .note{background:#fff9e9;border:1px solid #f0dfae;border-radius:6px;padding:10px 14px;color:#7a5b12;font-size:13px}
+  .small{color:var(--mute);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>智能体选型：免 WSL 方案筛选</h1>
+  <p class="lead">筛选日期 2026-11-21 · 场景：GlobalMarketMonitor（Node 零依赖 8777 服务 + DeepSeek + 本地账本）· 目标：一个能贯穿五个模块的核心智能体</p>
+
+  <div class="card">
+    <h2>先纠正一个前提</h2>
+    <p><strong>需要 WSL 是 Hermes Agent 的个别限制，不是智能体框架的普遍要求。</strong>官方 Hermes（Nous Research，Python）在 Windows 上是实验性支持、官方推荐 WSL2，所以我们之前卡住了。而下面这些框架，绝大多数在原生 Windows 上直接可跑：</p>
+    <ul>
+      <li><b>Node/TypeScript 系</b>（Mastra、DeepSeek Harness）——本来就是跨平台，和你现有 8777 Node 服务同栈，<strong>最容易贯穿全部模块</strong>。</li>
+      <li><b>Python 系</b>（Pydantic AI、LangGraph Python、AutoGen）——常规 <code>pip install</code> 即可，不需要 WSL；但要跨进程桥接到 Node。</li>
+    </ul>
+    <p class="note">当前事实：你的系统已经在用 DeepSeek 兜底跑通了全部五个模块（对话已能引用真实量能数据）。所谓"Hermes 核心"目前缺的只是一个<strong>正式框架外壳</strong>（持久记忆 / 技能 / 工具编排），不是缺一个能说话的模型。</p>
+  </div>
+
+  <div class="card">
+    <h2>候选对比</h2>
+    <table>
+      <thead><tr><th>框架</th><th>免 WSL</th><th>DeepSeek 接入</th><th>可嵌入 8777</th><th>记忆/工具/编排</th><th>成熟度</th><th>许可</th></tr></thead>
+      <tbody>
+        <tr><td><b>Mastra</b> <span class="tag t-first">首选</span></td><td class="ok">原生 Windows（Node）</td><td class="ok">官方支持自定义 OpenAI 兼容端点</td><td class="ok">可直接内嵌 Express/Hono/Node 服务</td><td class="ok">记忆 + 工作流 + MCP + 评估 + 可观测</td><td>活跃维护，生产可用</td><td>Apache-2.0 核心</td></tr>
+        <tr><td><b>DeepSeek Harness (dsh)</b> <span class="tag t-alt">备选</span></td><td class="ok">原生 Windows（npx 即跑）</td><td class="ok">DeepSeek 官方，默认就是</td><td class="warn">独立 runtime，需经 HTTP/CLI 桥接</td><td>插件化、技能、会话、MCP（经插件）</td><td class="warn">developer preview，明确警告破坏性变更</td><td>MIT</td></tr>
+        <tr><td><b>Pydantic AI</b> <span class="tag t-alt">低幻觉专项</span></td><td class="ok">原生 Windows（pip）</td><td class="ok">文档明确列出 Deepseek 兼容端点</td><td class="warn">Python 进程桥接</td><td class="ok">结构化输出 + 类型化工具 + 失败重试 + evals（本轮最强）</td><td>稳定，Pydantic 团队维护</td><td>MIT</td></tr>
+        <tr><td><b>LangGraph.js</b></td><td class="ok">原生 Windows（Node）</td><td class="ok">兼容 OpenAI 接口可接</td><td class="ok">可嵌入</td><td>状态图 / 多智能体 / 人在回路</td><td>成熟但偏重，生态主在 Python</td><td>MIT</td></tr>
+        <tr><td><b>AutoGen / CrewAI</b></td><td class="ok">原生 Windows（pip）</td><td class="ok">可接兼容端点</td><td class="warn">需桥接，偏多智能体对话</td><td>角色协作强，嵌入式弱</td><td>成熟</td><td>MIT 等</td></tr>
+        <tr><td><b>Claude Code</b></td><td class="ok">原生 PowerShell 安装</td><td class="warn">需 Anthropic 账号；可走 DeepSeek 的 Anthropic 兼容端点</td><td class="no">闭源编码 agent，不适合做业务内核</td><td>工具强，但定位是编码</td><td>成熟</td><td>闭源</td></tr>
+        <tr><td><b>OpenClaw</b> <span class="tag t-alt">另类用途</span></td><td class="ok">原生 Windows（PowerShell 安装，不需 WSL）</td><td class="ok">支持 DeepSeek 等 provider</td><td class="no">独立 Gateway + 聊天渠道，不是嵌入式库；且 Node 要求 24.22.1+/26，本机 22.22.2 不满足</td><td class="ok">技能市场 + cron/webhook + 多智能体路由 + 记忆 + MCP</td><td>活跃但快速演进，有破坏性变更</td><td>MIT</td></tr>
+        <tr><td><b>Codex CLI</b>（OpenAI）</td><td class="ok">原生 Windows（PowerShell / npm 安装，不需 WSL）</td><td class="warn">原生只认 ChatGPT/OpenAI；接 DeepSeek 需第三方协议代理</td><td class="no">终端编码 agent，非嵌入式库</td><td>编码/文件/命令 + MCP + Codex SDK</td><td>成熟，OpenAI 官方维护</td><td>Apache-2.0</td></tr>
+        <tr><td><b>Open Interpreter</b>（Codex 的 Rust 分支）</td><td class="ok">原生 Windows</td><td class="ok">原生支持 DeepSeek / Kimi / GLM / Qwen，可切 harness</td><td class="no">仍是终端编码 agent，非库</td><td>Codex 兼容 + ACP + MCP + 沙箱</td><td class="warn">0.0.x，配置仍在变</td><td>Apache-2.0</td></tr>
+        <tr><td><b>Reasonix / LilBot 等</b></td><td class="ok">Windows 可跑</td><td class="ok">DeepSeek 深度优化</td><td class="no">终端 agent，非框架</td><td>编码/任务导向</td><td class="warn">小众；Reasonix 作者 reportedly 已停用</td><td>MIT 等</td></tr>
+      </tbody>
+    </table>
+    <p class="small">以上能力均按 2026-11-21 官方文档/仓库 README 核实；"可嵌入"指能作为库被 8777 服务直接调用，而非另起一个独立程序。</p>
+  </div>
+
+  <div class="card">
+    <h2>推荐一：Mastra（首选，替换 Hermes 的核心位置）</h2>
+    <p><b>为什么它最合适：</b>你的服务是 Node.js，Mastra 也是 TypeScript/Node，可以<strong>直接嵌进现有进程</strong>，不需要 WSL、不需要 Python、不需要另起服务。五模块要的"贯穿"靠它原生的 memory（对话历史 + 工作记忆 + 观察记忆）、workflow（日历提醒/15分钟播报/选股流水线）、MCP（接外部工具）、evals/可观测（低幻觉校验）正好覆盖。</p>
+    <p><b>DeepSeek 接法（官方文档写法）：</b></p>
+    <pre>import { Agent } from '@mastra/core/agent';
+
+const agent = new Agent({
+  id: 'gmm-core',
+  name: '市场分析核心',
+  instructions: '只依据注入的数据快照回答，禁止编造数字…',
+  model: {
+    id: 'custom/deepseek-chat',
+    url: 'https://api.deepseek.com/v1',
+    apiKey: process.env.DEEPSEEK_API_KEY
+  }
+});</pre>
+    <p><b>代价：</b>需要引入 npm 依赖（不再是严格零依赖），改造量集中在 <code>server/hermes.js</code> 一个适配器文件；现有 <code>agent.js</code> 的确定性网关（禁编造数字、拦截买卖建议）可保留，作为 Mastra 输出后的校验层。</p>
+  </div>
+
+  <div class="card">
+    <h2>推荐二：DeepSeek Harness（官方备选，适合做"第二个智能体"）</h2>
+    <p>DeepSeek 官方 2026-10 开源的通用 agent runtime，MIT，<code>npx @deepseek-ai/dsh web</code> 即可在 Windows 原生启动，Web UI 在 <code>127.0.0.1:3080</code>，加 <code>--no-open</code> 可后台跑。插件化架构、支持技能与 MCP、本地优先。</p>
+    <p><b>但官方 README 明确写着：</b>"developer preview … THERE WILL BE COMPATIBILITY-BREAKING CHANGES"，并要求运行前阅读 SAFETY.md。它定位是<strong>通用任务/编码 agent</strong>，不是可嵌入业务系统的库。建议作为备选智能体实例桥接，别把五个模块的地基押在它上面。</p>
+  </div>
+
+  <div class="card">
+    <h2>推荐三：Pydantic AI（低幻觉专项 / 验证层）</h2>
+    <p>官方文档明确支持 DeepSeek：<code>OpenAIChatModel(model_name='deepseek-chat', provider=OpenAIProvider(base_url='https://api.deepseek.com', api_key=...))</code>。它的强项是<strong>结构化输出 + Pydantic 校验 + 校验失败自动让模型重试 + typed tools + evals</strong>——正好是你要的"减幻觉"。</p>
+    <p><b>定位建议：</b>不做总入口（跨 Python→Node 桥接增加复杂度），而是做<strong>需要严格结构化输出的专项校验子智能体</strong>，例如事件影响判级、经验入库抽取、复盘简报字段校验。也可以和现有 Node 网关二选一：现在网关是手写的，Pydantic 是成熟库版。</p>
+  </div>
+
+  <div class="card">
+    <h2>关于 OpenClaw（用户追问）</h2>
+    <p><b>结论：它确实免 WSL，但定位和你这个项目是两回事，不建议当核心智能体。</b></p>
+    <p>OpenClaw（前身 ClawdBot/MoltBot，OpenClaw Foundation 维护，MIT，约 39 万星）是<strong>自托管的个人 AI 助手 Gateway</strong>：一个本地进程连接 Discord / Telegram / WhatsApp / 企业微信 / 飞书等 20+ 聊天渠道，让你可以<strong>在手机聊天软件里</strong>指挥它干活。它的强项是技能市场（ClawHub 数千技能）、持久记忆、cron 定时、webhook、多智能体路由。</p>
+    <ul>
+      <li><b>✅ 免 WSL：</b>官方给了 Windows PowerShell 一键安装 <code>iwr -useb https://openclaw.ai/install.ps1 | iex</code>，不需要 WSL2。</li>
+      <li><b>✅ 支持 DeepSeek：</b>模型是可换的插件，DeepSeek / Claude / GPT / 本地模型都能接。</li>
+      <li><b>❌ 不是可嵌入的库：</b>它是<strong>独立 Gateway 进程 + 聊天渠道</strong>架构，不是给你 8777 服务当大脑调用的库。要集成得另起进程 + 协议桥接，比 Mastra 复杂得多。</li>
+      <li><b>❌ Node 版本不够：</b>官方要求 Node 24.22.1+ 或 26.x（推荐 26），本机是 22.22.2，需先升级 Node（现有服务在 22 上跑得好好的，升级有兼容风险）。</li>
+      <li><b>⚠️ 交互外壳冲突：</b>它的交互入口是聊天软件 + 自带 Control UI，而你已经在做浏览器右侧常驻对话。两套对话入口并存，体验割裂。</li>
+    </ul>
+    <p><b>唯一真正有价值的位置：</b>解决缺口清单里那条「系统级弹框提醒」——用 OpenClaw 的 cron + 聊天渠道，把日程事件提醒、量能播报、告警<strong>推到手机微信/Telegram</strong>。这是它比浏览器通知更实用的地方。可作为<strong>独立的提醒通道</strong>旁路接入，不碰核心智能体。</p>
+    <p class="small">来源：OpenClaw 官方文档（docs.openclaw.ai）与官方 GitHub README（MIT；"One Gateway runs it as a personal claw …"；Windows PowerShell 安装命令；Node 26 推荐 / 24.22.1+ 最低）。</p>
+  </div>
+
+  <div class="card">
+    <h2>关于 Codex（用户追问）</h2>
+    <p><b>结论：免 WSL，但它是「编码 agent」，不是业务系统的智能体内核，不适合。</b></p>
+    <p>Codex 这个名字下有三样东西，别搞混：</p>
+    <ul>
+      <li><b>Codex Web</b>：OpenAI 云端 agent（chatgpt.com/codex），闭源服务，数据在云端，与你「本地存储、本地知识库」的要求冲突。</li>
+      <li><b>Codex CLI</b>：开源（Apache-2.0，13.6 万星）的终端编码 agent，Rust 编写，原生 Windows（<code>irm https://chatgpt.com/codex/install.ps1 | iex</code> 或 <code>npm i -g @openai/codex</code>）。<strong>原生只认 ChatGPT 账号 / OpenAI API key</strong>；要接 DeepSeek 得挂第三方协议代理（如 cliproxy-rs），把 Responses API 翻译成 Chat Completions——多一层故障点。</li>
+      <li><b>Open Interpreter</b>：Codex CLI 的 Rust 分支（Apache-2.0，6.8 万星），原生支持 DeepSeek/Kimi/GLM，还能切 harness。但它<strong>依然是终端编码 agent</strong>，定位是「帮你写代码/改文件」，不是「贯穿五个业务模块的分析内核」。</li>
+    </ul>
+    <p>共同硬伤：①不是可嵌入 Node 服务的库；②核心能力是读写代码和执行命令，而你的智能体要的是<strong>读数据快照、做低幻觉分析、不执行任何交易动作</strong>；③交互入口是终端/IDE，和浏览器右侧对话割裂。把它们当核心，等于让一个「程序员」去当「分析师」，还多一层 WSL/代理/Node 升级的风险。</p>
+    <p class="small">来源：openai/codex 官方 GitHub README（Apache-2.0、"Lightweight coding agent that runs in your terminal"、PowerShell/npm 安装命令）；Open Interpreter 官方仓库与公开评测（Codex Rust fork、DeepSeek 支持、0.0.x 版本）；cliproxy-rs 文档（Codex→DeepSeek 需 Responses→Chat Completions 协议转换）。</p>
+  </div>
+
+  <div class="card">
+    <h2>落地建议（不推翻现有成果）</h2>
+    <ul>
+      <li>把 <code>server/hermes.js</code> 改造成<strong>可切换后端</strong>：<code>mastra</code>（默认） / <code>dsh</code>（DeepSeek Harness 桥接） / <code>wsl-hermes</code>（原方案保留） / <code>direct</code>（现有 DeepSeek 兜底）。配置写在 <code>data/config.json</code>，前端状态栏显示当前后端。</li>
+      <li>第一阶段只接 Mastra，保留 <code>direct</code> 兜底；五个模块的 API 与前端一行不用改，因为都走同一个 <code>hermes.chat()</code> 入口。</li>
+      <li>确定性网关（禁编造数字 / 拦截买卖建议 / 来源锚点）继续放在 <code>hermes.js</code>，不管底层换成谁都强制过闸。</li>
+      <li>若后续要严格结构化输出，再并接 Pydantic AI 作为专项服务；若想要"桌面级智能体"，再桥接 DeepSeek Harness。</li>
+    </ul>
+    <p class="note">需要你拍板：是否按首选 <b>Mastra</b> 接入？确认后我直接改 <code>hermes.js</code> + 配置 + 状态显示，其他模块不动。OpenClaw 若要用，建议只做「手机提醒通道」旁路，不替换核心。</p>
+  </div>
+
+  <p class="small">资料来源：Mastra 官网与 GitHub README、Mastra Models 文档；DeepSeek Harness 官方 GitHub README（MIT、developer preview、npx 命令）；Pydantic AI 官方文档 OpenAI Models 页（明确列出 Deepseek 兼容端点）；2026 年公开评测与搜索结果（仅作辅助，关键结论均以官方文档为准）。</p>
+</div>
+</body>
+</html>

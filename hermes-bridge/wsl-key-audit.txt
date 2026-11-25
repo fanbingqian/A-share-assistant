@@ -1,0 +1,6 @@
+=== .env DEEPSEEK key 长度与尾部 ===
+len=35 tail=610131
+=== Windows config key ===
+len= 35 tail= 4efd35
+=== config.yaml provider key 尾部 ===
+    api_key: sk-REDACTED

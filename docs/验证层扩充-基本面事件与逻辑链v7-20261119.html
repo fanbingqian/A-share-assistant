@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验证层扩充：基本面·事件·逻辑链（v7）— 2026-11-19</title>
+<style>
+  :root { --ink:#1c1e21; --mut:#6b6f76; --line:#dcdde0; --blue:#185fa5; --teal:#0f6e56; --amber:#854f0b; --red:#a32d2d; --green:#3b6d11; --purple:#534ab7; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; color:var(--ink); background:#fff; line-height:1.75; font-size:15px; }
+  .wrap { max-width:980px; margin:0 auto; padding:40px 48px 64px; }
+  header { border-bottom:3px solid var(--ink); padding-bottom:18px; margin-bottom:28px; }
+  header h1 { font-size:26px; font-weight:600; letter-spacing:.5px; }
+  header .sub { color:var(--mut); font-size:13px; margin-top:8px; }
+  h2 { font-size:19px; font-weight:600; margin:38px 0 14px; padding-left:12px; border-left:4px solid var(--blue); }
+  h3 { font-size:16px; font-weight:600; margin:22px 0 10px; }
+  p { margin:10px 0; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px; }
+  th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f2f4f7; font-weight:600; white-space:nowrap; }
+  tr:nth-child(even) td { background:#fafbfc; }
+  code, pre { font-family:Consolas,"Courier New",monospace; }
+  code { background:#f2f4f7; padding:1px 5px; border-radius:3px; font-size:13px; }
+  pre { background:#f6f7f9; border:1px solid var(--line); border-radius:6px; padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6; margin:12px 0; }
+  .callout { border-left:4px solid var(--red); background:#fdf3f3; padding:12px 16px; margin:16px 0; border-radius:0 6px 6px 0; }
+  .callout.blue { border-color:var(--blue); background:#f0f6fc; }
+  .callout.green { border-color:var(--green); background:#f4f9ee; }
+  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; margin-right:6px; white-space:nowrap; }
+  .tag.a { background:#e6f1fb; color:var(--blue); border:1px solid #b5d4f4; }
+  .tag.b { background:#eaf3de; color:var(--green); border:1px solid #c0dd97; }
+  .tag.c { background:#fcebeb; color:var(--red); border:1px solid #f7c1c1; }
+  .tag.flag { background:#e1f5ee; color:var(--teal); border:1px solid #9fe1cb; }
+  .tag.hyp { background:#eeedfe; color:var(--purple); border:1px solid #afA9ec; }
+  .tag.drop { background:#fcebeb; color:var(--red); border:1px solid #f7c1c1; }
+  .tag.mat { background:#faeeda; color:var(--amber); border:1px solid #fac775; }
+  ul,ol { margin:8px 0 8px 24px; }
+  li { margin:5px 0; }
+  footer { margin-top:48px; border-top:1px solid var(--line); padding-top:16px; font-size:12.5px; color:var(--mut); }
+  .src { font-size:12.5px; color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>验证层扩充：基本面 · 事件消息 · 逻辑链（v7）</h1>
+  <div class="sub">GlobalMarketMonitor 设计文档 · 2026-11-19 · 衔接 v2（Flag 层）/ v3（假说卡）/ v6（冲突闸门）· 零 JS · 仅供研发参考</div>
+</header>
+
+<h2>0. 一句话结论</h2>
+<p>你指出的问题是准确的：现有验证层只覆盖「价格行为」（T+1/5/20 回填、涨跌、换手），缺三块——<strong>基本面（F）、事件消息（E）、事件背后的逻辑链（L）</strong>。本版把这三块补进验证体系，并规定：这三块里<strong>所有数字走确定性管道、所有因果叙事只能当假说、所有操作结论永不入库</strong>；大模型负责抽取和翻译，不负责判断。同时新增一条「外部内容拆解流水线」，让通化金马式的 AI 复盘稿和题材梳理卡都能进系统，但进什么、进哪层、以什么资格进，由流水线说了算，不由稿件说了算。</p>
+
+<h2>1. 为什么这三块必须补、且各有各的补法</h2>
+<table>
+  <tr><th style="width:110px">维度</th><th>通化金马案例中的体现</th><th>为什么不能靠现有价格验证</th><th>正确补法</th></tr>
+  <tr><td><strong>F 基本面</strong></td><td>PE(TTM)≈1029 倍*、Q3 归母转亏 −513.24 万*、有息负债超 18 亿*、未分配利润 −22.46 亿*</td><td>价格验证只能发现「跌了」，不能发现「跌之前就不该按利好买」——估值与业绩背离在 11-13 涨停当天就已经成立</td><td>财报/估值指标从数据接口<strong>确定性直读</strong>，形成「估值业绩背离」等 Flag；LLM 禁算任何数字</td></tr>
+  <tr><td><strong>E 事件消息</strong></td><td>11-13 医保预期抢跑涨停、11-15 公告 2026-40（支付标准未公布）、11-13 龙虎榜机构净卖出*、融资余额转降*</td><td>事件的「有没有、何时、说了什么」是事实问题，价格解释替代不了；且公告前抢跑本身就是信号</td><td>事件卡 + 来源分级（A/B/C）+ 时点记录；公告/龙虎榜/融资做独立管道，事件回贴事实账本</td></tr>
+  <tr><td><strong>L 逻辑链</strong></td><td>「利好兑现→资金撤退」「以价换量短期补不回利润」「板块高位集体退潮」「6/25 与 11/15 同剧情演两次」</td><td>这些是叙事，事后永远能自圆其说；但其中<strong>可证伪的部分</strong>（重复模式、板块阶段）恰恰是最值钱的信号</td><td>只做<strong>假说卡</strong>：机制链 + 证伪条件 + 反例计数；可计算部分（同标的重复模式、板块位置）提取为确定性信号</td></tr>
+</table>
+<p class="src">标 * 的数字来自 C 级稿件（AI 异动分析），入库前须与 2026-10-26 三季报及交易所公开信息逐项核对，核对不过一律置空。</p>
+
+<h2>2. 案例拆解一：通化金马五因素复盘稿</h2>
+<p>这份稿件是「其他智能体生成」的 C 级内容，但它<strong>混合了三种不同资格的内容</strong>。系统的正确反应不是整篇接受或整篇拒绝，而是逐条拆解分流：</p>
+<table>
+  <tr><th>稿件内容</th><th>性质</th><th>去向</th><th>处理方式</th></tr>
+  <tr><td>医保目录公告（乙类、协议期 2027-01-01 至 2028-12-31、支付标准未公布）</td><td>可核对事实</td><td><span class="tag a">L0 事实账本</span></td><td>已与深交所公告 2026-40 原文核对一致（前次已核），带来源时点入库</td></tr>
+  <tr><td>三季报数字（营收 1.79 亿/-25%、归母 −513.24 万 等）</td><td>可核对事实（未核）</td><td><span class="tag a">L0 待核对</span></td><td>置「需核实原文」，与财报接口复算比对后才准入账本</td></tr>
+  <tr><td>支付标准未公布 / 协议期 2027 才执行</td><td>事前可观测</td><td><span class="tag flag">Flag</span></td><td>买入前即可查的确定性信号，不改分，T+1/5/20 回填校准</td></tr>
+  <tr><td>6/25 与 11/15 同一模式（抢跑→兑现→连跌）</td><td>事前可观测</td><td><span class="tag flag">Flag</span></td><td>同标的 6 个月重复模式可程序化检测（v2 已定义 repeat_pattern_6m），这是全案最值钱的一条</td></tr>
+  <tr><td>估值业绩背离（PE 千倍 vs 由盈转亏）</td><td>事前可观测（依赖未核数字）</td><td><span class="tag flag">Flag</span></td><td>数字核实后自动可算；核实前只显示「据 C 级稿件，未核实」</td></tr>
+  <tr><td>龙虎榜游资接机构跑 / 融资盘止损</td><td>事前可观测（未核）</td><td><span class="tag flag">Flag</span></td><td>接龙虎榜/融资数据管道后确定性生成；稿件数字仅作线索</td></tr>
+  <tr><td>「利好兑现→资金撤退」「以价换量补不回利润」「板块高位退潮」</td><td>因果叙事</td><td><span class="tag hyp">假说卡</span></td><td>转成带证伪条件的假说进待审区：如「利好兑现型标的在支付标准落地前 20 日跑输行业」——可被数据投票</td></tr>
+  <tr><td>「不接飞刀」「持有的不补仓」「只做放量回封的短线」</td><td>操作结论</td><td><span class="tag drop">丢弃</span></td><td>系统永不生成、永不采纳。这是人（或别的智能体）的判断，不是可验证事实</td></tr>
+  <tr><td>「12.04 元现价」「今天 11/18」</td><td>已过期/已证伪</td><td><span class="tag drop">丢弃</span></td><td>前次已核：12.04 是 11-18 开盘价非收盘价（收盘 12.03）；稿件停在 11-18，11-19 已收 11.07（-7.98%），盘中触及 10.83 未封住——稿件内容过时一天即失效</td></tr>
+</table>
+<div class="callout"><strong>关键校准：五重因素 ≠ 五个原因。</strong>稿件把「三季报转亏、债务压力、板块退潮」这些买入前就公开存在的静态背景，事后组织成了「下跌的原因」。系统的 F/E/L 分层正是为了在时间轴上区分：<strong>事前就有的（背景/风险）→ 进 Flag；事后才知道的（跌了）→ 进行情回填；中间的因果跳跃 → 只能当假说。</strong>11-18 异常波动公告 2026-41 确认公司无未披露重大事项——事件落地后并没有新增基本面利空，这更说明「五因素」多数是事前背景而非事后新因。</div>
+
+<h2>3. 案例拆解二：题材梳理卡（液冷算力+华为+多媒体视讯）</h2>
+<p>这张卡是市场上广泛流传的「题材梳理」形态，它的特点是<strong>自带来源锚点</strong>（每条都写了据何日年报/互动易），这使它比通化金马稿件更接近可核实素材——但也三个坑：</p>
+<table>
+  <tr><th>卡中条目</th><th>引用来源</th><th>来源等级</th><th>处理</th></tr>
+  <tr><td>泵驱两相冷板液冷、PUE 1.1 左右、与航源光热/广电五舟联合研发 8 卡液冷服务器</td><td>2026-08-27 半年度报告</td><td><span class="tag a">A 候选</span></td><td>定位半年报原文对应章节核对后才升 A；「PUE 1.1 左右」「联合研发」属定性表述，核对时确认原文是否真有此表述</td></tr>
+  <tr><td>「公司与华为保持多年合作，是华为的金牌经销商」</td><td>2023-03-02 互动易</td><td><span class="tag c">需核实</span></td><td>互动易是公司回复口径，非审计信息；「金牌经销商」资质须查华为官方认证体系；且引用的是 2023 年信息，距今近 3 年，须确认现时仍有效</td></tr>
+  <tr><td>签约马栏山智算、广西北投、甘肃福彩、南昌电信、南通智算，部分已交付验收</td><td>2026-05-18 互动易</td><td><span class="tag c">需核实</span></td><td>「部分项目已交付验收」无验收证明；签约≠收入，逐条核实前只作线索</td></tr>
+  <tr><td>主营多媒体视讯、国产化、长期服务部委与央企客户</td><td>2026-04-09 年度报告</td><td><span class="tag a">A 候选</span></td><td>年报原文核对；「长期服务」等表述按原文收录</td></tr>
+</table>
+<div class="callout blue"><strong>题材卡的第一道门：标的绑定。</strong>这张卡<strong>没有股票名称和代码</strong>——市场上大量题材卡都是匿名流传的。无标的的内容无法做任何验证（没有行情、没有财报、没有公告可查），所以一律先入<strong>素材库（material-library）</strong>，由用户手动绑定标的（或确认「与此无关」）后才进入拆解流水线。系统不得自行猜测「这是哪只票」——猜错会把整卡内容错挂到无关标的上，污染其事实账本。</div>
+<p><strong>题材卡的正确价值定位：</strong>它是「事前素材」而非「验证材料」。绑定标的后，它的价值是让系统在题材发酵早期就建立「该标的存在这些待核实主张」的台账；随后每条主张按来源逐条核实，核实通过的进事实账本，与行情/财报数据交叉出现矛盾时（如「签约用户众多」但财报应收账款/合同负债无变化）自动生成<strong>叙事与数据的冲突条目</strong>，走 v6 的冲突处置。</p>
+
+<h2>4. F/E/L 三层定义与数据契约</h2>
+<h3>4.1 F 基本面层（fundamentals.jsonl）</h3>
+<table>
+  <tr><th style="width:150px">项</th><th>约定</th></tr>
+  <tr><td>数据来源</td><td>财报/行情数据接口确定性直读（复用现有 sources.js 的多源兜底模式）；LLM 禁止计算任何财务数字</td></tr>
+  <tr><td>指标范围（首期）</td><td>PE(TTM)/PB、归母净利润及同比、扣非净利润、营收及同比、有息负债、货币资金、未分配利润、连续亏损年数、分红记录</td></tr>
+  <tr><td>派生信号</td><td>估值业绩背离（PE 分位 vs 业绩方向）、由盈转亏、连续三年未分红、高有息负债 + 由盈转亏叠加 → 生成 F 类 Flag</td></tr>
+  <tr><td>验证方式</td><td>F 层信号不做 T+1/5/20 回填（它不是时点信号），而是做<strong>截面命中率统计</strong>：带此 Flag 的票在后续 20/60 日相对行业超额的分布</td></tr>
+  <tr><td>智能体边界</td><td>LLM 只做「指标异常解读」（如把由盈转亏翻译成一句人话），解读文字带 code 引用，数字一律引用接口值</td></tr>
+</table>
+<pre>{
+  "fundId": "F-000766-2026Q3",
+  "symbol": "000766", "period": "2026Q3",
+  "metrics": { "peTTM": null, "npYoY": null, "deductNp": null, "interestDebt": null },
+  "verified": false,
+  "note": "数值由财报接口直读复算后写入；C 级稿件数字不直接入库，故置 null",
+  "sourceRefs": ["三季报原文@巨潮", "westock-data 财务接口"],
+  "asOf": "报告期披露日（写入时取系统时间）"
+}</pre>
+<h3>4.2 E 事件消息层（event-cards.jsonl）</h3>
+<table>
+  <tr><th style="width:150px">项</th><th>约定</th></tr>
+  <tr><td>事件类型</td><td>公司公告、互动易回复、龙虎榜、融资融券、大宗交易、限售解禁、板块事件</td></tr>
+  <tr><td>来源分级</td><td><span class="tag a">A</span>交易所/公司公告原文、行情接口 → 直接入事实账本；<span class="tag b">B</span>用户亲历（user_note）→ 只进行为账本；<span class="tag c">C</span>其他智能体/自媒体/互动易定性表述 → 待核实线索队列，数字置 null</td></tr>
+  <tr><td>时点纪律</td><td>每条事件必须带 publishedAt（来源时点）与 capturedAt（系统捕获时点）；事件回贴严格按 publishedAt 对齐 K 线，禁止用捕获日数据解释发布日前行为（防未来函数）</td></tr>
+  <tr><td>派生信号</td><td>公告前 N 日异常涨幅（抢跑检测）、支付标准/价格要素缺失检测、同标的重复事件模式、龙虎榜机构与游资方向背离（接数据管道后）</td></tr>
+  <tr><td>验证方式</td><td>事件类 Flag 走 T+1/5/20 行情回填 + 反例计数 + 假警报率（复用 v2 台账）</td></tr>
+</table>
+<pre>{
+  "eventId": "E-000766-20261115-medicare",
+  "symbol": "000766",
+  "type": "company_announcement",
+  "claim": "琥珀酸安维吖啶片首次纳入2026版国家医保目录（乙类），协议期2027-01-01至2028-12-31，支付标准未公布",
+  "sourceGrade": "A",
+  "sourceRefs": ["公告2026-40@深交所2026-11-15 16:11"],
+  "publishedAt": "2026-11-15", "capturedAt": "写入时取系统时间",
+  "verified": true,
+  "linkedFlags": ["F-000766-price-unknown", "F-000766-repeat-pattern-6m"]
+}</pre>
+<h3>4.3 L 逻辑链层（hypotheses.jsonl）</h3>
+<table>
+  <tr><th style="width:150px">项</th><th>约定</th></tr>
+  <tr><td>形态</td><td>假说卡：机制链（文字，可多步）+ 主假说唯一 + 证伪条件（可观测、可计数）+ 反例计数</td></tr>
+  <tr><td>生成规则</td><td>由 R2 从复盘/稿件/对话中抽取生成；<strong>每日每标的最多一条主假说</strong>（防「凑五个原因」）；机制链每一步都要么指向一条已核实事实，要么明确标注「待验证环节」</td></tr>
+  <tr><td>裁决规则</td><td>LLM 生成、数据裁决：证伪条件转化为确定性统计（如「该类事件后 20 日相对行业超额为负」），由回填数据自动累积 support/contradict；多个竞争假说并列展示，<strong>不合成、不裁决</strong></td></tr>
+  <tr><td>晋升路径</td><td>延续 v3 阶梯：待审 → 影子验证 → n≥30 + 样本外不劣化 → 人工否决权 → 采纳后仍只作 Flag/有界回流；逻辑链本身<strong>永不直接改分</strong></td></tr>
+</table>
+<pre>{
+  "hypId": "H-20261119-000766-goodnews-cashout",
+  "scope": "pattern",
+  "mechanismChain": ["事件预期形成", "公告前抢跑上涨", "事件落地且关键要素（价格）缺失", "获利资金撤退", "高位题材联动退潮"],
+  "falsifyCondition": "同类'抢跑后利好落地'样本中，事件后20日相对行业超额为正的占比超过40%",
+  "registeredAt": "写入时取系统时间",
+  "status": "shadow",
+  "supportN": 0, "contradictN": 0,
+  "sourceExcerpts": ["通化金马6/25与11/15两次同模式（C级稿，时间线已与日K核对一致）"]
+}</pre>
+<h3>4.4 素材库（material-library.jsonl）</h3>
+<pre>{
+  "matId": "M-20261119-001",
+  "rawText": "（题材卡原文，含三条逻辑全文，永久保留）",
+  "items": [
+    { "claim": "泵驱两相冷板液冷应用于智算中心，PUE约1.1", "sourceRef": "2026-08-27半年报", "sourceGrade": "C候选A", "verified": false },
+    { "claim": "公司是华为金牌经销商", "sourceRef": "2023-03-02互动易", "sourceGrade": "C", "verified": false, "staleness": "引用信息距今近3年" },
+    { "claim": "签约马栏山智算等用户，部分已交付验收", "sourceRef": "2026-05-18互动易", "sourceGrade": "C", "verified": false }
+  ],
+  "symbol": null,
+  "boundAt": null,
+  "note": "无标的绑定前不得参与任何验证；绑定后逐条核实，与财报数据矛盾时生成冲突条目"
+}</pre>
+
+<h2>5. 外部内容拆解流水线</h2>
+<p>无论输入是粘贴的复盘稿、截图题材卡还是对话内容，统一走五步：</p>
+<ol>
+  <li><strong>绑定检查</strong>：无标的 → 素材库待绑定；有标的 → 进入下一步。</li>
+  <li><strong>R1 抽取</strong>：智能体抽取「主张/证据/来源/时点」四元组，逐条预判来源等级；<strong>禁补数字、禁改写数字、禁合并条目</strong>。</li>
+  <li><strong>确定性网关</strong>：schema 校验、出处核查（无来源即剔除）、幂等去重（同一主张重复粘贴不重复入库）、数字核对（C 级数字与接口复算比对，不一致标 conflict）。</li>
+  <li><strong>四路分流</strong>：可核对事实 → L0 账本（核对后才算数）；事前可观测 → Flag；因果叙事 → 假说卡；操作结论与过期内容 → 丢弃区（保留原稿可查，永不生效）。</li>
+  <li><strong>反馈回填</strong>：Flag 走 T+1/5/20 与假警报率台账；假说卡走 support/contradict 累积；一切结果回写账本供冲突处置（v6）与画像校正（v3）使用。</li>
+</ol>
+<div class="callout green"><strong>幂等与去重：</strong>通化金马这份稿件你可能从多个渠道反复见到（你已是第二次贴入）。流水线按「symbol + 事件类型 + publishedAt + 主张哈希」做幂等键，重复内容只更新 capturedAt 与核实状态，不产生重复 Flag。</div>
+
+<h2>6. 智能体与大模型的边界（F/E/L 三层专项明确）</h2>
+<table>
+  <tr><th style="width:120px">角色</th><th>F 基本面层</th><th>E 事件消息层</th><th>L 逻辑链层</th></tr>
+  <tr><td><strong>R1 抽取</strong></td><td>不做（接口直读）</td><td>抽四元组 + 来源等级预判（公告=A、互动易=定性需核实、稿件=C）</td><td>从叙事中抽出可证伪的机制链骨架</td></tr>
+  <tr><td><strong>R2 假说</strong></td><td>把 F 信号组合成「背景画像」（如高位+转亏+高负债）供假说引用</td><td>把事件序列组合成「事件链」候选</td><td>生成带证伪条件的假说卡；每日每标的最多一条主假说</td></tr>
+  <tr><td><strong>R3 分拣</strong></td><td>稿件数字与接口复算不一致 → 标 conflict</td><td>事件时点与叙述时点矛盾 → 标 stale/conflict</td><td>竞争假说并列展示，禁裁决、禁折中合成</td></tr>
+  <tr><td><strong>R4 教练</strong></td><td>把财务异常翻译成人话（引用接口值）</td><td>把事件时间线画成人能看懂的序列</td><td>把机制链讲成「系统是这么看的，依据是这些，错了会表现为那个」</td></tr>
+  <tr><td><strong>共同禁令</strong></td><td colspan="3">禁计算/修改任何财务与行情数字；禁给买卖结论与仓位建议（「不接飞刀」式话术永不生成）；禁把叙事当事实互相佐证；禁跳过来源直接采信；产物永远是待审提案，默认动作恒为「不改任何东西」</td></tr>
+</table>
+<p>大模型接入延续 v5 结论：DeepSeek（OpenAI 兼容，thinking=False 做结构化抽取，空白 content 兜底重试，MODEL_ID 走配置），先以 Node 薄适配器形式接 R1/R4 两个低风险角色，R2/R3 待样本积累后经 LangGraph sidecar（Pydantic AI）升级——升级只是换编排方式，边界规则不变。</p>
+
+<h2>7. 与既有层的衔接</h2>
+<table>
+  <tr><th>既有层</th><th>衔接点</th></tr>
+  <tr><td>v2 Flag 层</td><td>F/E 两层产出的就是 Flag 的新来源；Flag 三级（提示/警示/强警示）沿用；「同标的 6 个月重复模式」由 E 层事件卡驱动，从人工发现变自动检测</td></tr>
+  <tr><td>v3 假说卡/四层账本</td><td>hypotheses.jsonl 即 v3 的 L2 统计性假说层的载体；L0 事实账本由 fundamentals + event-cards 充实；晋升阶梯与门槛不变</td></tr>
+  <tr><td>v6 冲突闸门</td><td>「叙事 vs 数据」是新增冲突类型：题材卡主张与财报矛盾、稿件数字与接口复算矛盾，走 v6 四层处置（确定性重算 → 结果投票 → 智能体翻译 → 用户偏好），默认「以后再说」</td></tr>
+  <tr><td>v6 录入/对话</td><td>粘贴复盘稿 = 录入表单的「粘贴模式」；题材卡截图走同一 OCR + 抽取入口；对话中的外部内容分享同样进流水线</td></tr>
+</table>
+
+<h2>8. 落地路线</h2>
+<table>
+  <tr><th>阶段</th><th>内容</th><th>依赖 LLM</th></tr>
+  <tr><td>Step 0（本周可做）</td><td>建 material-library / event-cards / fundamentals / hypotheses 四个 JSONL；把通化金马案例手工录入为第一条事件卡 + 7 条 Flag + 1 条假说卡；把题材卡录为第一条素材（待绑定标的）</td><td>否</td></tr>
+  <tr><td>Step 1</td><td>fundamentals 接口直读（扩展现有 sources.js 多源兜底）；E 层抢跑检测、重复模式检测的确定性代码</td><td>否</td></tr>
+  <tr><td>Step 2</td><td>R1 抽取器上线（粘贴/截图入口 + DeepSeek 结构化抽取 + 确定性网关 + 丢弃区可见）</td><td>是（低风险角色）</td></tr>
+  <tr><td>Step 3</td><td>R2 假说卡自动生成 + support/contradict 自动累积；冲突处置矩阵接入 v6 裁决台</td><td>是</td></tr>
+</table>
+
+<h2>9. 本版信息来源</h2>
+<ul class="src">
+  <li>通化金马时间线与公告核实（本会话前次已核）：深交所公告 2026-40（2026-11-15 16:11，上海证券报公告全文）；公告 2026-41 异常波动（中国证券报 2026-11-19）；日 K 数据 westock-data（取数 2026-11-19：11-16/17/18 收 14.85/13.37/12.03，11-19 收 11.07、触 10.83 未封、换手 4.98%）</li>
+  <li>五因素复盘稿：用户提供（C 级，AI 生成稿件），其中三季报/龙虎榜/融资/PE 数字均未与原文核对，本文一律标 *</li>
+  <li>题材梳理卡：用户提供截图（液冷算力+华为+多媒体视讯，未标注标的），来源锚点以卡内自述为准，均未核实原文</li>
+  <li>方法论：workbuddy-finance-skill references（quant-factor-research / event-catalyst / abnormal-detection / market-state / sector-comparison / daily-briefing）</li>
+  <li>模型接入约束：DeepSeek 开放平台文档与隐私政策（2026-11-04 版）、LangGraph/Pydantic AI 官方文档（v5 已核）</li>
+</ul>
+
+<footer>
+  <p><strong>免责声明</strong></p>
+  <p>以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</p>
+  <p>本文为系统设计文档，文中所有标注 * 或「需核实原文」的数字均未经验证，不得作为任何决策依据。</p>
+</footer>
+
+</div>
+</body>
+</html>

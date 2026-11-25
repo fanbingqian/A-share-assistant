@@ -1,0 +1,12 @@
+=== hermes-bridge ===
+NRestarts=0
+ActiveState=active
+ActiveEnterTimestamp=Sat 2026-11-21 16:15:01 CST
+=== hermes gateway ===
+  hermes-bridge.service            loaded active   running Hermes Bridge (OpenAI-compatible HTTP endpoint on 8765)
+  hermes-gateway.service           loaded active   running Hermes Agent Gateway - Messaging Platform Integration
+  hermes-port-proxy.service        loaded active   running Hermes Port Proxy - Expose Hermes API on 0.0.0.0:8644
+=== gateway 8642 ===
+8642 未监听(api_server 可选)
+=== 桥接 8765 ===
+LISTEN 0      5             0.0.0.0:8765       0.0.0.0:*    users:(("python3",pid=274,fd=3))

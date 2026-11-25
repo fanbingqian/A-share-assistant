@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交互原型 v6 · 经验录入 / 对话归档 / 冲突裁决台 / 研发推导 · 2026-11-19</title>
+<style>
+:root{--ink:#1f2328;--ink2:#4a5158;--ink3:#6b737b;--line:#e2e6ea;--bg:#ffffff;--bg2:#f6f8fa;--blue:#185fa5;--blue-bg:#eaf3fc;--amber:#a8680c;--amber-bg:#fdf5e7;--red:#c0392b;--green:#1b8a5a;--gray-bg:#f1f3f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg2);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.65}
+.iw-x6-wrap{max-width:1200px;margin:0 auto;padding:22px 20px 50px}
+.iw-x6-top{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:14px}
+.iw-x6-top h1{font-size:19px;font-weight:600;margin:0 0 4px}
+.iw-x6-top p{font-size:12px;color:var(--ink3);margin:0}
+.iw-x6-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.iw-x6-tab{padding:7px 15px;border:1px solid var(--line);background:var(--bg);border-radius:7px;cursor:pointer;font-size:13px;color:var(--ink2)}
+.iw-x6-tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.iw-x6-mode{margin-left:auto;font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:8px}
+.iw-x6-mode select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:12px}
+.iw-x6-pane{display:none;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.iw-x6-pane.on{display:block}
+.iw-x6-h2{font-size:16px;font-weight:600;margin:0 0 4px}
+.iw-x6-sub{font-size:12px;color:var(--ink3);margin:0 0 16px}
+.iw-x6-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.iw-x6-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.iw-x6-card{border:1px solid var(--line);border-radius:9px;padding:14px 16px;background:var(--bg)}
+.iw-x6-card h3{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink)}
+.iw-x6-label{display:block;font-size:12px;color:var(--ink2);margin:10px 0 4px}
+.iw-x6-in,.iw-x6-ta,.iw-x6-sel{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
+.iw-x6-ta{min-height:66px;resize:vertical;line-height:1.6}
+.iw-x6-btn{padding:8px 14px;border:1px solid var(--line);border-radius:7px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--ink2);font-family:inherit}
+.iw-x6-btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.iw-x6-btn.ghost{background:transparent}
+.iw-x6-btn:active{transform:translateY(1px)}
+.iw-x6-note{font-size:12px;color:var(--ink3);margin:10px 0 0}
+.iw-x6-warn{background:var(--amber-bg);border-left:3px solid var(--amber);padding:10px 13px;border-radius:6px;font-size:12px;margin:12px 0}
+.iw-x6-key{background:var(--blue-bg);border-left:3px solid var(--blue);padding:10px 13px;border-radius:6px;font-size:12px;margin:12px 0}
+.iw-x6-mono{background:#f7f9fb;border:1px solid var(--line);border-radius:7px;padding:11px 13px;font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;color:#24303a;line-height:1.6}
+.iw-x6-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}
+.iw-x6-kpi div{background:var(--bg2);border-radius:7px;padding:9px 11px}
+.iw-x6-kpi .k{font-size:11px;color:var(--ink3)}
+.iw-x6-kpi .v{font-size:17px;font-weight:600;margin-top:2px}
+.iw-x6-kpi .d{font-size:11px;color:var(--ink3)}
+.iw-x6-tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--gray-bg);color:var(--ink2);margin-right:5px}
+.iw-x6-tag.live{background:#e5f4ec;color:var(--green)}
+.iw-x6-tag.proto{background:var(--amber-bg);color:var(--amber)}
+.iw-x6-tag.ai{background:var(--blue-bg);color:var(--blue)}
+.iw-x6-chat{border:1px solid var(--line);border-radius:9px;padding:14px;min-height:190px;max-height:280px;overflow-y:auto;background:#fcfdfe}
+.iw-x6-msg{margin:0 0 10px;display:flex;gap:8px}
+.iw-x6-msg .who{flex:0 0 42px;font-size:11px;color:var(--ink3);padding-top:3px}
+.iw-x6-msg .bub{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12.5px;max-width:88%}
+.iw-x6-msg.me .bub{background:var(--blue-bg);border-color:#cfe3f7}
+.iw-x6-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.iw-x6-switch{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.iw-x6-flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.iw-x6-flow .s{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-size:12px}
+.iw-x6-flow .a{color:var(--ink3);font-size:12px}
+.iw-x6-side{border-left:3px solid var(--blue);padding-left:12px}
+.iw-x6-side.amber{border-left-color:var(--amber)}
+.iw-x6-lay{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:9px 0;font-size:12px}
+.iw-x6-lay b{display:block;margin-bottom:3px;font-size:12.5px}
+.iw-x6-lay .m{color:var(--ink3)}
+.iw-x6-pref{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.iw-x6-pref .iw-x6-btn.sel{background:var(--amber);border-color:var(--amber);color:#fff}
+.iw-x6-step{border:1px solid var(--line);border-radius:8px;padding:10px 13px;margin:8px 0;font-size:12px;background:#fcfdfe}
+.iw-x6-step .n{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;text-align:center;line-height:20px;font-size:11px;margin-right:8px}
+.iw-x6-step .t{font-weight:600}
+.iw-x6-step .d{color:var(--ink3);margin-left:28px}
+.up{color:var(--red)}.down{color:var(--green)}
+.iw-x6-foot{font-size:12px;color:var(--ink2);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-top:14px}
+.iw-x6-hr{height:1px;background:var(--line);margin:16px 0}
+@media(max-width:900px){.iw-x6-grid,.iw-x6-grid3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="iw-x6-wrap">
+
+<div class="iw-x6-top">
+<h1>交互原型 v6 · 经验录入 / 对话归档 / 冲突裁决台</h1>
+<p>GlobalMarketMonitor · 2026-11-19 盘后 · 纯前端演示：不写任何数据文件、不调用任何 API、零 CDN 离线可用 · 沿用现有浅色配色与红涨绿跌</p>
+<div class="iw-x6-tabs">
+<button class="iw-x6-tab on" id="tb1" onclick="switchTab(1)">① 我的经验怎么录进去</button>
+<button class="iw-x6-tab" id="tb2" onclick="switchTab(2)">② 和智能体的对话归档</button>
+<button class="iw-x6-tab" id="tb3" onclick="switchTab(3)">③ 冲突裁决台（我不用判对错）</button>
+<button class="iw-x6-tab" id="tb4" onclick="switchTab(4)">④ 研发推导视图（暂留）</button>
+<div class="iw-x6-mode">呈现模式
+<select id="modeSel" onchange="setMode(this.value)">
+<option value="investor">股民模式</option>
+<option value="dev">研发模式（显示依据）</option>
+</select>
+</div>
+</div>
+</div>
+
+<div class="iw-x6-pane on" id="pane1">
+<h2 class="iw-x6-h2">写下一条我自己的经验</h2>
+<p class="iw-x6-sub">四要素缺一不可；口语照常说，抽取由智能体完成，但原文永久保留。所有条目只能落到「待审经验区」。</p>
+<div class="iw-x6-grid">
+<div class="iw-x6-card">
+<h3>录入表单 <span class="iw-x6-tag proto">待建接口</span></h3>
+<label class="iw-x6-label">① 我观察到了什么（只写现象，不写因果）</label>
+<textarea class="iw-x6-ta" id="x6Claim" placeholder="例如：看到新药纳入医保目录的公告后买入，之后连续跌停"></textarea>
+<label class="iw-x6-label">② 出现什么现象算我错（证伪条件）</label>
+<input class="iw-x6-in" id="x6Falsify" placeholder="例如：公告后 5 日放量上涨且支付标准明确">
+<label class="iw-x6-label">③ 适用范围</label>
+<select class="iw-x6-sel" id="x6Scope">
+<option value="swing">隔夜 / 短线（默认按我的行为画像）</option>
+<option value="position">波段持有</option>
+<option value="long">长期定投</option>
+<option value="all">暂不确定</option>
+</select>
+<label class="iw-x6-label">④ 结果出来之前，我当时怎么想（事前预判）</label>
+<textarea class="iw-x6-ta" id="x6Pre" placeholder="例如：当时以为进医保等于业绩立刻变好，没注意支付标准未公布"></textarea>
+<label class="iw-x6-label">极性 / 来源时点</label>
+<div class="iw-x6-row">
+<select class="iw-x6-sel" id="x6Polar" style="width:auto;min-width:130px">
+<option value="pitfall">踩坑经验</option>
+<option value="win">成功经验</option>
+</select>
+<span class="iw-x6-tag" id="x6AsOf">时点由系统写入</span>
+</div>
+<div class="iw-x6-row" style="margin-top:14px">
+<button class="iw-x6-btn" onclick="runExtract()">运行抽取（确定性分诊 + 建议）</button>
+<button class="iw-x6-btn pri" onclick="submitExp()">存入待审区</button>
+</div>
+<p class="iw-x6-note" id="x6FormStatus">尚未提交。演示环境不会写入任何文件。</p>
+</div>
+<div class="iw-x6-card">
+<h3>智能体抽取结果 <span class="iw-x6-tag ai">AI 提案 · 未生效</span></h3>
+<div class="iw-x6-kpi">
+<div><div class="k">分类</div><div class="v" id="x6Kind">—</div><div class="d">确定性规则先跑</div></div>
+<div><div class="k">置信度</div><div class="v" id="x6Conf">—</div><div class="d">命中词数，非语义推断</div></div>
+<div><div class="k">落点</div><div class="v" id="x6Dest">—</div><div class="d">默认待审区</div></div>
+</div>
+<div class="iw-x6-mono" id="x6Draft">点击左侧「运行抽取」查看结构化草案。
+约束：自动归类可以，自动生效不行。</div>
+<div class="iw-x6-warn">抽取结果标 <code>user_note</code>，<code>sourceGrade: C</code>；<code>affectsScore</code> 恒为 false，不写入事实账本、不新建因子、不改评分。</div>
+<div id="x6DevOnly1" style="display:none">
+<div class="iw-x6-hr"></div>
+<h3>研发视角 · 网关校验</h3>
+<div class="iw-x6-mono">schema 校验：四要素齐全 = 待审；缺项 = 仅草稿
+出处校验：口语原文永久保留，数字一律置 null
+幂等校验：idempotencyKey 去重，重复提交不新增
+剔除规则：无出处即剔除；模型不得补数字</div>
+</div>
+</div>
+</div>
+<div class="iw-x6-key">录入后这条经验会与系统自动归纳的条目进入<b>同一条晋升闸门</b>：影子验证 → n≥30 / IC&gt;0.03 / IR&gt;0.5 / 样本外不劣化 → 人工最终否决 → 才可能以 ±2 分有界回流。当前样本 18 条，界面应显示「样本不足」。</div>
+<div class="iw-x6-card" style="margin-top:14px">
+<h3>本页会话内已录入（仅演示，刷新即清空）</h3>
+<div class="iw-x6-mono" id="x6List">（空）</div>
+</div>
+</div>
+
+<div class="iw-x6-pane" id="pane2">
+<h2 class="iw-x6-h2">和智能体对话，内容怎么进知识库</h2>
+<p class="iw-x6-sub">问答型不入库；沉淀型归档。对话最有价值的是「我当时为什么买」，不是提取结论。</p>
+<div class="iw-x6-grid">
+<div class="iw-x6-card">
+<h3>对话 <span class="iw-x6-tag live">已有只读原型</span> <span class="iw-x6-tag proto">缺写管道</span></h3>
+<div class="iw-x6-chat" id="x6Chat">
+<div class="iw-x6-msg me"><div class="who">我</div><div class="bub">我看到 000766 进了医保目录就买了，后来一直跌停。这个要怎么记成经验？</div></div>
+<div class="iw-x6-msg"><div class="who">助手</div><div class="bub">这是「沉淀型」对话。我不判断这只票，只帮你把事前想法固定下来：当时你预期它涨的理由是什么？什么现象出现你会承认判断错了？</div></div>
+<div class="iw-x6-msg me"><div class="who">我</div><div class="bub">当时以为进医保等于利好，没注意支付标准还没公布。如果公告后能连续放量上涨，说明我判断对。</div></div>
+</div>
+<div class="iw-x6-row">
+<input class="iw-x6-in" id="x6ChatIn" style="flex:1;min-width:200px" placeholder="继续说，或换一个话题" onkeydown="chatKey(event)">
+<button class="iw-x6-btn pri" onclick="sendChat()">发送</button>
+</div>
+<div class="iw-x6-row" style="justify-content:space-between">
+<label class="iw-x6-switch"><input type="checkbox" id="x6NoRecord" onchange="toggleRecord()"> 本轮不记录（隐私开关）</label>
+<span class="iw-x6-tag" id="x6RecState">记录中 · 仅存本地演示</span>
+</div>
+<div class="iw-x6-warn">对话里出现的数字、日期、结论一律置 null。前序核实过的案例：11-18 的 12.04 元是当日开盘价、不是收盘价；财务与龙虎榜数字来自其他 AI 稿件，未与一手原文核对。</div>
+</div>
+<div class="iw-x6-card">
+<h3>归档去向（三级隔离）</h3>
+<div class="iw-x6-lay"><b>① 原文层 · conversations.jsonl</b><span class="m">只追加、可回溯、可删除；带 sessionId 与「本轮不记录」标记。原文不是经验。</span></div>
+<div class="iw-x6-lay"><b>② 抽取层 · 四元组候选</b><span class="m">主张 / 证据 / 来源 / 时点；标 user_note；不进事实账本。</span></div>
+<div class="iw-x6-lay"><b>③ 候选层 · 待审经验区</b><span class="m">与手写录入、自动归纳共用同一晋升闸门；affectsScore: false。</span></div>
+<div class="iw-x6-hr"></div>
+<h3>本次演示归档状态</h3>
+<div class="iw-x6-mono" id="x6Archive">尚未产生新的归档动作。
+问答型对话（例如「高开低走一般什么原因」）只解释、挂来源、不入库。</div>
+<div id="x6DevOnly2" style="display:none">
+<div class="iw-x6-hr"></div>
+<h3>研发视角 · 分诊规则</h3>
+<div class="iw-x6-mono">因子词命中多 → 因子候选（仍须过 ic.js 状态机）
+经验词命中多 → 经验候选（落待审区）
+双向都命中 / 都不命中 → 待澄清，不猜
+模型只给建议，不得覆盖确定性结果</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="iw-x6-pane" id="pane3">
+<h2 class="iw-x6-h2">同一只票，因子和经验说反了：我不用判谁对</h2>
+<p class="iw-x6-sub">示例数据取自 <code>outcomes.jsonl</code> 首条真实定格记录（002451 摩恩电气，2026-11-17），仅作字段演示，不代表当前信号。经验侧样本与反例数未达标，一律显示占位。</p>
+<div class="iw-x6-grid">
+<div class="iw-x6-card iw-x6-side">
+<h3>因子侧 <span class="iw-x6-tag live">可复算</span></h3>
+<div class="iw-x6-kpi">
+<div><div class="k">评分</div><div class="v">77</div><div class="d">0–100 分</div></div>
+<div><div class="k">信号</div><div class="v" style="font-size:14px">重点关注</div><div class="d">阈值 ≥70</div></div>
+<div><div class="k">来源</div><div class="v" style="font-size:13px">stocks.js</div><div class="d">横截面评分</div></div>
+</div>
+<p class="iw-x6-note">口径：2026-11-17 收盘后定格，用于 T+1 复盘对照。单日 18 只样本的 Rank IC 标准误约 0.24，噪声大，只认 20 日以上滚动均值。</p>
+</div>
+<div class="iw-x6-card iw-x6-side amber">
+<h3>经验侧 <span class="iw-x6-tag proto">待审 / Flag</span></h3>
+<div class="iw-x6-kpi">
+<div><div class="k">提示级别</div><div class="v" style="font-size:14px">警示</div><div class="d">三级之一</div></div>
+<div><div class="k">样本数</div><div class="v">--</div><div class="d">样本不足</div></div>
+<div><div class="k">反例数</div><div class="v">--</div><div class="d">反例库待建</div></div>
+</div>
+<p class="iw-x6-note">口径：Flag 默认不改分、不剔除、不自动下单；每条必须带来源时点与反例数。</p>
+</div>
+</div>
+
+<div class="iw-x6-card" style="margin-top:14px">
+<h3>四层自动处置（前三层不用你参与）</h3>
+<div class="iw-x6-lay"><b>① 确定性重算 <span class="iw-x6-tag live">代码裁定</span></b><span class="m">本例无事实 / 口径冲突。若出现叙述与日 K 不一致（例如 11-17 文字写「低开高走」、日 K 为前收 3602.57 / 开 3585.67 / 收 3584.58），直接标 narrative_conflict，模型不参与。</span></div>
+<div class="iw-x6-lay"><b>② 结果验证投票 <span class="iw-x6-tag">数据慢慢给权重</span></b><span class="m">T+1 <b>--</b> · T+5 <b>--</b> · T+20 <b>--</b> · 20 日最大回撤 <b>--</b> · 超额 <b>--</b>。复用 barOf() / benchRet() 回填；当前样本不足，不显示倾向。</span></div>
+<div class="iw-x6-lay"><b>③ 智能体 + 技能的建议 <span class="iw-x6-tag ai">仅供参考</span></b><span class="m">两边依据不同层级：因子侧可复算但单日噪声大；经验侧样本与反例数不足。系统建议并列保留、等回填后再看，<b>不裁决、不合成第三种解释、不改评分</b>。不确定性：高。</span></div>
+</div>
+
+<div class="iw-x6-card" style="margin-top:14px">
+<h3>④ 你只需要做一个偏好判断</h3>
+<p class="iw-x6-note">判的是「这条提醒对我有没有用」，不是「因子和经验谁对」。默认项恒为「以后再说」，不点也不会让系统变坏。</p>
+<div class="iw-x6-pref">
+<button class="iw-x6-btn" id="pf1" onclick="pref(1)">保留提醒</button>
+<button class="iw-x6-btn" id="pf2" onclick="pref(2)">关掉这条</button>
+<button class="iw-x6-btn sel" id="pf3" onclick="pref(3)">以后再说（默认）</button>
+</div>
+<div class="iw-x6-mono" id="x6Pref" style="margin-top:12px">当前：以后再说 → 系统状态不变；affectsScore: false；rules.json count 保持 0。</div>
+<div class="iw-x6-key">若未来要让这条经验晋升改分，门槛由统计闸门把守（n≥30 / IC&gt;0.03 / IR&gt;0.5 / 样本外不劣化 / 影子验证），人只做最后否决，通过后仍是 ±2 分、乘数 0.8–1.25、不翻符号。</div>
+</div>
+<div id="x6DevOnly3" style="display:none">
+<div class="iw-x6-card" style="margin-top:14px">
+<h3>研发视角 · 本例被剔除的输出</h3>
+<div class="iw-x6-mono">「因为医保利好兑现所以跌停」→ 剔除：事后归因、不可证伪
+「建议不接飞刀」→ 剔除：操作判断，越权
+「综合两边给出中性判断」→ 剔除：折中合成比冲突本身更危险</div>
+</div>
+</div>
+</div>
+
+<div class="iw-x6-pane" id="pane4">
+<h2 class="iw-x6-h2">研发推导视图（本阶段保留，不面向最终用户）</h2>
+<p class="iw-x6-sub">同一份数据、同一套渲染层，只切一个 detailLevel；发布时隐藏入口即可整体下线。此处展示本轮「一条经验从录入到回填」的完整链路。</p>
+<div class="iw-x6-card">
+<div class="iw-x6-step"><span class="n">1</span><span class="t">事实输入</span><div class="d">口语原文 + 系统时间戳 + 行情 / 公告一手数据；来源分级 A / B / C</div></div>
+<div class="iw-x6-step"><span class="n">2</span><span class="t">确定性计算</span><div class="d">Gate / Score / Flag / 四象限 / 冲突重算 / 四要素校验；模型禁入</div></div>
+<div class="iw-x6-step"><span class="n">3</span><span class="t">智能体输出</span><div class="d">抽取四元组、归类、生成带证伪条件的假说卡、翻译成人话；全部标「AI 提案 · 未生效」</div></div>
+<div class="iw-x6-step"><span class="n">4</span><span class="t">确定性网关</span><div class="d">schema / 出处 / 幂等 / 无出处即剔除；sidecar 挂掉则整体降级 L0 纯确定性</div></div>
+<div class="iw-x6-step"><span class="n">5</span><span class="t">人工闸门</span><div class="d">偏好三按钮（默认不改动）+ 晋升改分的最终否决；统计闸门在前</div></div>
+<div class="iw-x6-step"><span class="n">6</span><span class="t">回填校准</span><div class="d">T+1 / 5 / 20 真实行情、反例计数、假警报率与风险回避价值并列；失效退役</div></div>
+</div>
+<div class="iw-x6-grid" style="margin-top:14px">
+<div class="iw-x6-card">
+<h3>只改本地预览的参数（不影响任何文件）</h3>
+<label class="iw-x6-label">样本门槛 n：<span id="x6ParamN">30</span></label>
+<input type="range" min="8" max="60" value="30" style="width:100%" oninput="setParam('n',this.value)">
+<label class="iw-x6-label">回流上限（分）：<span id="x6ParamB">2</span></label>
+<input type="range" min="0" max="5" value="2" style="width:100%" oninput="setParam('b',this.value)">
+<label class="iw-x6-label">主假说数量上限：<span id="x6ParamH">1</span></label>
+<input type="range" min="1" max="5" value="1" style="width:100%" oninput="setParam('h',this.value)">
+<p class="iw-x6-note">滑块只改本页显示，用于观察参数敏感度；真实配置需经影子验证后由人工确认。</p>
+</div>
+<div class="iw-x6-card">
+<h3>本页核对过的事实</h3>
+<div class="iw-x6-mono">主链路：硬门槛 → 三组加权 → 五项修正(±22封顶) → 风险惩罚 → 0–100 分
+经验旁路：picks 2 / outcomes 18 / lessons 4 pending / rules count=0
+回流：仅涨停结构修正，±2 分，乘数 0.8–1.25，不翻符号
+缺口：无录入接口、无对话写管道、无冲突处理代码
+分诊原型：只读，明确「不写入因子池 / 经验池」
+因子状态机：navplan.js 设计态，标注复用 ic.js</div>
+</div>
+</div>
+</div>
+
+<div class="iw-x6-foot">
+<b>演示边界</b>：本页为纯静态原型，所有交互只改本页 DOM，不写 <code>data/journal/*</code>、不调用 8777 接口、不连接模型。占位一律用 <code>--</code> 或「需核实原文」，未核实数字不入界面。①②③ 为面向股民的界面，④ 为研发期推导视图，按上一轮约定暂保留。
+<div style="margin-top:10px"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+
+</div>
+<script>
+var x6Entries = [];
+function $(id){ return document.getElementById(id); }
+function switchTab(k){
+  for(var i=1;i<=4;i++){
+    $('pane'+i).className = 'iw-x6-pane' + (i===k?' on':'');
+    $('tb'+i).className = 'iw-x6-tab' + (i===k?' on':'');
+  }
+}
+function setMode(v){
+  var show = v === 'dev' ? 'block' : 'none';
+  ['x6DevOnly1','x6DevOnly2','x6DevOnly3'].forEach(function(id){
+    if($(id)) $(id).style.display = show;
+  });
+}
+function runExtract(){
+  var claim = ($('x6Claim').value || '').trim();
+  var falsify = ($('x6Falsify').value || '').trim();
+  var pre = ($('x6Pre').value || '').trim();
+  if(!claim){ $('x6FormStatus').textContent = '请先填写「我观察到了什么」。'; return; }
+  var factorWords = ['因子','换手率','分位','RSI','指标','登记','公式'];
+  var lessonWords = ['经验','教训','追高','踩坑','跌停','亏','注意'];
+  var fc=0, lc=0;
+  factorWords.forEach(function(w){ if(claim.indexOf(w)>=0) fc++; });
+  lessonWords.forEach(function(w){ if(claim.indexOf(w)>=0) lc++; });
+  var kind = fc>lc ? '因子候选（仍须过 IC 状态机）' : lc>fc ? '经验候选' : '待澄清';
+  var conf = Math.abs(fc-lc)>=2 ? '中' : '低';
+  var complete = falsify && pre ? '四要素齐全 → 可进入待审队列' : '缺项 → 仅存为草稿，不进待审队列';
+  $('x6Kind').textContent = kind;
+  $('x6Conf').textContent = conf;
+  $('x6Dest').textContent = '待审经验区';
+  $('x6Draft').textContent =
+    '分类: ' + kind + '\n' +
+    '判定依据: 因子词命中 ' + fc + ' / 经验词命中 ' + lc + '（确定性规则，不做语义推断）\n' +
+    'claim: ' + claim + '\n' +
+    'falsifyCondition: ' + (falsify || 'FIELD_MISSING') + '\n' +
+    'precommit: ' + (pre || 'FIELD_MISSING') + '\n' +
+    'scope.horizon: ' + $('x6Scope').value + '\n' +
+    'polarity: ' + $('x6Polar').value + '\n' +
+    'sourceGrade: C  |  noteTag: user_note  |  affectsScore: false\n' +
+    '校验: ' + complete;
+  $('x6FormStatus').textContent = '抽取完成：' + complete + '。尚未提交。';
+}
+function submitExp(){
+  var claim = ($('x6Claim').value || '').trim();
+  if(!claim){ $('x6FormStatus').textContent = '没有内容可提交。'; return; }
+  var falsify = ($('x6Falsify').value || '').trim();
+  var pre = ($('x6Pre').value || '').trim();
+  var st = (falsify && pre) ? 'pending（待审）' : 'draft（草稿，缺项）';
+  x6Entries.push({ claim: claim, status: st, polarity: $('x6Polar').value });
+  $('x6List').textContent = x6Entries.map(function(e,i){
+    return (i+1) + '. [' + e.status + '] [' + e.polarity + '] ' + e.claim +
+           '\n   affectsScore: false · 未写入事实账本 · 未新建因子';
+  }).join('\n');
+  $('x6FormStatus').textContent = '已存入本页演示列表（' + st + '）。真实环境需后端接口，本页不写任何文件。';
+}
+function chatKey(e){ if(e.key === 'Enter') sendChat(); }
+function sendChat(){
+  var v = ($('x6ChatIn').value || '').trim();
+  if(!v) return;
+  var box = $('x6Chat');
+  var d = document.createElement('div');
+  d.className = 'iw-x6-msg me';
+  d.innerHTML = '<div class="who">我</div><div class="bub"></div>';
+  d.lastChild.textContent = v;
+  box.appendChild(d);
+  $('x6ChatIn').value = '';
+  box.scrollTop = box.scrollHeight;
+  var off = $('x6NoRecord').checked;
+  if(off){
+    $('x6Archive').textContent = '本轮已设「不记录」：内容未进入任何账本。\n原文层: 跳过\n抽取层: 跳过\n候选层: 跳过';
+    return;
+  }
+  $('x6Archive').textContent =
+    '原文层: conversations.jsonl ← 已追加 1 条（可回溯 / 可删除）\n' +
+    '抽取层: 主张 / 证据 / 来源 / 时点四元组；user_note；数字置 null\n' +
+    '候选层: 待审经验区；status: pending；affectsScore: false\n' +
+    '备注: 不进事实账本、不新建因子、不改评分。';
+}
+function toggleRecord(){
+  var off = $('x6NoRecord').checked;
+  $('x6RecState').textContent = off ? '本轮不记录' : '记录中 · 仅存本地演示';
+  $('x6RecState').className = 'iw-x6-tag' + (off ? ' proto' : ' live');
+}
+function pref(k){
+  for(var i=1;i<=3;i++) $('pf'+i).className = 'iw-x6-btn' + (i===k?' sel':'');
+  var txt = k===1 ? '保留提醒 → 继续显示该 Flag；仍不改分、不进 rules.json'
+          : k===2 ? '关掉这条 → 仅隐藏提示；经验条目保留，可随时恢复'
+          : '以后再说（默认）→ 系统状态不变；affectsScore: false；rules.json count 保持 0';
+  $('x6Pref').textContent = '当前：' + txt;
+}
+function setParam(k,v){
+  if(k==='n') $('x6ParamN').textContent = v;
+  if(k==='b') $('x6ParamB').textContent = v;
+  if(k==='h') $('x6ParamH').textContent = v;
+}
+</script>
+</body>
+</html>

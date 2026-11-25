@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>智能体感知模块方案 — 技能与MCP解耦 · 20261122</title>
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1a1d24;--sub:#5a6270;--line:#e3e6ec;--accent:#1d6fe0;--teal:#0e8a6a;--amber:#b8760f;--red:#c0392b;--code:#f2f4f8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7;font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:36px 28px 80px}
+h1{font-size:26px;margin:0 0 6px;font-weight:650}h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--accent);font-weight:600}
+h3{font-size:16px;margin:20px 0 8px;font-weight:600;color:#243040}.lead{color:var(--sub);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:14px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+table{width:100%;border-collapse:collapse;margin:12px 0;background:var(--card)}th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;font-size:14px}th{background:#eef2f8;font-weight:600}td code,code{background:var(--code);padding:1px 6px;border-radius:4px;font-family:Consolas,monospace;font-size:13px;color:#1b4f9c}
+pre{background:#1e2430;color:#d7e2f0;border-radius:8px;padding:15px 18px;overflow:auto;font-size:12.5px;line-height:1.55;font-family:Consolas,monospace}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;margin-right:6px}.t-ok{background:#e2f5ee;color:var(--teal)}.t-warn{background:#fbf0dc;color:var(--amber)}.t-no{background:#fae7e4;color:var(--red)}.t-info{background:#e6f0fc;color:var(--accent)}
+.hl{background:#fff8e6;border-left:3px solid var(--amber);padding:11px 15px;border-radius:0 6px 6px 0;margin:12px 0}
+.ok{background:#eaf7f1;border-left:3px solid var(--teal);padding:11px 15px;border-radius:0 6px 6px 0;margin:12px 0}
+.step{display:flex;gap:12px;align-items:flex-start;margin:10px 0}.num{flex:0 0 28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+.small{font-size:13px;color:var(--sub)}ul{margin:8px 0;padding-left:22px}li{margin:5px 0}
+.kbd{background:#eef1f6;border:1px solid #d5dbe5;border-bottom-width:2px;border-radius:4px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>智能体感知模块方案：技能 + MCP 解耦</h1>
+<p class="lead">基于 AI-Hel2 的 agent↔知识库模式调研 + 本机 Hermes 实测 · 2026-11-22 · 核心原则：不动约束层，只加感知能力</p>
+
+<div class="ok"><strong>一句话结论</strong>：AI-Hel2 的做法是「知识不进 system prompt，而是注册成工具让模型按需调用」。你的 Hermes 内核完全支持这套模式（原生 <code>-s/--skills</code>、<code>mcp_servers</code>、<code>--max-turns</code>），且 <code>skills</code>/<code>memory</code>/<code>terminal</code>/<code>file</code> 工具集都已启用。可以做到：日程事件、每日行情、板块数据由智能体「主动感知」，而不是把数据硬塞进提示词，也不改任何安全约束。</div>
+
+<h2>一、AI-Hel2 如何处理智能体与知识库的关系</h2>
+
+<p>我逐行读了 AI-Hel2 的知识库与 agent 层，它的关系设计非常清晰——<strong>三层解耦</strong>：</p>
+
+<div class="card">
+<h3>1. 知识库独立成 HTTP 服务，不做成提示词</h3>
+<p>Nexus 知识引擎跑在 <code>127.0.0.1:18643</code>，对外提供 <code>/nexus/search</code>、<code>/nexus/entity/:id</code>、<code>/nexus/paths</code>、<code>/nexus/neighbors/:id</code>、<code>/nexus/map</code> 五个端点。</p>
+<p class="small">源码：<code>src-tauri/src/services/nexus_api.rs</code></p>
+</div>
+
+<div class="card">
+<h3>2. 工具定义只有一份，同时供两条路使用</h3>
+<p><code>nexus_tools::nexus_tool_definitions()</code> 一个函数生成 5 个 OpenAI function-calling JSON Schema，被两个地方同时引用：</p>
+<ul>
+<li><strong>OpenAI-compatible 直连</strong>：<code>build_request()</code> 里 <code>req["tools"] = nexus_tool_definitions()</code>，<code>tool_choice: auto</code>；</li>
+<li><strong>MCP 端点</strong>：<code>nexus_mcp.rs</code> 的 <code>tools/list</code> 直接返回同一份定义，外部智能体也能通过标准 MCP 协议访问。</li>
+</ul>
+<p class="small">源码：<code>src-tauri/src/services/agents/nexus_tools.rs</code>、<code>nexus_mcp.rs</code>、<code>openai_compatible.rs</code></p>
+</div>
+
+<div class="card">
+<h3>3. 工具结果回灌，形成多轮循环</h3>
+<p>模型返回 <code>finish_reason: tool_calls</code> → 执行工具 → 以 <code>role: tool</code> 把结果塞回 messages → 再次请求模型，循环直到 <code>stop</code>。整个过程通过 <code>ChatEvent::ToolProgress</code> 在 UI 展示进度。</p>
+<p class="small">源码：<code>openai_compatible.rs</code> 第 382–440 行的 loop</p>
+</div>
+
+<div class="hl"><strong>关键洞察</strong>：AI-Hel2 里 agent 与知识库是「调用者 ↔ 被调服务」关系，不是「提示词塞满数据」关系。这正是你想要的方向——智能体保持原生状态，只是多了几个可调用的能力。</div>
+
+<h2>二、本机 Hermes 的真实能力（实测）</h2>
+
+<table>
+<tr><th>能力</th><th>实测状态</th><th>证据</th></tr>
+<tr><td><code>-s/--skills</code> 预加载技能</td><td><span class="tag t-ok">支持</span></td><td><code>hermes chat --help</code> 有该参数</td></tr>
+<tr><td><code>mcp_servers</code> 配置</td><td><span class="tag t-ok">支持</span></td><td>config.yaml 已注册 autocad-mcp，<code>hermes mcp list</code> 显示 enabled</td></tr>
+<tr><td><code>--max-turns</code> 工具轮数</td><td><span class="tag t-ok">支持</span></td><td>help 明确列出</td></tr>
+<tr><td>skills / memory / terminal / file 工具集</td><td><span class="tag t-ok">已启用</span></td><td><code>hermes tools list</code></td></tr>
+<tr><td>现有知识类技能</td><td><span class="tag t-ok">已有</span></td><td><code>knowledge-graph</code>、<code>personal-knowledge-graph</code>、<code>graphify</code> 都已安装</td></tr>
+<tr><td>WSL 读 D 盘项目目录</td><td><span class="tag t-ok">可读写</span></td><td><code>/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/data</code> 可访问</td></tr>
+<tr><td>WSL 直连 Windows 8777</td><td><span class="tag t-no">不通</span></td><td><code>127.0.0.1:8777</code> 与网关 IP 均返回 HTTP 000（服务绑 <code>127.0.0.1</code>）</td></tr>
+</table>
+
+<div class="hl"><strong>决定性约束</strong>：WSL 里的 Hermes 不能直接 curl Windows 的 8777 接口。所以技能/工具要感知模块数据，必须走 <strong>D 盘共享文件</strong>（WSL 通过 <code>/mnt/d</code> 读），这正是桥接脚本本身已经在用的通道。</div>
+
+<h2>三、方案设计：三层感知架构</h2>
+
+<h3>第 1 层 · 数据快照（Node 侧，Windows）</h3>
+<p>在 Node 8777 服务里增加「感知快照导出」：每次调用 <code>/api/v2/chat</code>（或定时）把五个模块的关键数据写成一份精简 JSON 到共享目录：</p>
+<pre>data/agent-perception/
+  ├── calendar.json      # 日程与事件：名称/日期/等级/相关板块
+  ├── daily-market.json  # 每日行情：量能/涨停结构/领涨板块/风格结论
+  ├── portfolio.json     # 我的股池
+  ├── knowledge.json     # 知识库摘要
+  └── index.json         # 快照时点 + 各文件说明</pre>
+<p class="small">这是「程序模块内容」的落地形态：不带任何纪律文字，只有事实数据，且由程序计算、可溯源。</p>
+
+<h3>第 2 层 · 技能（Hermes 侧，WSL）</h3>
+<p>在 <code>~/.hermes/skills/market-modules/SKILL.md</code> 建一个自定义技能，内容不是约束，而是「能力说明」：</p>
+<pre>---
+name: market-modules
+description: 读取本地 A 股监测系统的日程事件、每日行情、板块与股池快照。
+  当用户问"近期事件/板块/量能/股池"时使用。
+---
+# 模块感知
+
+快照目录：/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/data/agent-perception/
+
+- 日程事件 → calendar.json（名称/日期/等级/相关板块）
+- 每日行情 → daily-market.json（量能/涨停结构/领涨板块）
+- 股池 → portfolio.json
+
+用 file 工具读取；回答时标注快照时间。快照里没有的不编造。</pre>
+<p>桥接层 <code>hermes_bridge.py</code> 的 CLI 参数加一项 <code>-s market-modules</code> 即可预加载。<strong>不改 BASE_SYSTEM、不改 SOUL.md、不改 GUARDRAIL</strong>。</p>
+
+<h3>第 3 层 · MCP（可选进阶，标准协议）</h3>
+<p>若要做得像 AI-Hel2 那样「一处定义、两处可用」，可在 <code>~/.hermes/config.yaml</code> 注册一个 MCP server：</p>
+<pre>mcp_servers:
+  market-modules:
+    command: "/mnt/d/WorkBuddy/projects/GlobalMarketMonitor/hermes-bridge/market_mcp_server.py"
+    timeout: 30</pre>
+<p>该脚本实现 MCP 的 <code>tools/list</code> 与 <code>tools/call</code>，暴露以下工具（与 AI-Hel2 的 5 个 nexus 工具同一范式）：</p>
+<table>
+<tr><th>工具名</th><th>作用</th><th>数据源</th></tr>
+<tr><td><code>calendar_upcoming</code></td><td>查未来 N 天日程事件</td><td>calendar.json</td></tr>
+<tr><td><code>daily_market</code></td><td>查量能/涨停结构/风格结论</td><td>daily-market.json</td></tr>
+<tr><td><code>sector_monitor</code></td><td>查持续流入/长增长板块</td><td>daily-market.json</td></tr>
+<tr><td><code>portfolio_view</code></td><td>查我的股池</td><td>portfolio.json</td></tr>
+<tr><td><code>snapshot_time</code></td><td>查快照时点（防用旧数据）</td><td>index.json</td></tr>
+</table>
+
+<div class="ok"><strong>为什么这样不破坏智能体状态</strong>：技能和 MCP 是「加能力」，不是「加约束」。Hermes 的 SOUL.md、BASE_SYSTEM、L2 拦截、GUARDRAIL 全部原样保留；智能体照样有记忆、人格、技能自进化。它只是多了几个可读的数据源，跟挂 autocad-mcp 是同一类操作。</div>
+
+<h2>四、与当前「塞 prompt」方案的对比</h2>
+
+<table>
+<tr><th>维度</th><th>当前（快照塞 system prompt）</th><th>本方案（技能 + MCP 感知）</th></tr>
+<tr><td>数据位置</td><td>每次请求拼进 system 文本</td><td>共享文件，工具按需读取</td></tr>
+<tr><td>prompt 体积</td><td>随模块增加持续膨胀</td><td>恒定，只放能力说明</td></tr>
+<tr><td>智能体主动性</td><td>被动接收，塞什么看什么</td><td>主动判断何时调用哪个工具</td></tr>
+<tr><td>约束层</td><td>数据混在纪律里</td><td>数据与约束分离，互不干扰</td></tr>
+<tr><td>可溯源</td><td>依赖模型复述</td><td>工具返回带快照时点，天然可查</td></tr>
+<tr><td>降级通道</td><td>也能看到（Node 注入）</td><td>降级时自动退回快照注入，保证可用</td></tr>
+</table>
+
+<h2>五、落地顺序（每步可独立验证）</h2>
+<div class="step"><div class="num">1</div><div><strong>Node 侧快照导出</strong>：新增 <code>server/perception.js</code>，写五类 JSON 到 <code>data/agent-perception/</code>。验证：文件生成、字段正确、WSL 可读。</div></div>
+<div class="step"><div class="num">2</div><div><strong>创建 market-modules 技能</strong>：写 <code>~/.hermes/skills/market-modules/SKILL.md</code>。验证：<code>hermes skills list</code> 能看到。</div></div>
+<div class="step"><div class="num">3</div><div><strong>桥接加载技能</strong>：<code>hermes_bridge.py</code> 加 <code>-s market-modules</code>，重启 systemd。验证：官方对话问「近期日程」能报出事件，且 <code>backend=hermes-official</code>。</div></div>
+<div class="step"><div class="num">4</div><div><strong>（可选）注册 MCP server</strong>：写 <code>market_mcp_server.py</code> 并注册到 config.yaml。验证：<code>hermes mcp list</code> 显示 enabled，工具可调用。</div></div>
+<div class="step"><div class="num">5</div><div><strong>兜底保持</strong>：降级通道继续走现有快照注入，确保 WSL 未启动时对话不降级体验。</div></div>
+
+<h2>六、红线</h2>
+<ul>
+<li>不动 <code>BASE_SYSTEM</code>、<code>SOUL.md</code>、<code>GUARDRAIL</code>、L2 买卖词拦截——本方案只加感知，不加约束。</li>
+<li>快照只含程序计算的事实数据，不写任何判断结论或操作建议。</li>
+<li>工具返回必须带快照时点；数据过期时明确标注，不静默使用旧数据。</li>
+<li>WSL 未启动时自动降级到现有 prompt 注入，不影响对话可用性。</li>
+</ul>
+
+<p class="small">本方案基于 2026-11-22 实测：AI-Hel2 源码逐行核对 + 本机 Hermes CLI 能力验证 + WSL/Windows 网络连通性测试。当前为设计稿，尚未改动任何代码。</p>
+</div>
+</body>
+</html>

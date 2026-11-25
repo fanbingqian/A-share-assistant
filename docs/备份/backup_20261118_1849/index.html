@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全球市场监测与报警系统</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><span></span><span></span><span></span><span></span></div>
+      <div class="brand-text">
+        <h1>全球市场监测与报警系统</h1>
+        <p>GLOBAL MARKET MONITOR <i></i> 黄金 · 原油 · 美国国债 · 全球新闻</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div id="conn" class="conn"><span class="dot"></span><span id="connText">连接中</span></div>
+      <div class="updated">行情 <b id="quoteTime">--</b><span class="sep">/</span>新闻 <b id="newsTime">--</b></div>
+      <button id="btnSound" class="toggle" title="开启或关闭声音"><span class="led"></span>声音</button>
+      <button id="btnNotify" class="toggle" title="开启或关闭桌面通知"><span class="led"></span>桌面通知</button>
+      <button id="btnRefresh" class="btn">立即刷新</button>
+      <button id="btnSettings" class="btn primary">告警设置</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <section class="summary">
+    <div class="summary-item">
+      <label>当前监测状态</label>
+      <div id="riskState" class="big">正在连接</div>
+      <small id="riskHint">等待数据流</small>
+    </div>
+    <div class="summary-item">
+      <label>告警记录</label>
+      <div id="alertCount" class="big">0</div>
+      <small id="alertCountHint">当前会话</small>
+    </div>
+    <div class="summary-item grow">
+      <label>最新告警</label>
+      <div id="latestAlert" class="latest">暂无告警</div>
+    </div>
+    <div class="summary-item">
+      <label>数据链路</label>
+      <div id="sourceSummary" class="mini-list">--</div>
+    </div>
+  </section>
+
+  <main class="layout">
+    <div class="col-main">
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>核心监测</h2>
+          <span class="note">红涨绿跌 · 每张卡片均标注来源与数据时点</span>
+        </div>
+        <div id="primaryCards" class="cards cards-primary"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>扩展指标</h2>
+          <span class="note" id="extNote">收益率与利差变动以基点（bp）计</span>
+        </div>
+        <div id="secondaryCards" class="cards cards-secondary"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>走势监测</h2>
+          <div id="chartTabs" class="tabs"></div>
+        </div>
+        <div id="chartMeta" class="chart-meta"></div>
+        <div id="chart" class="chart"><div class="empty">等待走势数据…</div></div>
+        <div id="chartFoot" class="chart-foot"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>新闻解读 <span class="h2-tag">规则推理</span></h2>
+          <div class="head-actions">
+            <span class="note" id="analysisTime">等待解读</span>
+            <button id="btnAnalysisRefresh" class="btn tiny">重新解读</button>
+          </div>
+        </div>
+        <div id="analysisNarrative" class="an-narrative"><div class="empty">正在翻译并分析新闻…</div></div>
+        <div id="analysisMetrics" class="an-metrics"></div>
+        <div class="an-subhead">消息面对各大类资产的方向倾向 <span class="note">方向由事件主题映射，非涨跌预测</span></div>
+        <div id="analysisImpacts" class="an-impacts"></div>
+        <div class="an-subhead">主导事件主题</div>
+        <div id="analysisThemes" class="an-themes"></div>
+        <div class="an-subhead">重点新闻 <span class="note">按影响权重排序</span></div>
+        <div id="analysisHeadlines" class="an-headlines"></div>
+        <div id="analysisMethod" class="an-method"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>A 股量能与市值风格 <span class="h2-tag">可解释因子</span></h2>
+          <div class="head-actions">
+            <span class="note" id="styleTime">等待检测</span>
+            <button id="btnStyleRefresh" class="btn tiny">重新检测</button>
+          </div>
+        </div>
+        <div id="styleConclusion" class="style-conclusion"><div class="empty">正在采集两市量能与四层规模指数…</div></div>
+        <div id="styleVolume" class="style-volume"></div>
+        <div class="an-subhead">四层市值资金倾向 <span class="note">同一时点横截面相对分，不是涨跌预测</span></div>
+        <div id="styleBuckets" class="style-buckets"></div>
+        <div id="styleWarnings" class="style-warnings"></div>
+        <details id="styleMethod" class="stocks-method">
+          <summary>方法学、公式、置信度与文献出处</summary>
+          <div id="styleMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>涨停结构与市场情绪 <span class="h2-tag">板型 · 封单 · 连板梯队</span></h2>
+          <div class="head-actions">
+            <span class="note" id="limitTime">等待采集</span>
+            <button id="btnLimitRefresh" class="btn tiny">重新采集</button>
+          </div>
+        </div>
+        <div id="limitConclusion" class="events-conclusion"><div class="empty">正在采集涨停、炸板与跌停池…</div></div>
+        <div id="limitCards" class="macro-cards"></div>
+        <div class="an-subhead">连板梯队 <span class="note">封单占比 = 封单资金 / 流通市值，越厚越难被砸开；可成交性提示一字板约 31% 买不到</span></div>
+        <div id="limitLadder" class="limit-ladder"></div>
+        <div class="an-subhead">炸板池 <span class="note">盘中触及涨停但收盘未封住，是接力失败的直接证据</span></div>
+        <div id="limitFailed" class="scroll-list limit-failed"></div>
+        <div id="limitWarnings" class="style-warnings"></div>
+        <details id="limitMethod" class="stocks-method">
+          <summary>板型判定、结构分公式、实证基线与局限</summary>
+          <div id="limitMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>市场状态与事件驱动 <span class="h2-tag">利多/利空 · 板块联动</span></h2>
+          <div class="head-actions">
+            <span class="note" id="eventsTime">等待检测</span>
+            <button id="btnEventsRefresh" class="btn tiny">重新检测</button>
+          </div>
+        </div>
+        <div id="eventsConclusion" class="events-conclusion"><div class="empty">正在采集公司公告、业绩预告与快报…</div></div>
+        <div id="macroCards" class="macro-cards"></div>
+        <div class="an-subhead">四层资金弹性与避险修正 <span class="note">单位资金价格冲击为层级化近似；弹性是双向的，拉升容易、砸盘也容易</span></div>
+        <div id="macroBuckets" class="macro-buckets"></div>
+        <div class="an-subhead">利多涉及哪些板块 <span class="note">宏观事件受益 / 受损方向，龙头超预期业绩的板块联动</span></div>
+        <div id="eventSectors" class="event-sectors"></div>
+        <div class="an-subhead">事件流 <span class="note">重点关注：重大重组 / 拟收购 / 股份回购 / 重要股东减持 / 业绩超预期</span></div>
+        <div id="eventFilter" class="filter"></div>
+        <div id="eventList" class="scroll-list event-list"></div>
+        <div id="eventWarnings" class="style-warnings"></div>
+        <details id="eventsMethod" class="stocks-method">
+          <summary>事件判读、宏观模型、公式与文献出处</summary>
+          <div id="eventsMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>持仓监控 <span class="h2-tag">实时盈亏 · 确定性建议</span></h2>
+          <div class="head-actions">
+            <span class="note" id="holdingsTime">未设置持仓</span>
+            <button id="btnHoldingsRefresh" class="btn tiny">刷新</button>
+          </div>
+        </div>
+        <div id="holdingsSummary" class="events-conclusion"><div class="empty">在下方表单录入持仓（代码 / 成本价 / 股数），系统将实时监控盈亏并联动观察池评分给出建议</div></div>
+        <div id="holdingsList" class="holdings-list"></div>
+        <div class="holdings-form">
+          <input id="holdCode" placeholder="代码，如 600519" maxlength="6" inputmode="numeric">
+          <input id="holdCost" type="number" step="0.001" min="0" placeholder="成本价">
+          <input id="holdShares" type="number" step="1" min="1" placeholder="股数">
+          <input id="holdNote" placeholder="备注（可选）">
+          <button id="btnHoldAdd" class="btn tiny">添加 / 更新</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>评分有效性自检 <span class="h2-tag">Rank IC · 可证伪</span></h2>
+          <div class="head-actions">
+            <span class="note" id="icTime">等待积累</span>
+            <button id="btnIcRefresh" class="btn tiny">重算 IC</button>
+          </div>
+        </div>
+        <div id="icConclusion" class="ic-conclusion"><div class="empty">正在读取评分快照与前瞻收益…</div></div>
+        <div id="icCards" class="macro-cards"></div>
+        <div class="an-subhead">各因子组的独立预测力（T+5 Rank IC） <span class="note">正值 = 分数越高后续越强；负值 = 反向，需要复核口径</span></div>
+        <div id="icGroups" class="ic-groups"></div>
+        <div class="an-subhead">IC 时序 <span class="note">18 只样本的单日 IC 标准误约 0.24，单日数字只看形状，结论只认滚动均值</span></div>
+        <div id="icSeries" class="ic-series"></div>
+        <div class="an-subhead">经验库 <span class="note">程序自动追加到 data/ic-lessons.md，历史记录不覆盖</span></div>
+        <div id="icLessons" class="ic-lessons"></div>
+        <details id="icMethod" class="stocks-method">
+          <summary>评估口径、节点定义、局限与经验库说明</summary>
+          <div id="icMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>评估数据库与经验库 <span class="h2-tag">定格 · 复盘 · 审核回流</span></h2>
+          <div class="head-actions">
+            <span class="note" id="journalTime">等待定格</span>
+            <button id="btnJournalLive" class="btn tiny">刷新实时池</button>
+            <button id="btnJournalSnapshot" class="btn tiny">手动定格</button>
+            <button id="btnJournalReview" class="btn tiny">立即复盘</button>
+          </div>
+        </div>
+        <div id="journalStatus" class="events-conclusion"><div class="empty">每个交易日 09:05 与 22:00 各定格一版名单（含量化指标、看多理由与外围市况），收盘后自动复盘</div></div>
+        <div class="an-subhead">实时观察池 <span class="note">盘中随评分滚动更新 · 新进/移出有提示 · 不作为复盘基准</span></div>
+        <div id="journalLive" class="journal-live"><div class="empty">等待交易时段，盘中自动滚动更新</div></div>
+        <div class="an-subhead">最新定格名单 <span class="note">冻结时点的原始判断，此后不修改</span></div>
+        <div id="journalPicks" class="journal-picks"></div>
+        <div class="an-subhead">复盘统计 <span class="note">命中 = 次日跑赢同市值层基准</span></div>
+        <div id="journalStats" class="macro-cards"></div>
+        <div class="an-subhead">待审经验 <span class="note">样本 ≥ 8 才生成；人工审核通过后回流到评分（影响上限 ±2 分）</span></div>
+        <div id="journalLessons" class="journal-lessons"></div>
+        <div id="journalRules" class="journal-rules"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>周期事件日历 <span class="h2-tag">事件前 · 中 · 后三段式</span></h2>
+          <div class="head-actions">
+            <span class="note" id="cycleTime">等待研究</span>
+            <button id="btnCycleRefresh" class="btn tiny">重建研究</button>
+          </div>
+        </div>
+        <div id="cycleAlerts" class="events-conclusion"><div class="empty">按制度性规律推算事件日，用板块相对沪深300 的三段超额收益判定「预期发酵 / 兑现出货 / 滞后定价」</div></div>
+        <div class="an-subhead">临近事件（未来 45 天）</div>
+        <div id="cycleUpcoming" class="cycle-upcoming"></div>
+        <div class="an-subhead">历史事件形态统计 <span class="note">出货率 = 前涨后跌占比</span></div>
+        <div id="cycleSummary" class="cycle-summary"></div>
+        <details class="stocks-method">
+          <summary>方法论、日期口径与边界</summary>
+          <div id="cycleMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>预期研究与多因素叠加 <span class="h2-tag">主线 · 重估 · 阶段 · 共振</span></h2>
+          <div class="head-actions">
+            <span class="note" id="edgeTime">等待研究</span>
+            <button id="btnEdgeRefresh" class="btn tiny">重建研究</button>
+          </div>
+        </div>
+        <div id="edgeConclusion" class="events-conclusion"><div class="empty">板块相对强弱、市值重估的条件齐备度、板块阶段统计与多因素叠加；叠加结论不改评分，由经验库复盘统计裁决</div></div>
+
+        <div class="an-subhead">板块相对强弱 · 主线识别 <span class="note" id="edgeBench">相对沪深300</span></div>
+        <div id="edgeStrength" class="edge-strength"></div>
+
+        <div class="an-subhead">市值重估事件 · 条件清单 <span class="note">重组 / 并购 / 回购，只判断条件不预测涨幅</span></div>
+        <div id="edgeValuation" class="edge-valuation"></div>
+
+        <div class="an-subhead">板块阶段研究 <span class="note">事件三段 CAR + 板块自身价格周期</span></div>
+        <div id="edgePhase" class="edge-phase"></div>
+
+        <div class="an-subhead">多因素叠加指纹 <span class="note">不改分 · 形态写入定格存证由复盘验证</span></div>
+        <div id="edgeStack" class="edge-stack"></div>
+        <details class="stocks-method">
+          <summary>方法论、数据口径与诚实边界</summary>
+          <div id="edgeMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>资金主体与避险识别 <span class="h2-tag">龙虎榜 · 两融 · 大宗</span></h2>
+          <div class="head-actions">
+            <span class="note" id="flowTime">等待采集</span>
+            <button id="btnFlowRefresh" class="btn tiny">增量更新</button>
+          </div>
+        </div>
+        <div id="riskoffBox" class="events-conclusion"><div class="empty">识别 L1 轮动 / L2 风格 / L3 离场 / L4 离境四种避险形态，并明确回答「钱去了其他板块还是出了股市」</div></div>
+        <div class="an-subhead">主体行为画像（近一年龙虎榜）</div>
+        <div id="flowActors" class="flow-actors"></div>
+        <div class="an-subhead">市值层资金倾向 <span class="note">龙虎榜净买，按主体拆分</span></div>
+        <div id="flowBuckets" class="style-buckets"></div>
+        <div id="flowMargin" class="flow-margin"></div>
+        <div class="an-subhead">大宗交易与筹码集中度</div>
+        <div id="flowExtras" class="flow-extras"></div>
+        <details class="stocks-method">
+          <summary>口径、样本与已知局限</summary>
+          <div id="flowMethodBody"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>数据源状态</h2>
+          <span class="note">主源异常时自动降级到备用源，失败会生成系统告警</span>
+        </div>
+        <div id="sourceHealth" class="health-grid"></div>
+      </section>
+
+    </div>
+
+    <aside class="col-side">
+
+      <section class="panel panel-flex">
+        <div class="panel-head">
+          <h2>告警中心</h2>
+          <div class="head-actions">
+            <button id="btnTest" class="btn tiny">链路自检</button>
+            <button id="btnClear" class="btn tiny ghost">清空</button>
+          </div>
+        </div>
+        <div id="alertFilter" class="filter"></div>
+        <div id="alertList" class="scroll-list alert-list"></div>
+      </section>
+
+      <section class="panel panel-flex">
+        <div class="panel-head">
+          <h2>全球新闻 <span class="h2-tag">自动中文化</span></h2>
+          <div class="head-actions">
+            <button id="btnNewsLang" class="btn tiny" title="切换中文译文 / 原文">原文</button>
+          </div>
+        </div>
+        <div id="newsFilter" class="filter"></div>
+        <div id="newsCount" class="note news-count">--</div>
+        <div id="newsList" class="scroll-list news-list"></div>
+      </section>
+
+    </aside>
+  </main>
+
+  <section class="panel stock-panel">
+    <div class="panel-head">
+      <h2>当日观察池 <span class="h2-tag">多因子量化筛选</span></h2>
+      <div class="head-actions">
+        <span class="note" id="stocksTime">等待计算</span>
+        <button id="btnStocksRefresh" class="btn tiny">重新计算</button>
+        <button id="btnStocksMethod" class="btn tiny ghost">技术逻辑</button>
+      </div>
+    </div>
+    <div id="stocksMeta" class="stocks-meta"></div>
+    <div id="stocksNote" class="stocks-note"></div>
+    <div class="table-wrap stocks-wrap">
+      <table class="stocks-table">
+        <thead><tr>
+          <th>#</th><th>代码 / 名称</th><th>行业</th><th>现价</th><th>涨跌幅</th>
+          <th>综合评分</th><th>信号</th><th>置信度</th><th>技术/资金/舆情</th><th>热度 / 外围</th><th>市值层 / 风格</th><th>板型</th><th>事件 / 宏观</th><th>核心依据</th>
+        </tr></thead>
+        <tbody id="stocksBody"></tbody>
+      </table>
+    </div>
+    <div id="stocksDetail" class="stocks-detail hidden"></div>
+    <details id="stocksMethod" class="stocks-method">
+      <summary>评分方法、指标口径与 GitHub 参考项目</summary>
+      <div id="stocksMethodBody"></div>
+    </details>
+    <div id="stocksDisclaimer" class="stocks-disclaimer"></div>
+  </section>
+
+  <footer class="footer">
+    <span>数据来源：CNBC Quote API（交易所 / Tradeweb）、新浪财经、东方财富、Yahoo Finance、Google News、BBC、The Guardian、Al Jazeera、中新网；A 股行情、日线、主力资金、四个规模指数（沪深300 / 中证500 / 中证1000 / 中证2000）、全市场宽度快照、公司公告、业绩预告与业绩快报来自东方财富公开接口。</span>
+    <span>英文新闻标题由机器翻译自动生成中文并标注「译」，中文原生新闻保持原文；新闻解读与观察池为基于公开规则的可解释推理，不含价格预测，不构成投资建议。</span>
+    <span>所有数值均为程序实时抓取，时间统一换算为北京时间（UTC+8）；标注「延迟」的报价以数据源自有节奏更新。本系统仅用于信息监测与提醒，不构成投资建议。市场有风险，投资需谨慎。</span>
+  </footer>
+</div>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<div id="settingsMask" class="mask hidden"></div>
+<aside id="settings" class="drawer hidden">
+  <div class="drawer-head">
+    <div><h2>告警设置</h2><p>修改后立即生效，并保存到本地配置文件</p></div>
+    <button id="btnCloseSettings" class="btn tiny ghost">关闭</button>
+  </div>
+  <div class="drawer-body">
+
+    <div class="form-block">
+      <h3>采集频率</h3>
+      <div class="form-row">
+        <label>行情轮询（秒）<input id="cfgQuoteInterval" type="number" min="5" max="600" step="1"></label>
+        <label>新闻轮询（秒）<input id="cfgNewsInterval" type="number" min="20" max="900" step="5"></label>
+        <label>告警冷却（秒）<input id="cfgCooldown" type="number" min="10" max="3600" step="10"></label>
+      </div>
+      <p class="hint">同一规则 + 标的在冷却期内只报一次，避免噪音淹没核心信号。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>声音与消息</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgSoundEnabled" type="checkbox"> 启用提示音</label>
+        <label class="check"><input id="cfgNotifyEnabled" type="checkbox"> 启用桌面通知</label>
+      </div>
+      <div class="form-row">
+        <label>音量 <span id="volText" class="val">55%</span><input id="cfgVolume" type="range" min="0" max="100" step="5"></label>
+        <label>声音最低级别<select id="cfgSoundMin"><option value="info">提示</option><option value="warning">警告</option><option value="critical">严重</option></select></label>
+        <label>通知最低级别<select id="cfgNotifyMin"><option value="info">提示</option><option value="warning">警告</option><option value="critical">严重</option></select></label>
+      </div>
+      <div class="form-row">
+        <button id="btnNotifyPerm" class="btn tiny">请求桌面通知权限</button>
+        <button id="btnSoundTest" class="btn tiny">试听提示音</button>
+        <span id="permText" class="hint inline">未授权</span>
+      </div>
+    </div>
+
+    <div class="form-block">
+      <h3>免打扰</h3>
+      <div class="form-row">
+        <label class="check"><input id="cfgQuietEnabled" type="checkbox"> 启用免打扰时段</label>
+        <label>从<input id="cfgQuietFrom" type="time"></label>
+        <label>到<input id="cfgQuietTo" type="time"></label>
+      </div>
+      <p class="hint">免打扰期间告警仍会记录和显示，但不播放声音、不弹出桌面通知。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>各指标阈值</h3>
+      <p class="hint">留空表示不启用该项。价格 / 指数类：单轮跳变与日内变动按 %；收益率与利差：按 bp（1bp = 0.01 个百分点）。上下限填该指标的实际数值。</p>
+      <div class="table-wrap">
+        <table class="rules-table">
+          <thead><tr><th>指标</th><th>启用</th><th>上限</th><th>下限</th><th>单轮</th><th>日内</th></tr></thead>
+          <tbody id="rulesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="form-block">
+      <h3>新闻关键词告警</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgNewsAlertEnabled" type="checkbox"> 启用新闻关键词告警</label>
+      </div>
+      <label class="stack-label">关键词（英文逗号或换行分隔，命中即提醒）</label>
+      <textarea id="cfgKeywords" rows="5" spellcheck="false"></textarea>
+      <p class="hint">建议只放高影响事件词。常见词如 gold / oil 会命中大量新闻，造成告警疲劳。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>新闻中文化与解读</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgAnalysisEnabled" type="checkbox"> 启用新闻解读</label>
+        <label class="check"><input id="cfgAutoTranslate" type="checkbox"> 英文新闻自动译为中文</label>
+      </div>
+      <div class="form-row">
+        <label>翻译摘要条数<input id="cfgTranslateDesc" type="number" min="0" max="120" step="5"></label>
+        <label>解读重算间隔（秒）<input id="cfgAnalysisRefresh" type="number" min="30" max="1800" step="30"></label>
+      </div>
+      <p class="hint">译文会落盘缓存，重启后不重复请求。关闭翻译后英文新闻显示原文；解读仍会基于原文词典运行。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>当日观察池</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgStocksEnabled" type="checkbox"> 启用 A 股观察池</label>
+        <label class="check"><input id="cfgAttentionEnabled" type="checkbox"> 启用人气热度与个股舆情</label>
+      </div>
+      <div class="form-row">
+        <label>分析标的数（8–30）<input id="cfgStocksMax" type="number" min="8" max="30" step="1"></label>
+        <label>日线重算间隔（分钟）<input id="cfgStocksRefresh" type="number" min="1" max="240" step="1"></label>
+        <label>热榜轮询（分钟）<input id="cfgAttentionRefresh" type="number" min="1" max="240" step="1"></label>
+      </div>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgStyleEnabled" type="checkbox"> 启用大盘量能与市值风格检测</label>
+        <label class="check"><input id="cfgStyleBreadth" type="checkbox"> 启用全市场宽度（约 56 页快照）</label>
+      </div>
+      <div class="form-row">
+        <label>风格重算间隔（分钟）<input id="cfgStyleRefresh" type="number" min="1" max="240" step="1"></label>
+        <label>个股风格修正上限（±分）<input id="cfgStyleMaxAdjust" type="number" min="0" max="20" step="1"></label>
+      </div>
+      <p class="hint">量能风格以沪深300 / 中证500 / 中证1000 / 中证2000 代理大盘 / 中盘 / 小盘 / 微盘，融合成交额占比偏移、风格相对动量、带符号量价配合、份额‑收益弹性与层内宽度。个股按流通市值归层后获得 ±maxAdjust 分修正。候选池为东财行情三榜（涨幅 / 成交额 / 主力净流入）+ 人气两榜（东财人气榜 / 同花顺热榜），按 45% 热度配额分层抽样，非全市场扫描。新闻解读、人气热榜或外围行情变化会自动触发轻量重评分（复用缓存指标，不额外拉日线）；评分为横截面相对排序，不是买卖建议。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>事件与宏观状态</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgEventsEnabled" type="checkbox"> 启用公司事件 / 业绩超预期检测</label>
+        <label class="check"><input id="cfgEventsAlert" type="checkbox"> 重点事件即时声音与通知</label>
+        <label class="check"><input id="cfgRiskOffEnabled" type="checkbox"> 启用机构避险状态</label>
+      </div>
+      <div class="form-row">
+        <label>存量博弈阈值（亿元）<input id="cfgVolumeThreshold" type="number" min="5000" max="100000" step="1000"></label>
+        <label>龙头流通市值下限（亿元）<input id="cfgLeaderCap" type="number" min="100" max="3000" step="50"></label>
+        <label>业绩回看天数<input id="cfgEventLookback" type="number" min="3" max="60" step="1"></label>
+      </div>
+      <div class="form-row">
+        <label>事件采集间隔（分钟）<input id="cfgEventsRefresh" type="number" min="1" max="240" step="1"></label>
+        <label>事件修正上限（±分）<input id="cfgEventMaxAdjust" type="number" min="0" max="24" step="1"></label>
+        <label>四项修正合计上限（±分）<input id="cfgTotalMaxAdjust" type="number" min="0" max="40" step="1"></label>
+      </div>
+      <p class="hint">两市成交额低于阈值时判为「存量博弈 / 板块轮动」，按 Amihud 单位资金价格冲击给微盘、小盘弹性加成（同时提示下跌时同样容易被砸）；全球经济不确定性升温时按机构避险温度偏好大盘与防御板块，并抑制弹性加成。重大重组、拟收购、股份回购、重要股东减持进入重点关注并即时提醒；业绩按预告类型、同比幅度与损益质量判断是否超预期，龙头超预期业绩会带动同板块标的。公告标题不等于事实，A 股 PEAD 样本外方向不稳健，请注意「利好出尽」与 T+1、涨跌停限制。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>权重结构、价值陷阱与评分自检</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgStageWeights" type="checkbox"> 按市值层切换权重（微盘偏情绪 / 大盘偏趋势与资金）</label>
+        <label class="check"><input id="cfgValueTrap" type="checkbox"> 价值陷阱过滤（低估值 + 盈利恶化扣分）</label>
+        <label class="check"><input id="cfgIcEnabled" type="checkbox"> 启用评分有效性自检（Rank IC）</label>
+      </div>
+      <div class="form-row">
+        <label>定格时点<select id="cfgIcSnapshot"><option value="pm">14:50 收盘前</option><option value="close">15:05 收盘后</option><option value="am">10:30 盘中</option></select></label>
+        <label>前瞻窗口（交易日，逗号分隔）<input id="cfgIcHorizons" type="text" placeholder="1,3,5,10"></label>
+        <label>滚动窗口（快照日）<input id="cfgIcRoll" type="number" min="5" max="120" step="5"></label>
+      </div>
+      <p class="hint">自检每天在定格时点保存一次评分快照（同一天同类型只存一次），冻结后用真实日线计算 T+1/3/5/10 个交易日的前瞻收益，逐日算横截面 Spearman Rank IC 并滚动聚合。池子每天换股票不影响评估——IC 衡量的是「同一天这批标的内部，分数排序与后续收益排序是否一致」。Rank IC 对大盘涨跌天然免疫（减去同一收益不改变秩次）。经验会写入 data/ic-lessons.md：观测窗口、IC 与显著性、因子组排序、分档单调性、存量/增量市场分层与可执行建议。</p>
+    </div>
+
+    <div class="form-block">
+      <h3>闭环四模块</h3>
+      <div class="form-row checks">
+        <label class="check"><input id="cfgJournalEnabled" type="checkbox"> 经验库（09:05 / 22:00 定格 + 复盘 + 审核回流）</label>
+        <label class="check"><input id="cfgJournalLive" type="checkbox"> 实时观察池（盘中随评分滚动更新）</label>
+        <label class="check"><input id="cfgCycleEnabled" type="checkbox"> 周期事件研究</label>
+        <label class="check"><input id="cfgFlowEnabled" type="checkbox"> 资金主体采集（龙虎榜一年回填）</label>
+        <label class="check"><input id="cfgRiskoffEnabled" type="checkbox"> 避险识别</label>
+        <label class="check"><input id="cfgEdgeEnabled" type="checkbox"> 预期研究层（主线 / 重估 / 阶段 / 叠加）</label>
+      </div>
+      <div class="form-row">
+        <label>开盘定格<input id="cfgJournalOpen" type="time"></label>
+        <label>收盘定格<input id="cfgJournalEve" type="time"></label>
+        <label>复盘时点<input id="cfgJournalReview" type="time"></label>
+      </div>
+      <div class="form-row">
+        <label>高频席位门槛（次/年）<input id="cfgFlowSeatMin" type="number" min="5" max="100" step="5"></label>
+        <label>实时池容量（只）<input id="cfgJournalLiveLimit" type="number" min="6" max="30" step="1"></label>
+      </div>
+      <div class="form-row">
+        <label>预期研究刷新间隔（分钟）<input id="cfgEdgeRefresh" type="number" min="2" max="240" step="1"></label>
+        <label>重估候选上限（只）<input id="cfgEdgeValLimit" type="number" min="5" max="100" step="5"></label>
+      </div>
+      <p class="hint">经验库回流边界：审核通过的经验只以乘数微调涨停结构修正（单股 ±2 分、不翻转符号、乘数 ∈ [0.8, 1.25]），经验可以微调判断但不能接管判断。周期事件的日期只来自「制度性规律推算」或「人工录入」，未录入的日程显式标注待确认，绝不猜测。预期研究层与多因素叠加<strong>不修改任何评分</strong>；叠加形态只写入定格存证，须由复盘统计（n≥8）与人工审核确认后才谈得上影响判断。</p>
+    </div>
+
+  </div>
+  <div class="drawer-foot">
+    <button id="btnResetCfg" class="btn ghost">恢复默认</button>
+    <button id="btnSaveCfg" class="btn primary">保存设置</button>
+  </div>
+</aside>
+
+<script src="/app.js"></script>
+</body>
+</html>

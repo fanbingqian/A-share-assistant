@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>经验体系 v3 · 双向经验 / 市场状态 / 冲突辨别 / 交互方案</title>
+<style>
+:root{--ink:#1b2430;--muted:#5b6776;--line:#dfe5ec;--bg:#f7f9fb;--card:#ffffff;--blue:#185FA5;--blueBg:#eaf2fb;--amber:#854F0B;--amberBg:#fdf3e3;--red:#a32d2d;--redBg:#fbecec;--green:#0F6E56;--greenBg:#e7f5ef}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.72;font-size:14.5px}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 26px 60px}
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px}
+h1{font-size:26px;margin:0 0 8px;line-height:1.35}
+.sub{color:var(--muted);font-size:13.5px;margin:0}
+.badges{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:12px;padding:3px 10px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--muted)}
+.badge.on{background:var(--blueBg);border-color:#b9d3ee;color:var(--blue)}
+.badge.warn{background:var(--amberBg);border-color:#eed6ae;color:var(--amber)}
+h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--blue)}
+h3{font-size:15.5px;margin:22px 0 8px}
+h4{font-size:14px;margin:16px 0 6px;color:var(--muted)}
+p{margin:9px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;background:#fff;font-size:13.3px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:#eef2f7;font-weight:600;color:#33404f}
+td code,th code,p code,li code{background:#f1f4f8;padding:1px 5px;border-radius:4px;font-family:Consolas,"Courier New",monospace;font-size:12.4px;color:#25436b}
+pre{background:#f4f6f9;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:6px;padding:13px 15px;overflow-x:auto;font-family:Consolas,"Courier New",monospace;font-size:12.6px;line-height:1.62;margin:10px 0;white-space:pre}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:14px 0}
+.tldr{background:var(--blueBg);border:1px solid #c3daf0;border-radius:10px;padding:18px 22px;margin-bottom:8px}
+.tldr h2{margin:0 0 10px;border:0;padding:0;font-size:18px}
+.tldr ol{margin:0;padding-left:20px}
+.tldr li{margin:7px 0}
+.note{background:var(--amberBg);border-left:4px solid #d9a441;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.4px}
+.danger{background:var(--redBg);border-left:4px solid var(--red);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.4px}
+.good{background:var(--greenBg);border-left:4px solid var(--green);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.4px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:19px;font-weight:600;margin-top:3px;color:var(--ink)}
+.up{color:var(--red)}
+.down{color:var(--green)}
+.small{font-size:12.6px;color:var(--muted)}
+ul,ol{padding-left:22px;margin:9px 0}
+li{margin:5px 0}
+.src{font-size:12.3px;color:var(--muted);margin-top:6px}
+footer{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;font-size:12.6px;color:var(--muted)}
+.tagA{color:var(--green);font-weight:600}
+.tagB{color:var(--amber);font-weight:600}
+.tagC{color:var(--muted);font-weight:600}
+.wire{background:#f4f6f9;border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0;font-family:Consolas,"Courier New",monospace;font-size:12.2px;line-height:1.5;white-space:pre;overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>经验体系 v3 · 双向经验 / 市场状态 / 冲突辨别 / 交互方案</h1>
+<p class="sub">衔接 GlobalMarketMonitor（8777 单服务 · Node 零第三方依赖）｜设计态文档，2026-11-19｜承接 v1「个人经验工程与因素体系」、v2「风险提示层与事前信号」</p>
+<div class="badges">
+<span class="badge on">本次未改动任何现有代码或数据文件</span>
+<span class="badge">承接 31 条因素规格 / Flag 层 / precommit</span>
+<span class="badge warn">所有行情数字均标注来源与取数时点</span>
+<span class="badge">智能体不进判断链路</span>
+</div>
+</header>
+
+<div class="tldr">
+<h2>先给结论</h2>
+<ol>
+<li><strong>不用另起炉灶。</strong>你要的「大盘状态 / 板块轮动 / 涨跌原因」数据，系统里已有七类缓存；缺的是把它们组织成「可证伪的解释 + 双向经验 + 冲突并列」的那一层，以及界面上放证据的位置。</li>
+<li><strong>「冲突需要智能体」只对一半。</strong>冲突里的事实与口径冲突靠确定性重算裁定，解释冲突根本不该被裁决。LLM 的合法职责是发现、抽取、归类、生成证伪条件；最危险的行为恰恰是它默认会做的「折中合成」。</li>
+<li><strong>形态是计算，原因是假说，两者永不混存。</strong>四象限由开/收/前收三个数算出来，写进事实账本；「背后逻辑」只做成带证伪条件的假说卡，每天最多登记一个主假说。</li>
+<li><strong>交互不是三选一。</strong>推荐「现有三栏工作台补右栏」作骨架 + 「今日结论卡」作首屏 + 「复盘时间线」作子页 + 复用已有桌面通知作提醒通道。</li>
+<li><strong>参考程序只借鉴架构，不搬代码。</strong>检索到的开源项目里，没有单一项目同时做好状态识别、轮动分析与复盘知识库；且多数是 Python / GPL / AGPL，与零依赖 Node 主服务冲突。</li>
+</ol>
+</div>
+
+<h2>一、现状核验：已经有什么，缺什么</h2>
+
+<h3>1.1 已有的数据资产（本次逐文件核对，2026-11-19）</h3>
+<table>
+<thead><tr><th>文件</th><th>已核实的真实字段</th><th>本方案中的用途</th></tr></thead>
+<tbody>
+<tr><td><code>data/market-breadth.json</code></td><td><code>up / down / flat</code>、<code>agg.micro·small·mid</code> 分市值涨跌、<code>amountTotal / flowTotal</code></td><td>四象限「含金量」中的市场广度与普涨/普跌判定</td></tr>
+<tr><td><code>data/market-style.json</code></td><td><code>volume.ratio20 / z20 / percentile / state</code>（当前为「地量」）、<code>breadth</code>、<code>dominantLabel</code></td><td>量能位置、风格档位、是否存量博弈</td></tr>
+<tr><td><code>data/strength-cache.json</code></td><td><code>leaders / laggards / mainlines</code>、<code>ex5 / ex10 / ex60</code>、<code>crowdCross</code></td><td>板块相对强弱、领涨/滞后、拥挤度</td></tr>
+<tr><td><code>data/phase-cache.json</code></td><td><code>methodology.stage</code>：启动 / 加速 / 高位 / 退潮 / 弱势，基于 <code>ex5 · ex20</code> 相对超额</td><td>板块轮动阶段，直接复用现成定义</td></tr>
+<tr><td><code>data/flow-cache.json</code></td><td><code>actors</code>（机构 / 北向 / 游资）、<code>tilt · margin · bucketFlow</code></td><td>资金主体与风格切换证据</td></tr>
+<tr><td><code>data/riskoff-cache.json</code></td><td><code>form / score / evidence / direction</code>、L1 板块内轮动 / L2 风格避险等分层</td><td>区分「场内搬家」与「离场」</td></tr>
+<tr><td><code>data/cycle-cache.json</code></td><td>事件 <code>sellNewsRate / trendRate / lateRate / n</code></td><td>「利好兑现 / 提前布局」类假说的天然支持与反例计数器</td></tr>
+<tr><td><code>data/attribution-cache.json</code></td><td><code>items</code> 公告原事实、<code>disclaimer</code>「不认定原因」</td><td>个股涨跌线索；已确立「事实卡 ≠ 原因」的正确边界</td></tr>
+</tbody>
+</table>
+<p class="src">来源：项目内 <code>data/</code> 与 <code>server/</code> 文件直接读取，2026-11-19 核验。这些是系统自身的缓存快照，不是外部行情结论。</p>
+
+<h3>1.2 已有的界面骨架（本次逐行核对）</h3>
+<ul>
+<li><code>web/index.html</code>：20 余个 <code>section.panel</code> 纵向堆叠，<code>/api/*</code> 共 30 余个 GET/POST 路由已在 <code>server/server.js</code> 注册。</li>
+<li><code>web/interaction.js</code> 的 <code>#iwShell</code>：<code>.iw-body</code> 已是 <code>display:flex</code>，含 <code>.iw-side</code>（<code>flex:0 0 224px</code>）与 <code>.iw-main</code>（<code>flex:1</code>）——<strong>两栏工作台已上线</strong>。</li>
+<li><code>web/shell.js</code>：把 17 个真实面板按四组收进左侧导航，顶部有 <code>gm-switch</code> 模式切换条；文件头注释明确「纯增量、零字节改动 app.js / server」、删两行即回退。</li>
+<li><code>web/index.html</code> 状态带已写「<code>未接 LLM</code> / 不参与任何评分」——与前两版设计的铁律一致。</li>
+</ul>
+<div class="good"><strong>结论：</strong>三栏工作台只差右栏一个 <code>.iw-evidence</code> 容器，不需要重构布局，也不需要引入前端框架。继续沿用 <code>shell.js</code> 已验证的「纯增量 + 可回退」模式。</div>
+
+<h3>1.3 真正缺的四样</h3>
+<div class="grid2">
+<div class="kpi"><div class="k">① 双向经验</div><div class="v">只有单向 lessons</div><p class="small"><code>journal.js:512</code> 的 <code>LESSON_DIMENSIONS</code> 从 outcome 切维度统计，无极性、无作用域、无用户画像。</p></div>
+<div class="kpi"><div class="k">② 形态事实账本</div><div class="v">无显式开/收/前收落盘</div><p class="small">现有缓存有涨跌与量能，但没有把「两市各自四象限」作为可复算事实逐日登记。</p></div>
+<div class="kpi"><div class="k">③ 解释与冲突</div><div class="v">无假说卡 / 无冲突台账</div><p class="small">「背后逻辑」与「事实」混在叙述里；多来源结论冲突时既无检测也无并列存证。</p></div>
+<div class="kpi"><div class="k">④ 证据的落脚点</div><div class="v">界面没有右栏</div><p class="small">Flag、来源、时点、反例、precommit 无法在主视图旁对照，只能靠记忆或滚动。</p></div>
+</div>
+
+<h2>二、双向经验账本：踩坑与好经验，都走同一道闸门</h2>
+
+<h3>2.1 三个必须补的维度</h3>
+<table>
+<thead><tr><th>维度</th><th>取值</th><th>为什么必须有</th></tr></thead>
+<tbody>
+<tr><td><code>polarity</code></td><td><code>pitfall</code> 踩坑 / <code>win</code> 好经验</td><td>两类都要存。只存踩坑会让系统越来越保守；只存好经验会放大确认偏误。</td></tr>
+<tr><td><code>scope</code></td><td><code>market</code> 大盘 / <code>sector</code> 板块 / <code>stock</code> 个股 / <code>self</code> 自身行为</td><td>「高开低走」是大盘层，「医保准入但支付标准未公布」是个股层，「我又追高了」是自身行为层，混在一起无法统计。</td></tr>
+<tr><td><code>patternFamily</code> + <code>variant</code></td><td>族群 + 变体两级</td><td>回应你说的「每次出现的问题可能都不一样」：新情况生成<strong>变体子条目</strong>，挂到同一族群下，不覆盖原条目、不无限并列。例：<code>event-sellnews</code> 族群下挂「新药获批」「医保准入」「订单公告」等变体。</td></tr>
+</tbody>
+</table>
+
+<h3>2.2 个性化画像：显式声明 + 行为反推，冲突时以行为为准</h3>
+<p>同一个提示对不同的人价值不同。系统要有 <code>profile.json</code>，但<strong>不能靠 LLM 猜画像</strong>：一半字段由用户显式填写，另一半从 <code>trades.jsonl</code>（v1 已提出、尚未建立）确定性计算，两者不一致时以行为为准并给提示。</p>
+<div class="grid2">
+<div class="card"><h4>显式声明（用户填）</h4><ul><li>自述风格：隔夜短线 / 波段 / 中长线</li><li>单票仓位上限、可接受最大回撤</li><li>是否做 T、是否参与涨停/打板</li><li>偏好的买点类型：追涨 / 回踩 / 突破</li><li>常用信息来源：公告 / 研报 / 自媒体 / 他人推荐</li></ul></div>
+<div class="card"><h4>行为反推（确定性计算）</h4><ul><li>实际持仓周期分布（中位数、P90）</li><li>买入时相对 20 日高低点的位置分位</li><li>仓位集中度、单日换手频率</li><li>计划偏离度：实际操作 vs precommit</li><li>处置效应：盈利单与亏损单持有天数之差</li><li>复盘覆盖率：有复盘的交易日占比</li></ul></div>
+</div>
+<p class="note"><strong>画像只影响「提示怎么显示、显示给谁」，不直接改评分。</strong>例：「高开低走 + 缩量」对隔夜短线画像标「强警示」，对中长线画像标「仅供参考」，但两者背后的事实与反例计数完全相同。这样个性化不会变成给不同人编不同结论。</p>
+
+<h3>2.3 数据契约（新增文件，不改动现有 <code>lessons.jsonl</code>）</h3>
+<pre>{
+  "id": "exp-20261119-0007",
+  "polarity": "pitfall",
+  "scope": "stock",
+  "patternFamily": "event-sellnews",
+  "variant": "医保目录准入 · 支付标准未公布",
+  "claim": "公告前已抢跑涨停且支付标准未落地时，后续波动风险上升",
+  "precommit": {
+    "registeredAt": null,
+    "expected": "事件落地后短期偏弱",
+    "falsifier": "支付标准同期公布且成交放大，价格仍连续上行"
+  },
+  "evidence": {
+    "n": 0, "nContradict": 0,
+    "firstSeen": null, "lastSeen": null
+  },
+  "profileTag": ["event-driven", "short-hold"],
+  "sourceGrade": "B",
+  "stage": "shadow",
+  "scoreImpact": 0,
+  "reviewedBy": null,
+  "retiredAt": null
+}</pre>
+<p class="small">时间戳字段一律由系统写入，示例置 <code>null</code>，不预填具体时刻。<code>nContradict</code> 来自 <code>counterexamples.jsonl</code>（v2 已定义）；<code>stage</code> 取值沿用 v1 的五级：<code>registered → shadow → candidate → approved → retired</code>。</p>
+
+<h3>2.4 同一套闸门，两个方向</h3>
+<table>
+<thead><tr><th>闸门</th><th>踩坑经验</th><th>好经验（更容易被放过的地方）</th></tr></thead>
+<tbody>
+<tr><td>事前登记</td><td>写下「什么现象算我错」</td><td><strong>同样必须写</strong>。成功最容易事后编理由，没有 precommit 的「好经验」一律不采信。</td></tr>
+<tr><td>影子验证</td><td>不改分，只记触发与后续 T+1/T+5/T+20</td><td>同左；且必须统计「同样信号触发但没赚到」的样本。</td></tr>
+<tr><td>样本门槛</td><td>n≥30、样本外不劣化、单一主假说</td><td>同左，<strong>不放宽</strong>。</td></tr>
+<tr><td>人工采纳</td><td>审核后才可回流</td><td>同左，不允许「看起来很合理」直接升为规则。</td></tr>
+<tr><td>有界回流</td><td>±2 分 / 乘数 0.8–1.25 / 不翻符号</td><td>同左，且冻结基线 v0 永久对照。</td></tr>
+<tr><td>失效退役</td><td>连续两期样本外劣化 → <code>retired</code></td><td>同左。市场状态变了，好经验也会过期。</td></tr>
+</tbody>
+</table>
+
+<h2>三、两市四象限：形态是计算，原因是假说</h2>
+
+<h3>3.1 可计算定义（写死，不允许 LLM 改写）</h3>
+<pre>gap      = open / prevClose - 1
+intraday = close / open - 1
+dayChange = close / prevClose - 1
+quadrant = (gap &gt;= 0 ? "高开" : "低开") + (intraday &gt;= 0 ? "高走" : "低走")</pre>
+<p>上证（<code>sh000001</code>）与深证成指（<code>sz399001</code>）<strong>各自独立标注</strong>；两市象限不一致时记 <code>divergence: true</code>，这本身就是一条值得入库的结构信号。</p>
+<div class="danger"><strong>必须区分 <code>intraday</code> 与 <code>dayChange</code>。</strong>「高开低走」不等于「指数下跌」。以 2026-11-18 为例：前收 3584.58、开 3596.55、收 3587.83，按定义是<strong>高开低走</strong>，但当日 <code>dayChange</code> 为 <span class="up">+0.09%</span> 仍是收涨（来源：westock-data <code>sh000001</code> 日 K，取数 2026-11-19）。若把两者混成一个字段，系统会把「形态」误写成「涨跌结论」。</div>
+
+<h3>3.2 「含金量」六维：全部映射到已有缓存，不新建数据管道</h3>
+<table>
+<thead><tr><th>观察维度</th><th>直接取用的字段</th><th>指向高走 / 指向低走</th></tr></thead>
+<tbody>
+<tr><td>市场广度</td><td><code>market-breadth.json: up / down / agg</code></td><td>上涨家数占优、多板块普涨 → 高走；涨少跌多、仅权重独拉 → 低走</td></tr>
+<tr><td>量能位置</td><td><code>market-style.json: ratio20 / z20 / percentile / state</code></td><td>温和放量 → 高走；地量、缩量高开 → 承接不足</td></tr>
+<tr><td>板块位置</td><td><code>phase-cache.json: stage / ex5 / ex20</code></td><td>启动 / 加速且扩散 → 高走；高位 / 退潮 → 兑现压力</td></tr>
+<tr><td>相对强弱</td><td><code>strength-cache.json: leaders / laggards / crowdCross</code></td><td>主线清晰且多板块同步 → 高走；单一板块独涨 → 脆弱</td></tr>
+<tr><td>资金主体</td><td><code>flow-cache.json: actors / tilt / margin</code></td><td>增量入场 → 高走；存量博弈、杠杆退潮 → 低走</td></tr>
+<tr><td>避险形态</td><td><code>riskoff-cache.json: form / direction</code></td><td>无避险形态 → 中性；L1 板块内轮动 / L2 风格避险 → 结构分化</td></tr>
+</tbody>
+</table>
+<p class="src">方法论依据：项目内 <code>references/market-state.md</code>（广度恶化是前置信号、指数涨不等于健康）、<code>references/macro-transmission.md</code>（传导链必须经中间变量）、<code>references/abnormal-detection.md</code>（跳空四类归因、位置决定含义）。字段来源：项目内缓存文件，2026-11-19 核验。</p>
+<div class="note"><strong>阈值不要照抄外部统计。</strong>检索到的「高开低走占 19.59%、低开高走占 29.81%」「微高开走低约 54%」等数字来自媒体转述与民间回测，<strong>非一手来源、需核实原文</strong>，口径（指数 vs 全 A、样本区间、形态定义）均不明确。系统应改用自身历史开盘分布做分位，不预置普适阈值。</div>
+
+<h3>3.3 板块轮动与涨跌原因：只做「线索 + 假说」，不做结论</h3>
+<ul>
+<li><strong>轮动阶段</strong>直接复用 <code>phase-cache.json</code> 已定义的五阶段，不新造分类。方法论 <code>references/sector-comparison.md</code> 明确要求按「逻辑 / 位置 / 催化 / 资金 / 拥挤度」横向比较，并写有硬约束：<strong>板块轮动是结果不是预测，别用后视镜推断下一个是谁</strong>。</li>
+<li><strong>背后原因</strong>按 <code>references/abnormal-detection.md</code> 的四类驱动排查：事件 / 板块 / 技术 / 资金；每条只登记为线索，附来源时点。宏观层若涉政策或利率，须写出 <code>A → B → C</code> 完整传导链，不允许「所有板块都受益」式泛化。</li>
+<li><strong>「利好出货 vs 提前布局」</strong>这类判断事后永远能自圆其说。唯一能变成经验的方式仍是 v1 定的 <code>precommit</code>：事前写预判与证伪条件，事后只做对照。<code>cycle-cache.json</code> 的 <code>sellNewsRate</code> 可直接作为该族群的支持/反例计数器。</li>
+</ul>
+
+<h3>3.4 解释假说卡契约</h3>
+<pre>{
+  "id": "hyp-20261119-01",
+  "claim": "隔夜外围利好在竞价一次性定价，增量资金缺位导致高开低走",
+  "mechanismChain": ["隔夜外围上涨", "竞价高开", "无新增买盘接力", "存量资金兑现", "收低于开"],
+  "observable": ["竞价量能相对近期分位", "开盘30分钟是否破开盘价", "上涨家数占比", "成交额 ratio20"],
+  "falsifier": "竞价放量 + 开盘半小时不破开盘价 + 上涨家数占优，当日仍收低于开",
+  "sourceGrade": "A/B/C",
+  "supportN": 0, "contradictN": 0,
+  "dailyPrimary": true,
+  "lastVerified": null
+}</pre>
+<p class="small">每天最多一条 <code>dailyPrimary: true</code>。这条纪律是专门为了防止「五个原因一起写」——事后总能凑够五条，但每条都无法证伪。</p>
+
+<h2>四、冲突辨别：四类冲突，四种处理</h2>
+
+<h3>4.1 真实案例（本次检索现场产生，直接当第一条样本）</h3>
+<table>
+<thead><tr><th>项</th><th>叙述层说法</th><th>行情层可复算事实</th><th>裁定</th></tr></thead>
+<tbody>
+<tr><td>2026-11-17 形态</td><td>检索文字总结写「低开高走」</td><td>前收 3602.57 / 开 3585.67 / 收 3584.58 → 低开且收低于开</td><td><strong>低开低走</strong>；叙述层记 <code>narrative_conflict</code>，不采信</td></tr>
+<tr><td>2026-11-18 形态</td><td>「高开低走」</td><td>前收 3584.58 / 开 3596.55 / 收 3587.83</td><td>高开低走成立，但 <code>dayChange</code> 为 <span class="up">+0.09%</span>，须并列展示两个字段</td></tr>
+<tr><td>2026-11-19 形态</td><td>「低开低走」</td><td>前收 3587.83 / 开 3583.12 / 收 3577.62</td><td>低开低走成立，<span class="down">-0.28%</span></td></tr>
+<tr><td>成交额口径</td><td>媒体写「11-18 两市成交 1.37 万亿」</td><td><code>sh000001</code> 日 K <code>amount</code> 为 650,231,690,000 元（沪市单市场）</td><td><strong>不是数值矛盾，是口径不同</strong>；必须带 <code>marketScope</code> 元数据，否则会被误判为冲突</td></tr>
+</tbody>
+</table>
+<p class="src">行情数字来源：westock-data <code>sh000001</code> 日 K，取数 2026-11-19（一手行情）。媒体口径来源：腾讯新闻 / 四川在线 2026-11-19 报道（非一手，需核实原文）。「1.37 万亿」为沪深两市合计的媒体表述，与沪市单市场 <code>amount</code> 不可直接比较。</p>
+
+<h3>4.2 四类冲突与处理流水线</h3>
+<table>
+<thead><tr><th>类型</th><th>典型场景</th><th>谁裁定</th><th>处理方式</th></tr></thead>
+<tbody>
+<tr><td>① 事实 / 口径冲突</td><td>形态标签不一致；单市场 vs 两市成交额；复权 / 时点差异</td><td><strong>确定性重算</strong>（代码）</td><td>对齐元数据 → 按来源等级采信一手行情 → 另一条标 <code>conflict</code> 保留，不删除。LLM 不参与。</td></tr>
+<tr><td>② 解释冲突</td><td>「利好兑现」vs「板块退潮」vs「杠杆踩踏」</td><td><strong>不裁定</strong></td><td>并列假说，各自带机制链、证伪条件、<code>supportN / contradictN</code>；后续样本自然调权。禁止合成。</td></tr>
+<tr><td>③ 时点冲突</td><td>11-18 的复盘在 11-19 之后仍被引用</td><td>确定性时效校验</td><td>超 T+1 标 <code>stale</code>，界面灰显并标「数据截止日」，不自动更新结论。</td></tr>
+<tr><td>④ 价值冲突</td><td>风险 Flag 与自己的买入理由相反</td><td><strong>用户</strong></td><td>界面左右并列展示，系统不改分、不剔除、不给操作建议。</td></tr>
+</tbody>
+</table>
+
+<h3>4.3 冲突台账契约</h3>
+<pre>{
+  "id": "conf-20261119-0001",
+  "type": "fact",
+  "subject": "2026-11-17 上证日内形态",
+  "claims": [
+    { "text": "低开高走", "sourceGrade": "C", "source": "检索文字总结", "value": null },
+    { "text": "低开低走", "sourceGrade": "A", "source": "westock-data sh000001 日K", "value": ["3602.57","3585.67","3584.58"] }
+  ],
+  "resolution": "recompute",
+  "adopted": 1,
+  "merged": false,
+  "humanReview": false,
+  "detectedAt": null
+}</pre>
+
+<h3>4.4 智能体在这里的确切位置（回答「是否需要智能体」）</h3>
+<p><strong>需要，但职责必须收窄。</strong>冲突的「发现」与「归类」确实是 LLM 的强项——它能从两段不同措辞里看出在说同一件事、或主张互斥；但「判定谁对」不是。</p>
+<div class="grid2">
+<div class="card"><h4>允许（L2 / L3）</h4><ul><li>从叙述中抽取「主张—证据—来源—时点」四元组</li><li>检测语义互斥、把冲突归入上述四类</li><li>为假说生成可观测信号与证伪条件</li><li>把确定性结果翻译成人话，标注来源等级</li><li>把口语复盘归类到既有 <code>patternFamily</code> 标签</li></ul></div>
+<div class="card"><h4>禁止（写进系统提示词与输出 schema 校验）</h4><ul><li>判定哪条解释正确、给置信度当成裁决</li><li><strong>把多条冲突解释折中合成一条</strong>（最高危）</li><li>按文字流畅度、篇幅、出现次数投票</li><li>改写或补全任何行情、财务数字</li><li>把 C 级来源的数字写进事实账本（一律置 null）</li><li>给出买卖、仓位、价位判断</li></ul></div>
+</div>
+<p class="note">实现方式沿用前两版结论：<strong>不引入 Agent 框架</strong>，用 Node 内置 <code>fetch</code> 写薄适配器调 OpenAI-compatible 接口，前置确定性网关（事实账本核对 / schema 校验 / 幂等去重 / 无出处即剔除），后置待审队列与人工闸门，可一键关闭。第二阶段若确需多角色复盘，再考虑独立 Python sidecar 跑 LangGraph，且只暴露 <code>/proposal</code>，不碰 8777 主服务。</p>
+
+<h2>五、参考程序：分三级，只借鉴架构不搬代码</h2>
+<p class="small">来源：2026-11-19 通过 domain_search 检索 GitHub 与项目页面得到的快照。star 数是检索时点快照、波动大，不代表质量排名；许可证与维护状态以仓库 LICENSE / README 为准，落地前须逐项复核。</p>
+
+<h3>A 级 · 架构思想直接对口（建议读结构，不复制代码）</h3>
+<table>
+<thead><tr><th>项目</th><th>许可证 / 状态</th><th>可直接借鉴的一点</th></tr></thead>
+<tbody>
+<tr><td><code>Kartik281204/Market-Regime-Detection</code></td><td>MIT；研究向，约 0 star</td><td>把 HMM / GMM / K-Means / BOCPD 四种方法<strong>并列对比而非平均</strong>，README 明说「状态标签是描述性的，不是预测性优势」「它们互相不一致，这是特性不是 bug」——与本方案「冲突并列、不合成」完全同构。</td></tr>
+<tr><td><code>lnsongxf/hmm-market-regime-detection</code></td><td>许可证需核实；2026-02 提交</td><td><strong>走步式重训 + 漂移诊断</strong>（转移矩阵漂移 / 标签翻转漂移 / 对数似然漂移）→ 直接对应经验「失效退役」。</td></tr>
+<tr><td><code>TradeNote</code>（Obsidian 插件）</td><td>MIT；2026-10 新建、下载量小</td><td>五段式每日复盘，且<strong>昨天的「明日计划」自动带入今天</strong> —— 这就是 <code>precommit</code> 的现成交互形态。AI 功能需自备 API。</td></tr>
+<tr><td><code>Trade Journal</code>（Obsidian 插件）</td><td>需核实</td><td>25 项统计指标 + 与上一等长周期对比 + <strong>质量缺口清单</strong>（缺止损 / 缺退出时间 / 缺标签 / 无复盘文字）→ 对应行为习惯账本与复盘覆盖率。</td></tr>
+<tr><td><code>Thesis Ledger</code></td><td>需核实</td><td>Obsidian 人类层（论点 / 风险 / 触发器）与 SQLite 机器层（价格 / 评分 / 触发器状态）<strong>双层分离</strong>，与本项目「JSONL 事实账本 + Markdown 人读层」同构。</td></tr>
+<tr><td><code>fuhu33/trading-review-wiki</code></td><td>需核实</td><td>原始素材 → LLM 增量维护 wiki → 规则配置<strong>三层分离</strong>，交割单自动 FIFO → 对应「知识卡不进事实账本」。</td></tr>
+<tr><td><code>TurtleTrace</code> 龟迹复盘</td><td>需核实；Node ≥18</td><td><strong>技术栈最接近本项目</strong>：A 股、浏览器本地存储、每日/每周复盘、大盘指数自动同步、交易情绪与原因标签、无需登录。</td></tr>
+<tr><td><code>Portfolio Performance</code></td><td>EPL-1.0；14 年历史，活跃</td><td>同时提供 <strong>TWR 与 IRR 双口径</strong>、16 项评估指标 → 用来修 v1 发现的「命中率用全样本、超额只用有基准子样本」口径不一致问题。</td></tr>
+</tbody>
+</table>
+
+<h3>B 级 · 仅作思路参考</h3>
+<table>
+<thead><tr><th>项目</th><th>许可证 / 状态</th><th>可看什么 / 风险</th></tr></thead>
+<tbody>
+<tr><td><code>blackswan-quants/marketregime_hmm</code></td><td>MIT；约 12 star，近期活跃</td><td>工程化最完整（ADF/KPSS → VIF → BIC 选 k → 高斯 HMM → DTW 验证）并输出后验概率。但基于 FRED + Yahoo 美股数据；且 <code>hmmlearn</code> 的 Viterbi / 全样本 <code>predict_proba</code> 是<strong>平滑估计，含前视偏差</strong>，回测必须用滤波概率 + 滚动重训。</td></tr>
+<tr><td><code>BennyThadikaran/RRG-Lite</code></td><td><strong>GPL-3.0</strong>；约 40 star</td><td>RRG 相对轮动图是板块轮动可视化的好参照。但作者已说明短期噪声敏感、开发暂停；且 GPL 具传染性，只可看不可搬。</td></tr>
+<tr><td><code>autumn-go/strategy-factor-dashboard</code></td><td>需核实；star 很低</td><td>A 股 8 模块含 RRG 轮动 + 每日日报 + Pages 托管，信息最齐；代码质量需自行核验。</td></tr>
+<tr><td><code>lewislovelock/A-Share-Sector-Alpha-Hunter</code></td><td>需核实</td><td>AkShare 龙头 / 跟风拆分、Streamlit 单页看板。作者自标「Vibe Coding Alert」「仅供学习」，不可作为生产依据。</td></tr>
+<tr><td><code>Ghostfolio</code> / <code>Wealthfolio</code></td><td><strong>AGPL-3.0</strong>；活跃</td><td>自托管组合 + 实验性 MCP server 供 AI 读取，思路可借鉴。但要 Postgres / Redis 或 Tauri，与零依赖 Node 主服务冲突，不必引入。</td></tr>
+<tr><td><code>OpenBB</code> / <code>AKShare</code></td><td>AGPL / 开源</td><td>统一数据层思路。但 <code>server/sources.js</code> 已接东方财富 <code>push2</code> 行情与指数快照，A 股场景无需再叠一层。</td></tr>
+</tbody>
+</table>
+
+<h3>C 级 · 明确不建议引入</h3>
+<ul>
+<li><strong>LLM 做决策核心的项目</strong>（TradingAgents、ai-hedge-fund 一类）：与本项目「智能体永不进判断链路」的铁律直接冲突。</li>
+<li><strong>自动下单 / 交易执行框架</strong>：越过合规边界。只要程序不自动下达委托单，选股、监控、复盘均在程序化交易报备框架之外；一旦脚本自动发单即进入「先报告、后交易」（证监会《管理规定（试行）》，2024-10-08 施行）。</li>
+<li><strong>大型 Python 量化平台</strong>（Qlib 等）：要养第二套运行时与进程通信，收益不抵维护成本。</li>
+<li><strong>带自动停用 / 归档风险的项目</strong>：使用前先查最近提交与 EOL 声明。</li>
+</ul>
+<div class="danger"><strong>许可证提醒：</strong>上表 GPL-3.0 / AGPL-3.0 / EPL-1.0 均有传染性或弱传染性条款。只借鉴架构思想、不复制源码；若确需复制，须按对应许可证处理开源义务。此外多个项目作者自己声明「仅供研究、不构成交易信号」，与本项目 Flag 层定位一致，但不可当作已验证的策略。</div>
+
+<h2>六、PC 端可视化交互：三个方案 + 推荐组合</h2>
+
+<h3>6.1 从电脑使用习惯出发的硬约束</h3>
+<ul>
+<li>宽屏优先（≥1440px 三栏；窄于 1200px 右栏自动收为抽屉），不出现横向滚动。</li>
+<li>鼠标悬停即见「来源 + 时点 + 来源等级」，不要求点击才看到证据。</li>
+<li>键盘可达：<code>/</code> 聚焦复盘录入、<code>Esc</code> 收起右栏、<code>[</code> <code>]</code> 切换交易日。</li>
+<li>审核 / 采纳类操作二次确认且不使用模态弹窗（避免打断上下文）；所有新增视图默认只读。</li>
+<li>A 股语境 <span class="up">红涨</span> / <span class="down">绿跌</span>；密度可切「紧凑 / 舒适」。</li>
+<li>离线可用：不引 CDN、不依赖外部前端框架，延续零依赖优势。</li>
+</ul>
+
+<h3>6.2 三个方案对比</h3>
+<table>
+<thead><tr><th></th><th>A · 单页驾驶舱</th><th>B · 三栏工作台（推荐）</th><th>C · 复盘时间线</th></tr></thead>
+<tbody>
+<tr><td>形态</td><td>现状：20 余面板纵向堆叠</td><td>左 224px 导航 / 中主视图 / <strong>右证据抽屉</strong> + 顶部状态条</td><td>以「日」为主轴的时间线 + 固定口语录入区</td></tr>
+<tr><td>改造量</td><td>0（已上线）</td><td>中：新增一个右栏容器与一份 CSS，<code>app.js</code> / <code>server</code> 不动</td><td>中：新增一个 <code>iw-view</code> 子页</td></tr>
+<tr><td>最擅长</td><td>盘前 / 盘后 5 分钟扫一眼</td><td>结论与证据并排核对、冲突并列展示、逐条审核</td><td>经验累积、每日复盘、precommit 录入</td></tr>
+<tr><td>主要短板</td><td>无限滚动，加新模块只会更长；证据与结论对不上</td><td>窄屏需折叠；右栏内容需按主视图上下文切换</td><td>不擅长横向对比与实时监控</td></tr>
+<tr><td>适配本项目的关键</td><td>保留 <code>section.summary</code> 作「今日」结论卡</td><td><strong>已有 <code>#iwShell</code> 两栏，只补第三栏</strong></td><td>可直接挂在 <code>shell.js</code> 的「④ 研究与闭环」分组下</td></tr>
+</tbody>
+</table>
+
+<h3>6.3 线框（B 方案）</h3>
+<div class="wire">┌─ 顶部状态条：2026-11-19 盘后 · 沪 低开低走 / 深 低开低走 · 量能「地量」 · 待审 4 ─┐
+├────────────┬──────────────────────────────────┬────────────────┤
+│ ① 全球监测 │ 今日结论卡（只读）                │ 证据抽屉       │
+│ ② 选股因子 │ 两市四象限 + 含金量六维           │ Flag 三级提示  │
+│ ③ 持仓风控 │ 股池 / 观察池 / 板块五阶段        │ 并列假说（不合成）│
+│ ④ 研究闭环 │ 冲突台账（事实 / 解释 / 时点 / 价值）│ 来源 + 时点    │
+│ ⑤ 复盘时间线│ precommit 录入 · 待审队列          │ 反例计数       │
+└────────────┴──────────────────────────────────┴────────────────┘
+        ↑ 现有 .iw-side        ↑ 现有 .iw-main        ↑ 新增 .iw-evidence</div>
+
+<h3>6.4 推荐：不是三选一，是「一主三辅」</h3>
+<div class="grid3">
+<div class="kpi"><div class="k">骨架</div><div class="v">方案 B</div><p class="small">工作台承载所有日常操作，右栏固定放证据与冲突。</p></div>
+<div class="kpi"><div class="k">首屏</div><div class="v">方案 A 的 summary</div><p class="small">保留现有结论带作「今日」默认视图，进系统先看一眼。</p></div>
+<div class="kpi"><div class="k">复盘</div><div class="v">方案 C 子页</div><p class="small">时间线 + 口语录入，专门承载经验累积。</p></div>
+</div>
+<p><strong>提醒通道</strong>复用现有 <code>btnNotify</code> 桌面通知与告警中心，只推强 Flag 与待审数量，<strong>不新增常驻进程、不做常驻浮窗</strong>——符合你上一轮定的「提示不等于判定」。</p>
+
+<h3>6.5 渐进迁移路径（沿用 shell.js 已验证的「纯增量 + 可回退」）</h3>
+<ol>
+<li>只加 <code>evidence.css</code> 与 <code>#iwShell .iw-evidence</code> 一个容器；删一行 CSS 引用即完全回退。</li>
+<li>右栏先只填<strong>已有 API 的真实字段</strong>（<code>/api/journal</code>、<code>/api/attribution</code>、<code>/api/edge/phase</code> 等），不新增后端接口。</li>
+<li>再新增 <code>market-state.jsonl</code> / <code>conflicts.jsonl</code> / <code>experiences.jsonl</code> 与对应只读 GET。</li>
+<li>最后才接薄 LLM 适配器，且默认关闭。</li>
+</ol>
+
+<h2>七、落地路线</h2>
+<table>
+<thead><tr><th>阶段</th><th>做什么</th><th>是否需 LLM</th><th>验收标准</th></tr></thead>
+<tbody>
+<tr><td>Step 0<br><span class="small">零代码 / 今天可做</span></td><td>把 4 条 pending 经验标「需复核、暂不采纳」；修 <code>statsOf()</code> 命中率与超额的样本口径；手写 3–5 条 precommit；把 11-17 冲突作为 <code>conflicts.jsonl</code> 首条样本</td><td>否</td><td>回流闭环第一次走通，<code>rules.json</code> 仍为 0</td></tr>
+<tr><td>Step 1</td><td>新增 <code>market-state.jsonl</code>（两市四象限 + 含金量六维）、<code>experiences.jsonl</code>、<code>profile.json</code>、<code>trades.jsonl</code>、<code>counterexamples.jsonl</code></td><td>否</td><td>任一交易日形态可由三个价格字段复算；双向经验各有条目与反例计数</td></tr>
+<tr><td>Step 2</td><td>解释假说卡 + 冲突分拣器（确定性部分：重算 / 时效 / 元数据对齐 / 并列存证）</td><td>否</td><td>冲突台账中 <code>merged</code> 恒为 false；C 级来源数字全为 null</td></tr>
+<tr><td>Step 3</td><td>薄适配器：四元组抽取、语义互斥归类、证伪条件生成、翻译成人话；前置确定性网关 + 后置待审队列</td><td>是（可一键关闭）</td><td>关闭适配器后系统全部功能照常；智能体输出零 <code>scoreImpact</code></td></tr>
+<tr><td>Step 4</td><td>交互右栏 + 复盘时间线子页；可选 LangGraph sidecar 做多角色复盘</td><td>可选</td><td>所有新增视图默认只读；删引用即回退</td></tr>
+</tbody>
+</table>
+<div class="danger"><strong>明确不做：</strong>自动下单、自动改权重、自动把 AI 结论写进事实账本、把多条解释合成一条「综合判断」。</div>
+
+<h2>八、合规、边界与来源</h2>
+<ul>
+<li>只要程序不自动下达委托单，回测、信号、人工下单、券商条件单均不落入程序化交易定义；一旦脚本自动发单即进入「先报告、后交易」框架（证监会《管理规定（试行）》，2024-10-08 施行）。高频认定阈值以交易所正式细则为准，本文不采信任何媒体口径数字作结论。</li>
+<li>行情数据保持个人自用、注明来源与取数时点、不对外分发；外部 AI 稿件 / 自媒体的数字一律置 null，只进待核实线索队列。</li>
+<li>来源分级：<span class="tagA">A</span> 交易所公告 / 一手行情（可直接入事实账本）｜<span class="tagB">B</span> 用户亲历（只进行为账本，标 <code>user_note</code>）｜<span class="tagC">C</span> 其他智能体 / 自媒体稿件（只进待核实队列）。</li>
+<li>系统输出永远是「提醒 + 证据 + 反例」，不产出买卖、价位、仓位判断；风险提示不等于风险判定，须由真实行情 T+1/T+5/T+20 反馈并同时统计<strong>假警报率</strong>。</li>
+</ul>
+
+<h3>来源清单</h3>
+<table>
+<thead><tr><th>层级</th><th>来源</th><th>时点 / 说明</th></tr></thead>
+<tbody>
+<tr><td><span class="tagA">A</span> 一手行情</td><td>westock-data <code>sh000001</code> 日 K（开 / 收 / 前收 / 成交额）</td><td>取数 2026-11-19；本文 11-16 至 11-19 全部价格与成交数字均出自此</td></tr>
+<tr><td>项目内事实</td><td><code>data/*.json</code>、<code>server/*.js</code>、<code>web/index.html</code>、<code>web/shell.js</code>、<code>web/interaction.css</code></td><td>2026-11-19 逐文件核验；字段与路由均为真实存在</td></tr>
+<tr><td>方法论</td><td>workbuddy-finance-skill references：<code>market-state</code> / <code>sector-comparison</code> / <code>macro-transmission</code> / <code>abnormal-detection</code> / <code>daily-briefing</code> / <code>html-report-style</code></td><td>本轮加载并用于分析框架</td></tr>
+<tr><td><span class="tagB">B</span> 非一手</td><td>腾讯新闻 / 四川在线（2026-11-19 盘后）、新浪财经、今日头条、约投顾、雪球民间回测转述、国泰君安期货研究所专题（新浪转载）</td><td><strong>需核实原文</strong>；其中的占比、概率、相关系数仅作方法论示意，未用作系统阈值</td></tr>
+<tr><td>开源项目</td><td>GitHub 仓库 README / LICENSE 检索快照（domain_search）</td><td>检索时点 2026-11-19；star 数、维护状态、许可证须落地前复核</td></tr>
+<tr><td>监管</td><td>证监会《证券市场程序化交易管理规定（试行）》</td><td>2024-10-08 施行；具体细则以交易所正式文本为准</td></tr>
+</tbody>
+</table>
+
+<footer>
+<p><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</p>
+<p>文档性质：架构设计稿（v3），非运行报告。本次未修改任何现有代码、配置或数据文件，新增内容均为建议契约。生成时间：2026-11-19。</p>
+</footer>
+
+</div>
+</body>
+</html>

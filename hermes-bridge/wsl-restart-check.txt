@@ -1,0 +1,10 @@
+=== service 详细状态 ===
+MainPID=283
+NRestarts=0
+ActiveState=active
+SubState=running
+ActiveEnterTimestamp=Sat 2026-11-21 16:14:27 CST
+=== 当前时间 ===
+16:14:30
+=== 端口 ===
+LISTEN 0      5             0.0.0.0:8765      0.0.0.0:*    users:(("python3",pid=283,fd=3))

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个人经验工程与因素体系设计 · 2026-11-19</title>
+<style>
+:root{--ink:#1f2328;--ink2:#4a5158;--ink3:#78818a;--line:#d9dee3;--bg:#f7f8fa;--card:#ffffff;--blue:#185fa5;--blue-bg:#eef5fc;--amber:#8a5a00;--amber-bg:#fdf6e8;--red:#a32d2d;--red-bg:#fdeeee;--green:#0f6e56;--green-bg:#eaf6f1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.7;font-size:14px}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 28px 64px}
+header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px}
+h1{font-size:25px;font-weight:600;margin:0 0 8px;letter-spacing:.3px}
+.meta{color:var(--ink3);font-size:12.5px}
+h2{font-size:19px;font-weight:600;margin:38px 0 14px;padding-left:11px;border-left:4px solid var(--blue)}
+h3{font-size:15.5px;font-weight:600;margin:24px 0 10px;color:var(--ink)}
+h4{font-size:14px;font-weight:600;margin:18px 0 8px;color:var(--ink2)}
+p{margin:10px 0}
+small{font-size:12px;color:var(--ink3)}
+code{font-family:"SFMono-Regular",Consolas,monospace;background:#eef1f4;padding:1px 5px;border-radius:3px;font-size:12.5px}
+pre{background:#f2f5f8;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;line-height:1.6;color:#243038;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0 18px;background:var(--card);font-size:13px}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:#eef2f6;font-weight:600;color:var(--ink2)}
+tbody tr:nth-child(even){background:#fbfcfd}
+.lead{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:0 0 26px}
+.lead h2{margin:0 0 12px;border:none;padding:0;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 18px}
+.card .t{font-weight:600;font-size:14px;margin-bottom:6px}
+.card p{margin:6px 0;font-size:13px;color:var(--ink2)}
+.tag{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:10px;margin-right:5px;font-weight:600}
+.t-blue{background:var(--blue-bg);color:var(--blue)}
+.t-green{background:var(--green-bg);color:var(--green)}
+.t-amber{background:var(--amber-bg);color:var(--amber)}
+.t-red{background:var(--red-bg);color:var(--red)}
+.t-gray{background:#eceff2;color:var(--ink2)}
+.warn{background:var(--red-bg);border-left:4px solid var(--red);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+.note{background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+.ok{background:var(--green-bg);border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:16px 0}
+.step{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 13px}
+.step .n{font-size:11.5px;color:var(--blue);font-weight:600}
+.step .h{font-size:13px;font-weight:600;margin:3px 0 5px}
+.step .d{font-size:12px;color:var(--ink2);line-height:1.55}
+ul,ol{margin:10px 0 10px 22px;padding:0}
+li{margin:5px 0}
+.src{font-size:12px;color:var(--ink3);margin-top:-10px;margin-bottom:16px}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--ink2)}
+.disc{background:#f0f2f5;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-top:18px;font-size:12.5px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>个人经验工程与因素体系设计</h1>
+<div class="meta">项目：GlobalMarketMonitor（D:\WorkBuddy\projects\GlobalMarketMonitor）｜文档版本：2026-11-19 v1｜性质：架构设计，不含任何实时行情数据或个股建议｜核验时点：2026-11-19 18:4x（北京时间，盘后）</div>
+</header>
+
+<div class="lead">
+<h2>结论先行</h2>
+<div class="grid">
+<div class="card"><div class="t">1 · 因素体系「全面」的正确含义</div><p>你已在《选股方法论规格与程序覆盖矩阵》里写下 31 条规格。它们应重组为<strong>宏观 / 中观 / 微观三层 × Gate / Score / Explain 三类用途</strong>，只有 Score 列允许改分。按因子研究纪律，5–10 个能验证的强因子优于 30 个弱因子；把 31 条全塞进评分公式会在小样本上稳定过拟合。</p></div>
+<div class="card"><div class="t">2 · 专业知识不放模型里，放知识卡里</div><p>「有专业知识的智能体」应实现为<strong>可溯源的知识卡 + 受限三动作</strong>（归类口语复盘、生成待验证假说、把确定性结果翻译成人话），而不是让模型自由推理后给结论。模型参数里的记忆不可审计、不可证伪。</p></div>
+<div class="card"><div class="t">3 · 经验必须分级，且必须事前登记</div><p>「利好出货 / 提前布局」事后怎么解释都自圆其说。系统必须记录 <code>precommit</code>：事前预判 + 证伪条件，事后只做对照。<strong>没有事前登记的复盘，写进知识库的只是故事，不是经验。</strong></p></div>
+<div class="card"><div class="t">4 · 自我调整 = 影子验证 + 人工闸门</div><p>经验反哺选股要走五级晋升阶梯：事实 → 假说 → 影子验证（不改分）→ 人工采纳 → 失效检测。冻结基线 v0 永久对照，采纳后仅 ±2 分 / 乘数 0.8–1.25 / 不翻符号，可一键回滚。</p></div>
+</div>
+<div class="warn"><strong>本次核验发现一个必须先修的工程问题：</strong>现有 4 条「待审经验」是在同一批复盘样本上按 7 个维度切出来的，且命中率与超额收益的统计口径不一致。在这两点修正前，<strong>不建议采纳任何一条经验回流评分</strong>。详见第二节。</div>
+</div>
+
+<h2>一、先对齐：你手上已经有什么</h2>
+<p>这不是从零设计。以下均为逐文件读取后的真实状态，不是计划。</p>
+<table>
+<thead><tr><th style="width:22%">能力</th><th style="width:20%">现状</th><th>代码 / 数据证据</th><th style="width:26%">本次要补的</th></tr></thead>
+<tbody>
+<tr><td>每日自动选股</td><td><span class="tag t-green">已实现</span></td><td>13 个定时器；<code>stocks.js</code> 三组基础分（技术 / 资金 / 舆情）+ 市值层权重切换；<code>ic.js</code> Rank IC 自检</td><td>因素体系结构化；全市场日频截面尚缺</td></tr>
+<tr><td>股池与监控</td><td><span class="tag t-amber">部分</span></td><td><code>data/my-picks.json</code> + <code>server/mypicks.js</code>（17:49 新增，CRUD 已验收）；<code>holdings.js</code> / <code>alerts.js</code> 齐全</td><td>双来源标记、入池闸门、纳入 09:05 / 22:00 定格与 T+1 复盘</td></tr>
+<tr><td>因素规格</td><td><span class="tag t-blue">已写成文档</span></td><td>《选股方法论规格与程序覆盖矩阵》：宏观 8 条、板块 5 条、个股 13 条、复盘 5 条；诚实计数为 6 已实现 / 17 部分 / 7 缺失</td><td>把清单变成可计算的分层与数据契约</td></tr>
+<tr><td>复盘经验库</td><td><span class="tag t-amber">骨架有，闭环未通</span></td><td><code>journal.js</code> 五段式：picks → outcomes → lessons → 人工审核 → 有界回流；<code>rules.json count=0</code></td><td>口径修正、事前登记、经验分级、晋升闸门</td></tr>
+<tr><td>智能体</td><td><span class="tag t-gray">未接入</span></td><td>上一轮结论：不引入框架，Node 内置 <code>fetch</code> 写薄适配器，调 OpenAI-compatible 接口</td><td>知识卡 + 三动作 + 反幻觉闸门</td></tr>
+</tbody>
+</table>
+<div class="src">来源：项目内文件 <code>server/*.js</code>、<code>data/journal/*</code>、《选股方法论规格与程序覆盖矩阵.md》，核验时点 2026-11-19 18:4x；状态判定沿用该文档「只记录代码里真实存在」的反幻觉纪律。</div>
+
+<h2>二、三个必须先修的隐患（真实代码核验）</h2>
+<p>这一节是本次设计里最要紧的部分。你想要的「经验归纳与自我调整」能否可信，取决于这三点，而不是取决于接了多强的模型。</p>
+
+<h3>隐患 1 · 同一批样本切七刀：多重比较偏误</h3>
+<p><code>server/journal.js:512–559</code> 定义了 <code>LESSON_DIMENSIONS</code> 共 <strong>7 个分组维度</strong>（信号等级、市值层、板型、情绪阶段、追高风险、连板高度、叠加形态）。<code>buildLessons()</code> 对每个维度逐组统计，只要 <code>n ≥ MIN_N</code> 就生成一条待审经验，既没有多重检验校正，也没有留出样本外（holdout）做复现。</p>
+<p>当前 <code>data/journal/lessons.jsonl</code> 里的 4 条全部来自同一批复盘样本的不同切法：</p>
+<table>
+<thead><tr><th>经验 key</th><th>n</th><th>命中率</th><th>平均超额</th><th>置信度标注</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td><code>board::turnover</code></td><td>14</td><td>64.3%</td><td>1.96%</td><td>低</td><td>pending</td></tr>
+<tr><td><code>stage::冰点</code></td><td>16</td><td>62.5%</td><td>1.96%</td><td>低</td><td>pending</td></tr>
+<tr><td><code>chase::低(&lt;40)</code></td><td>17</td><td>64.7%</td><td>2.73%</td><td>低</td><td>pending</td></tr>
+<tr><td><code>boards::1板</code></td><td>14</td><td>64.3%</td><td>1.96%</td><td>低</td><td>pending</td></tr>
+</tbody>
+</table>
+<div class="src">来源：<code>D:\WorkBuddy\projects\GlobalMarketMonitor\data\journal\lessons.jsonl</code>，读取时点 2026-11-19 18:4x。这些是项目本地历史统计值，仅用于说明工程口径问题，<strong>不是行情数据、不是投资结论</strong>。</div>
+<p>三条经验的 <code>avgExcess</code> 完全相同（1.96%），且组间高度重叠——它们不是三条独立证据，而是同一小批样本被反复切分后的不同投影。18 条样本切 7 个维度，几乎必然能找到若干「60%+ 命中率」的组。<strong>把这样的结论回流到评分，等于把噪声固化成规则。</strong></p>
+
+<h3>隐患 2 · 命中率与超额收益的口径不一致</h3>
+<p><code>journal.js:462</code> 的命中定义是：</p>
+<pre>hit: bRet == null ? ret &gt; 0 : ret &gt; bRet</pre>
+<p>而 <code>journal.js:460–461</code> 的注释写的是「不把大盘整体上涨带来的浮盈算成能力」。当基准取不到（<code>benchRet()</code> 返回 null）时，命中判定实际退化成绝对涨跌 <code>ret &gt; 0</code>，与注释相反。<code>data/journal/outcomes.jsonl</code> 首条即 <code>bench: null, excess: null</code>，说明该分支真实发生。</p>
+<p>更隐蔽的是 <code>statsOf()</code>（<code>journal.js:481–497</code>）：<code>hitRate</code> 在<strong>全部 rows</strong> 上算，<code>avgExcess</code> 只在 <code>excess</code> 为有限值的<strong>子样本</strong>上算。于是同一条经验里的「命中率 64.3%」和「平均超额 1.96%」可能来自两个不同样本集，<code>propose()</code> 却直接拿后者推导乘数。</p>
+
+<h3>隐患 3 · 「置信度」只是样本量标签，乘数是样本内拟合</h3>
+<p><code>journal.js:586</code>：<code>conf = n ≥ 40 ? '高' : n ≥ 20 ? '中' : '低'</code>——只看样本量，不看效应稳定性、组间差异、时间外表现。<code>propose()</code> 用同一批样本的 <code>avgExcess</code> 直接算乘数（×1.1 / ×1.14），没有样本外验证；<code>applyRules()</code> 一旦人工采纳即乘到评分上（已做 0.8–1.25 的界，这是对的，但只解决了幅度，没解决可信度）。</p>
+<div class="ok"><strong>好消息：</strong><code>rules.json</code> 目前 <code>count=0</code>，一条都没生效。也就是说，现在正是把「影子验证 + 样本外门槛」加进来的最佳时机——不需要回滚任何已生效规则。</div>
+
+<h3>建议的 Step 0（今天就能做，零代码）</h3>
+<ol>
+<li>把这 4 条 pending 经验标记为<strong>「需复核 / 暂不采纳」</strong>，而不是 approve；理由是口径与多重比较，不是否定其观察价值。</li>
+<li>先修口径：基准缺失时 <code>hit</code> 应记为 <code>null</code> 并从命中率分母中剔除；统一 <code>hitRate</code> 与 <code>avgExcess</code> 使用同一子集，并在 evidence 里显式写出 <code>nTotal / nWithBench</code>。</li>
+<li>用一张 Markdown 表手工写下 3–5 条 <code>precommit</code>（预判 + 证伪条件 + 观察窗口），让「事前登记」这件事先有实体，再谈自动化。</li>
+</ol>
+
+<h2>三、因素体系：三层 × 三类用途</h2>
+<p>把 31 条规格按「决定什么」分三层，再按「能不能改分」分三类。这是从清单走向可计算系统的关键一步。</p>
+<table>
+<thead><tr><th style="width:14%">层级</th><th style="width:29%">Gate · 硬性剔除</th><th style="width:29%">Score · 参与排序</th><th style="width:28%">Explain · 只做解释</th></tr></thead>
+<tbody>
+<tr><td><strong>宏观</strong><br><small>要不要做、做多大</small></td><td>避险 L1–L4 触发；休市 / 重大数据公布窗口；数据源缺失时禁止出结论</td><td>两市量能 20 日均量 z-score、量价配合、上涨家数占比、市值风格顺风</td><td>政策语义解读、外围股指 / 美债期限利差联动、机构言论背景（均标注「需核实原文」）</td></tr>
+<tr><td><strong>中观</strong><br><small>在哪选</small></td><td>板块处于「退潮」阶段；一日游 / 无承接；板块内无有效标的（少于 5 个有效截面样本不出因子结论）</td><td>板块相对强弱、五阶段位置、资金主体画像、主线共振度</td><td>轮动历史案例库、会议 / 展会日历、全球龙头业绩映射</td></tr>
+<tr><td><strong>微观</strong><br><small>选哪只</small></td><td>ST / 流动性不足 / 价格 Z-score 异常 / 数据源缺失</td><td>技术 · 资金 · 舆情三组基础分（现有）；待补的 KDJ、MA5 形态族、阶段量能对比、抗压能力等 8 项确定性因子</td><td>利好出货 / 提前布局的个案判断、产业链位置、连板测算等投顾敏感内容</td></tr>
+</tbody>
+</table>
+<div class="src">层级与条目依据：项目内《选股方法论规格与程序覆盖矩阵.md》（2026-11-19 18:05）；因子数量与验证门槛依据：金融场景方法论 <code>quant-factor-research.md</code>（IC / IR / 分层回测 / 前向偏差 / 行业中性化 / 宁可 5–10 个强因子）。</div>
+
+<h3>三类用途的硬规则</h3>
+<ul>
+<li><span class="tag t-gray">Gate</span> 布尔判断，只剔除不排序。每个 Gate 必须可逐条复算，带日期、数据源、计算口径；不得由 LLM 判定。</li>
+<li><span class="tag t-blue">Score</span> 唯一允许影响评分的列。新增因子必须先在影子模式跑够样本并过 IC / IR 门槛，才允许进入；已有三组基础分保持冻结基线 v0。</li>
+<li><span class="tag t-amber">Explain</span> 只写进复盘、界面注释、知识卡，<strong>永不进入评分公式</strong>。「利好出货」这类判断放在这里，既保留你想沉淀的经验，又杜绝叙事影响下单依据。</li>
+</ul>
+<div class="note"><strong>对小白用户最重要的设计取舍：</strong>系统的价值不是给一个更流畅的结论，而是把「哪些是可验证的事实、哪些是待验证的假说、哪些只是故事」显示在界面上，并同时显示样本数与置信度。看起来很专业但无法证伪的解释，会让人更自信地下注——这比不懂更危险。</div>
+
+<h2>四、经验四层账本与数据契约</h2>
+<p>你说的「经验」其实是四种可信度完全不同的东西，混在一个 <code>lessons.jsonl</code> 里必然出问题。建议拆成四层，各自有独立的写入规则。</p>
+<table>
+<thead><tr><th style="width:16%">层</th><th style="width:26%">内容</th><th style="width:26%">写入条件</th><th style="width:32%">能否影响评分</th></tr></thead>
+<tbody>
+<tr><td><strong>L0 事实账本</strong><br><small>Fact</small></td><td>可复算的行情、事件、评分快照、实际操作；每条带 source + 时点 + 口径</td><td>程序自动写，禁止人工改、禁止 LLM 生成数字</td><td>不直接改分，是唯一事实源</td></tr>
+<tr><td><strong>L1 规则性经验</strong><br><small>Rule</small></td><td>确定性、可证伪的判断：「连续两日收盘低于 MA5」「公告前涨幅已透支 → 兑现风险标记」</td><td>纯代码复算 + 人工确认适用条件与失效条件</td><td>可作为 Gate 或 Explain；要进 Score 仍需过阶梯</td></tr>
+<tr><td><strong>L2 统计性假说</strong><br><small>Hypothesis</small></td><td>「某分组在 T+1 有稳定超额」这类需样本裁决的结论（现有 lessons 属于此层）</td><td>必须事前登记主假说、样本外验证、多重比较校正</td><td>只有过完第 4 步才允许有界回流</td></tr>
+<tr><td><strong>L3 叙事案例库</strong><br><small>Case</small></td><td>「利好出货」「提前布局」的个案复盘、外部影响、操作手段的归纳</td><td>人写入或 LLM 归类，必须带反例与失效条件</td><td><strong>永不</strong>。仅供检索、对照、教学</td></tr>
+</tbody>
+</table>
+
+<h3>建议新增的数据契约（示例，字段为占位值）</h3>
+<pre>{
+  "id": "H20261119-001",
+  "layer": "hypothesis",
+  "status": "observing",
+  "createdAt": "2026-11-19T14:30:00+08:00",
+  "precommit": {
+    "claim": "公告前已有明显涨幅，判断为预期已定价，公布后存在兑现回落风险",
+    "context": {
+      "code": "000000",
+      "eventType": "company_announcement",
+      "prior5dGainPct": null,
+      "crowding": null
+    },
+    "falsifyIf": "公告后 3 个交易日内收盘价高于公告日收盘价且跑赢同层基准",
+    "horizonDays": 3
+  },
+  "evidenceRefs": ["outcomes:P20261117-eve:002451", "events-cache.json:2026-11-17"],
+  "source": "user_note",
+  "llmAssisted": true,
+  "confidence": "low",
+  "review": null
+}</pre>
+<p><small>说明：<code>000000</code> 为示例占位代码，<code>prior5dGainPct</code> 为 <code>null</code> 表示该字段当前数据源未覆盖、需补齐后才能判定；此处不填入任何虚构数值。<code>precommit.createdAt</code> 必须早于结果产生时点，否则该条不得计入 L2。</small></p>
+
+<h3>复盘条目要补的字段</h3>
+<p>现有 <code>outcomes.jsonl</code> 记的是技术参数（板型、连板高度、情绪阶段、追高风险），<strong>没有事件字段，也没有「当时我怎么想」</strong>。建议在复盘回贴时补齐四组：</p>
+<ul>
+<li><strong>事件上下文</strong>：<code>eventType / eventLabel / eventPolarity / eventTime / sourceUrl</code>（把 <code>events-cache.json</code> 与 <code>stock-news-cache.json</code> 的既有字段回贴，不新抓数据）</li>
+<li><strong>事前预判</strong>：<code>precommitId / expectationGap / expectedHorizon</code>（关联上面的假说）</li>
+<li><strong>事后对照</strong>：<code>verdict = confirmed | falsified | inconclusive</code>，且理由必须是可复算的价格 / 基准条件</li>
+<li><strong>自我观察</strong>：<code>actionTaken / planDeviation / emotionTag</code>（用户手填，供第七节的行为账本用）</li>
+</ul>
+
+<h2>五、经验晋升阶梯与硬门槛</h2>
+<div class="flow">
+<div class="step"><div class="n">STEP 1</div><div class="h">事实 + 事前登记</div><div class="d">写下预判与证伪条件，带日期、来源、时点。无登记者事后不得算经验。</div></div>
+<div class="step"><div class="n">STEP 2</div><div class="h">单一主假说</div><div class="d">一条假说对应一个可复算触发条件；禁止一次切 7 维挑最好看的组。</div></div>
+<div class="step"><div class="n">STEP 3</div><div class="h">影子验证</div><div class="d">完全不改分，只记录「若采纳，排序会怎么变」，并与冻结基线 v0 对照。</div></div>
+<div class="step"><div class="n">STEP 4</div><div class="h">人工采纳 → 有界回流</div><div class="d">过门槛后由人点确认；±2 分、乘数 0.8–1.25、不翻符号、带证据链。</div></div>
+<div class="step"><div class="n">STEP 5</div><div class="h">失效检测 → 退役</div><div class="d">IC 衰减或市场状态切换自动降权，退役后回到事实层重新积累。</div></div>
+</div>
+<table>
+<thead><tr><th style="width:22%">门槛</th><th style="width:34%">建议值</th><th>依据与说明</th></tr></thead>
+<tbody>
+<tr><td>最小样本</td><td>每组 <code>n ≥ 30</code>，且至少覆盖 3–5 年含完整市场周期的回测窗口（若用历史行情）</td><td>因子研究方法论：每截面至少 5 个有效标的，回测覆盖 3–5 年；当前 lessons 的 n=14–17 明显不足</td></tr>
+<tr><td>因子有效性</td><td><code>IC &gt; 0.03</code> 且 <code>IR &gt; 0.5</code>，IC 正比例 &gt; 55%；<code>IC &gt; 0.1</code> 时先查前向偏差</td><td>因子研究方法论阈值；项目已有 <code>ic.js</code> Rank IC 自检可复用</td></tr>
+<tr><td>样本外</td><td>严格 walk-forward；样本外不得劣于冻结基线；留出 holdout 复现</td><td>回测拟合度 &gt; 95% 需警惕过拟合；历史回测收益实盘常打 5–7 折</td></tr>
+<tr><td>多重比较</td><td>一次只登记一个主假说；探索性切分的结果只能标「待复现」，不得直接生成 proposal</td><td>本次核验的隐患 1；探索与验证必须分开</td></tr>
+<tr><td>口径统一</td><td>基准缺失则该样本不进命中率分母；<code>nTotal / nWithBench</code> 显式记录</td><td>本次核验的隐患 2</td></tr>
+<tr><td>回流幅度</td><td>单次 ±2 分；乘数 0.8–1.25；不翻符号；每条规则带 <code>evidenceRefs</code></td><td>沿用项目现有 <code>applyRules()</code> 的有界设计，这是对的，保留</td></tr>
+<tr><td>失效条件</td><td>IC 连续衰减、市场状态切换、样本环境变化 → 自动降权并转回 observing</td><td>因子拥挤会导致经典因子衰减；经验有有效期，不是永久真理</td></tr>
+</tbody>
+</table>
+<div class="src">门槛依据：金融场景方法论 <code>quant-factor-research.md</code>、<code>systematic-strategies.md</code>；项目内 <code>server/journal.js</code>、<code>server/ic.js</code>。</div>
+
+<h2>六、「有专业知识的智能体」应该长什么样</h2>
+<p>结论与上一轮一致并更具体：<strong>不引入 LangGraph / CrewAI 等框架</strong>（现有后端是零依赖 Node，Python 框架要养第二套运行时），用 Node 内置 <code>fetch</code> 写薄适配器即可。但「专业知识」不靠模型记忆，靠下面这套知识卡。</p>
+
+<h3>知识卡：可审计的专业知识载体</h3>
+<table>
+<thead><tr><th style="width:16%">卡</th><th style="width:32%">内容</th><th style="width:26%">适用条件</th><th style="width:26%">反例 / 失效条件</th></tr></thead>
+<tbody>
+<tr><td>K-01<br><small>催化预期差</small></td><td>界定事件性质 → 判催化级别（强 / 中 / 弱 / 噪音）→ 看是否已充分定价 → 识别交易结构 → 观察龙头晋级、板块扩散、次日溢价</td><td>有明确事件锚点且能取到公告 / 新闻时点</td><td>「预期已充分定价的利好反而是兑现风险」；不把单一新闻上升为长期逻辑；政策映射需真受益</td></tr>
+<tr><td>K-02<br><small>常见误导信号</small></td><td>单日跌幅大 ≠ 趋势反转；龙虎榜游资追捧 ≠ 值得跟；北向大额净流出 ≠ 必然下跌；利好发布 ≠ 股价必涨</td><td>每日复盘生成解释时自动挂载</td><td>多周期确认优先；不做每日涨跌方向预测；不用「必涨 / 必跌」绝对表述</td></tr>
+<tr><td>K-03<br><small>因子有效性</small></td><td>前向偏差、行业中性化、Z-score 标准化、样本不足不出结论、walk-forward</td><td>任何假说想过晋升闸门时</td><td>高回测 IC 不代表实盘可实现；因子数过多易过拟合</td></tr>
+</tbody>
+</table>
+<div class="src">来源：金融场景方法论 <code>event-catalyst.md</code>、<code>daily-briefing.md</code>、<code>quant-factor-research.md</code>；均为方法论框架，不含行情数值。</div>
+
+<h3>智能体只允许三个动作</h3>
+<ol>
+<li><strong>归类</strong>：把用户口语复盘映射到固定本体（<code>eventType / gameStructure / expectationGap / outcome</code>），只输出标签，不改任何数字。</li>
+<li><strong>生成待验证假说</strong>：从 L0 事实出发生成假说草稿，<strong>必须包含可证伪条件与观察窗口</strong>；状态一律是 <code>observing</code>，不得直接给 proposal。</li>
+<li><strong>翻译</strong>：把确定性计算结果说成人话，数字原样引用、不改口径、不加因果连词。</li>
+</ol>
+<div class="warn"><strong>五条禁止（写进适配器的输出校验）：</strong>① 不输出买卖 / 价位 / 仓位结论；② 不写「因为 X 所以涨」这类因果句；③ 无 <code>precommit</code> 时不评判「当时判断对不对」；④ 不生成新因子、不改任何权重；⑤ 未标注来源与时点的网络内容不得作为事实引用。任何输出先过确定性网关：事实账本核对 → schema 校验 → 幂等去重 → 无出处即剔除。</div>
+<p>这个定位其实比你原本设想的「专业分析师」更有用：它把用户多年才能总结的<strong>隐性经验</strong>逼成可登记、可证伪、可积累的结构，而不是替用户生成一个听起来很懂、但无法验证的解释。</p>
+
+<h2>七、观察你的习惯：行为账本（不需要 LLM）</h2>
+<p>这是整套设计里最独特、也最容易做实的一块。行为习惯全部可以从用户自己的操作记录确定性计算，比让模型「分析性格」可靠得多。</p>
+<table>
+<thead><tr><th style="width:22%">指标</th><th style="width:38%">计算方式</th><th>用途与边界</th></tr></thead>
+<tbody>
+<tr><td>处置效应</td><td>盈利单平均持有天数 ÷ 亏损单平均持有天数</td><td>只做「习惯镜像」周报，描述不评判</td></tr>
+<tr><td>追高倾向</td><td>实际买入日的 <code>chaseRisk</code> 分位、买入前 5 日涨幅分位</td><td>可在用户又要追高时提示「你过去 N 次在此区间的平均结果」</td></tr>
+<tr><td>计划偏离度</td><td>实际成交不在 22:00 定格名单中的比例</td><td>衡量「盘中临时起意」占比</td></tr>
+<tr><td>非计划交易占比 / 换手频率</td><td>无对应定格记录的交易数 ÷ 总交易数</td><td>票数过多、过度交易本身是风控问题</td></tr>
+<tr><td>复盘覆盖率</td><td>有操作且有复盘记录的天数 ÷ 有操作的天数</td><td>低于阈值时经验库自动停止归纳，避免样本偏差</td></tr>
+<tr><td>选择性记忆</td><td>复盘中主动记录的反例数 ÷ 事件总数</td><td>识别「只记对的、不记错的」确认偏误</td></tr>
+</tbody>
+</table>
+<div class="note"><strong>前置缺口：</strong>当前 <code>data/holdings.json</code> 只有 <code>code / cost / shares / note / addedAt</code>，没有卖出记录、买入时点上下文和成交原因，<strong>上述指标多数暂时算不出来</strong>。需新增 <code>data/journal/trades.jsonl</code>，每次实际动作记一行：<code>ts / code / side / price / shares / planRef / precommitId / note / source=user</code>。这是纯增量文件，不动现有持仓结构。</div>
+<p><strong>硬边界：</strong>行为账本只做提示与镜像，<strong>不直接改评分、不自动惩罚用户</strong>。理由同样是防止系统用不可证伪的行为判断反过来影响选股。</p>
+
+<h2>八、自我调整的安全边界</h2>
+<ul>
+<li><strong>冻结基线 v0</strong>：现有 <code>stocks.js</code> 评分逻辑永久保留一份只读快照，任何时候都能算出「不用经验会选哪几只」，与当前结果并列展示。</li>
+<li><strong>影子模式</strong>：所有未采纳经验只在影子表里记录「若采纳，Top12 会怎么变」，不改真实输出。</li>
+<li><strong>人工闸门</strong>：只有人点 approve 才写 <code>rules.json</code>；AI 不能自己往股池塞票，<code>screened</code> 来源一律先 <code>candidate</code>。</li>
+<li><strong>有界回流</strong>：沿用现有 ±2 分 / 0.8–1.25 / 不翻符号；每条规则带 <code>evidenceRefs</code> 可一路追到具体 outcome 与真实行情日期。</li>
+<li><strong>一键回滚</strong>：<code>rules.json</code> 可整体重建（项目已有该能力），采纳错了随时清空回到基线。</li>
+<li><strong>失效检测</strong>：IC 衰减、市场状态切换、样本环境变化时自动降权并转回 observing；经验有有效期。</li>
+</ul>
+
+<h2>九、分阶段路线（每步可验收）</h2>
+<table>
+<thead><tr><th style="width:12%">阶段</th><th style="width:40%">做什么</th><th style="width:30%">验收标准</th><th style="width:18%">依赖</th></tr></thead>
+<tbody>
+<tr><td><strong>Step 0</strong></td><td>4 条 pending 经验标「需复核」而非采纳；修命中率 / 超额口径；手写 3–5 条 precommit</td><td><code>rules.json</code> 仍为 0；evidence 里出现 <code>nTotal / nWithBench</code>；precommit 文件存在</td><td>零代码 / 极小改动</td></tr>
+<tr><td><strong>Step 1</strong></td><td>新增 <code>trades.jsonl</code>；事件字段回贴 outcomes；补 <code>precommitId / verdict / actionTaken</code></td><td>任取一条 outcome 能追到事件来源、事前预判与事后对照</td><td>Step 0</td></tr>
+<tr><td><strong>Step 2</strong></td><td>补 P0 的 8 项确定性因子（KDJ、MA5 形态族、阶段量能、抗压能力、行业市值分位等），只做标注与 Gate</td><td>每项可由日线逐条复算；<strong>评分公式不变</strong></td><td>Step 1</td></tr>
+<tr><td><strong>Step 3</strong></td><td>知识卡 + 薄 LLM 适配器（三动作）；输出过确定性网关；全量影子模式</td><td>关闭适配器系统照常运行；任何输出都能追到 L0 事实；影子表与真实输出并列可比对</td><td>Step 2</td></tr>
+<tr><td><strong>Step 4</strong></td><td>晋升闸门（样本 / IC-IR / walk-forward / 多重比较校正）→ 人工采纳 → 有界回流 → 失效检测</td><td>一条经验从 observing 走到 approved 的全链路可回放、可回滚</td><td>Step 3 + 足够样本</td></tr>
+<tr><td><strong>不做</strong></td><td>自动下单、自动调仓、收益承诺</td><td>系统只出观察名单与解释，委托由人完成</td><td>合规边界</td></tr>
+</tbody>
+</table>
+<div class="ok"><strong>顺序不可颠倒：</strong>先有可复算的事实层和事前登记，再谈 LLM 归纳。否则模型会在噪声素材上把故事编得更像真的——这正是你一直要防的幻觉。</div>
+
+<h2>十、合规与风险边界</h2>
+<ul>
+<li><strong>程序化交易边界</strong>：只要程序不自动下达委托单，选股、监控、复盘、人工下单、券商条件单均不落入程序化交易定义、无需报备；一旦脚本自动发单，即进入「先报告、后交易」框架。本设计明确停在人工下单之前。（依据：上一轮调研的证监会《证券市场程序化交易管理规定（试行）》相关口径，2024-10-08 施行；具体适用以证监会及交易所正式细则为准，本文不构成法律意见。）</li>
+<li><strong>投顾敏感内容</strong>：买入时间、连板测算、仓位建议等只作为 Explain 展示，界面保留免责声明，不做收益承诺、不对外提供。</li>
+<li><strong>数据使用</strong>：行情数据保持个人自用、注明来源与时点、不对外分发；研报与财经媒体属非一手来源，需标注「需核实原文」，不与交易所公告 / 公司年报同等处理。</li>
+<li><strong>反幻觉</strong>：所有关键数字必须可追溯到「来源 + 时点 + 口径」；数据源缺失时直接写「当前数据源未覆盖」，不得补一组数字再加「待核实」。</li>
+<li><strong>界面呈现</strong>：A 股语境红涨绿跌；经验结论必须同时显示样本数、置信度与状态（observing / approved / retired）。</li>
+</ul>
+
+<footer>
+<p><strong>本文引用文件清单</strong>（均为项目本地或方法论文件，核验时点 2026-11-19）：</p>
+<ul>
+<li><code>D:\WorkBuddy\projects\GlobalMarketMonitor\选股方法论规格与程序覆盖矩阵.md</code>（2026-11-19 18:05）</li>
+<li><code>D:\WorkBuddy\projects\GlobalMarketMonitor\系统现状诊断：自动化、数据、经验回流与事件归因.md</code> / <code>设计方案：因子池与智能体复盘经验池.md</code></li>
+<li><code>server/journal.js</code>、<code>server/ic.js</code>、<code>server/stocks.js</code>、<code>server/mypicks.js</code></li>
+<li><code>data/journal/lessons.jsonl</code>、<code>data/journal/outcomes.jsonl</code>、<code>data/journal/rules.json</code>、<code>data/holdings.json</code>、<code>data/my-picks.json</code></li>
+<li>金融场景方法论：<code>quant-factor-research.md</code>、<code>systematic-strategies.md</code>、<code>event-catalyst.md</code>、<code>daily-briefing.md</code>、<code>portfolio-checkup.md</code>、<code>html-report-style.md</code></li>
+<li>上一轮产出：<code>docs/智能体选型与三闭环补齐方案-20261119.html</code></li>
+</ul>
+<p><strong>本次未改动任何现有代码或数据文件</strong>，仅新增本设计文档；结论与上一轮「衔接而非重建」一致。</p>
+<div class="disc"><strong>免责声明</strong>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</footer>
+
+</div>
+</body>
+</html>

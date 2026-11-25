@@ -1,0 +1,8 @@
+=== 桥接进程 ===
+your 131072x1 screen size is bogus. expect trouble
+无桥接进程
+=== 8765 端口 ===
+8765 未监听
+=== bridge.log 全文 ===
+[bridge] "GET /health HTTP/1.1" 200 -
+[bridge] "POST /v1/chat/completions HTTP/1.1" 500 -

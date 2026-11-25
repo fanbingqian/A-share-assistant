@@ -1,0 +1,88 @@
+=== hermes doctor ===
+
+┌─────────────────────────────────────────────────────────┐
+│                 🩺 Hermes Doctor                        │
+└─────────────────────────────────────────────────────────┘
+
+◆ Security Advisories
+  ✓ No active security advisories
+
+◆ MCP Server Security
+  ✓ No suspicious MCP stdio commands
+
+◆ Python Environment
+  ✓ Python 3.14.9
+  ✓ SQLite 3.53.1
+    → SQLite source id: 2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4…
+    → state.db: WAL journal mode (256.1 MB)
+    → response_store.db: WAL journal mode (20.0 KB)
+    → kanban.db: WAL journal mode (100.0 KB)
+  ✓ Runtime venv staged (/home/freddy19871122/.hermes/installs/73f2e1a870c9e167/environments/5ed09c0aeb3947cb8f1405330ca6fc64/venv) (active in this process)
+
+◆ SSL / CA Certificates
+  ✓ TLS platform trust store configured; default SSL context available
+
+◆ Required Packages
+  ✓ OpenAI SDK
+  ✓ Rich (terminal UI)
+  ✓ python-dotenv
+  ✓ ruamel.yaml
+  ✓ HTTPX
+  ✓ Croniter (cron expressions) (optional)
+  ✓ python-telegram-bot (optional)
+  ✓ discord.py (optional)
+  ✓ Dashboard web surface (imports cleanly)
+
+◆ Configuration Files
+  ✓ ~/.hermes/.env file exists
+  ✓ API key or custom endpoint configured
+  ✓ ~/.hermes/config.yaml exists
+  ⚠ model.provider 'deepseek' runs on your providers.deepseek endpoint, not the built-in (https://api.deepseek.com/v1)
+  ✓ auxiliary task routing resolves: compression→custom@api.deepseek.com, summary→custom@api.deepseek.com, vision→custom@localhost
+  ✓ Config version up to date (v54)
+  ⚠ Deprecated: display.tool_progress_overrides (use display.platforms instead)
+    → Replace display.tool_progress_overrides → display.platforms (warn-only; not auto-migrated here)
+
+◆ xAI Model Retirement (May 15, 2026)
+  ✓ No retired xAI models in config
+
+◆ Session Reset (timers removed Sep 7, 2026)
+  ✓ No idle/daily session_reset policy configured
+
+◆ Auth Providers
+  ⚠ Nous Portal auth (not logged in)
+  ⚠ OpenAI Codex auth (not logged in)
+    → No Codex credentials stored. Run `hermes auth add openai-codex --type oauth` to authenticate.
+  ⚠ MiniMax OAuth (not logged in)
+  ⚠ xAI OAuth (not logged in)
+    → No xAI OAuth credentials stored. Select xAI Grok OAuth (SuperGrok / Premium+) in `hermes model`.
+
+◆ Directory Structure
+  ✓ ~/.hermes directory exists
+  ✓ ~/.hermes/cron/ exists
+  ✓ ~/.hermes/sessions/ exists
+  ✓ ~/.hermes/logs/ exists
+  ✓ ~/.hermes/skills/ exists
+  ✓ ~/.hermes/memories/ exists
+  ✓ ~/.hermes/cache/scratch/ is the scratch dir (TMPDIR; 0 B, entries pruned after 24h idle)
+  ✓ ~/.hermes/SOUL.md exists (persona configured)
+  ✓ ~/.hermes/memories/ directory exists
+  ✓ MEMORY.md exists (2148 chars)
+  ✓ USER.md exists (1339 chars)
+  ✓ ~/.hermes/state.db exists (302 sessions)
+    → state.db logical size 256.1 MB, 65,555 pages, 238 free, WAL 6.7 MB
+    → 17,552 messages, 302 sessions, journal_mode=wal, 1 process(es) holding the DB open (the host gateway (PID 295) serving profiles default)
+    → FTS tables: messages_fts, messages_fts_trigram
+  ✓ ~/.hermes/cron/ store is writable
+
+◆ Gateway Service
+  ✓ Systemd linger enabled (gateway service survives logout)
+
+◆ Command Installation
+=== gateway/proxy 进程 ===
+your 131072x1 screen size is bogus. expect trouble
+freddy1+     295  0.2  1.2 411872 100896 ?       Ssl  15:45   0:02 /home/freddy19871122/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main gateway run --replace
+freddy1+     296  0.0  0.1  17028 11648 ?        Ss   15:45   0:00 /usr/bin/python3 /home/freddy19871122/.hermes/port-proxy.py 8644 127.0.0.1 8642
+=== 监听端口 ===
+LISTEN 0      50            0.0.0.0:8644      0.0.0.0:*    users:(("python3",pid=296,fd=3))
+LISTEN 0      128         127.0.0.1:8642      0.0.0.0:*    users:(("python",pid=295,fd=23))

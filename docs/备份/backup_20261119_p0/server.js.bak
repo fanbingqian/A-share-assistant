@@ -1,0 +1,1836 @@
+'use strict';
+
+/**
+ * 全球市场监测与报警系统 · 本地服务
+ * 仅监听 127.0.0.1，不对外暴露；零第三方依赖，Node 18+ 即可运行。
+ */
+
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+
+const sources = require('./sources');
+const {
+  loadConfig, saveConfig, loadState, saveState,
+  appendAlerts, loadAlertHistory, deepMerge, DEFAULT_CONFIG
+} = require('./config');
+const { evaluate, createRuntime, makeTestAlert, makeAlert, inQuietHours } = require('./alerts');
+const translate = require('./translate');
+const analysis = require('./analysis');
+const attention = require('./attention');
+const marketStyle = require('./marketStyle');
+const events = require('./events');
+const limitup = require('./limitup');
+const attribution = require('./attribution');
+const mypicks = require('./mypicks');
+const stocks = require('./stocks');
+const ic = require('./ic');
+const journal = require('./journal');
+const holdings = require('./holdings');
+const cycle = require('./cycle');
+const flow = require('./flow');
+const riskoff = require('./riskoff');
+const strength = require('./strength');
+const valuation = require('./valuation');
+const phase = require('./phase');
+const stack = require('./stack');
+
+const PORT = Number(process.env.PORT || 8777);
+const HOST = '127.0.0.1';
+const WEB_DIR = path.resolve(__dirname, '..', 'web');
+const MAX_HISTORY = 900;
+const MAX_ALERTS = 400;
+
+let config = loadConfig();
+const saved = loadState();
+const runtime = createRuntime(saved);
+let alerts = loadAlertHistory(160);
+let history = saved.history || {};
+
+const latest = {
+  quotes: [],
+  news: { items: [], feedHealth: {}, fetchedAt: 0, ok: false },
+  analysis: null, stocks: null, attention: null, market: null, stockNews: null, style: null,
+  events: null, macro: null, eventRaw: null, ic: null,
+  limitup: null, limitRaw: null, limitContext: null,
+  // 涨停/炸板事实卡（只陈列公开事实，不认定原因）
+  attribution: null,
+  journal: null, cyc: null, flow: null, riskoff: null, holdings: null,
+  // 预期研究层：板块相对强弱 / 市值重估 / 板块阶段 / 多因素叠加（统一由 runEdge 编排）
+  edge: null,
+  health: {}, errors: [], sourceLatency: {},
+  quoteFetchedAt: 0, newsFetchedAt: 0,
+  startedAt: Date.now()
+};
+
+let quoteBusy = false, newsBusy = false, quotesSeen = false;
+let analysisBusy = false, stocksBusy = false, lastAnalysisAt = 0;
+let stylePromise = null;  // 风格计算较重（含全市场分页），并发调用复用同一 Promise
+let eventsBusy = false, signalBusy = false, lastMacroSignature = '', lastEventSignature = '';
+let lastMarketSignature = '', lastMarketScore = 0, lastMarketRegime = '', lastQuoteTriggerAt = 0;
+let quoteTimer = null, newsTimer = null, stocksTimer = null, styleTimer = null, eventsTimer = null, icTimer = null, limitTimer = null, lastPersist = 0;
+let journalTimer = null, cycleTimer = null, flowTimer = null, riskoffTimer = null, holdingsTimer = null, edgeTimer = null;
+let attributionTimer = null;
+let icBusy = false, limitBusy = false, cycleBusy = false, flowBusy = false, riskoffBusy = false, journalBusy = false, holdingsBusy = false, edgeBusy = false, attributionBusy = false;
+let flowRefreshDay = null;
+// 事件告警去重：按事件 ID 记录已推送；首次启动把当前事件全部标记为基线，不补推历史积压
+const seenEventAlerts = new Set();
+let eventAlertBaselineSet = false;
+const sseClients = new Set();
+
+/* ------------------------------- 广播与快照 ------------------------------- */
+
+function broadcast(event, data) {
+  let payload;
+  try { payload = 'event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n'; }
+  catch (e) { console.error('[sse] 序列化失败:', e.message); return; }
+  for (const res of sseClients) {
+    try { res.write(payload); } catch (_) { sseClients.delete(res); }
+  }
+}
+
+function snapshot() {
+  return {
+    config,
+    quotes: latest.quotes,
+    news: latest.news,
+    history,
+    alerts: alerts.slice(-120),
+    health: latest.health,
+    errors: latest.errors,
+    sourceLatency: latest.sourceLatency,
+    quoteFetchedAt: latest.quoteFetchedAt,
+    newsFetchedAt: latest.newsFetchedAt,
+    analysis: latest.analysis,
+    stocks: latest.stocks,
+    attention: latest.attention,
+    market: latest.market,
+    style: latest.style,
+    events: latest.events,
+    macro: latest.macro,
+    limitup: latest.limitup,
+    journal: latest.journal,
+    cycle: latest.cyc,
+    flow: latest.flow,
+    holdings: latest.holdings,
+    riskoff: latest.riskoff,
+    edge: latest.edge,
+    ic: latest.ic,
+    startedAt: latest.startedAt,
+    serverTime: Date.now(),
+    dataNote: '全部数值来自公开实时接口，具体来源与时点见每张卡片标注；自检告警为模拟数据，不代表真实行情。新闻中文由机器翻译生成；新闻解读与观察池为规则推理，不构成投资建议。'
+  };
+}
+
+function pushAlerts(list) {
+  if (!list || !list.length) return;
+  for (const a of list) {
+    alerts.push(a);
+    broadcast('alert', a);
+    console.log('[告警] ' + a.level.toUpperCase() + ' | ' + a.title + ' | ' + a.message);
+  }
+  if (alerts.length > MAX_ALERTS) alerts = alerts.slice(-MAX_ALERTS);
+  appendAlerts(list);
+}
+
+/* ------------------------------- 历史序列 ------------------------------- */
+
+function appendLiveHistory(quotes, ts) {
+  for (const q of quotes) {
+    const v = +q.value;
+    if (!Number.isFinite(v)) continue;
+    if (!Array.isArray(history[q.id])) history[q.id] = [];
+    const arr = history[q.id];
+    const last = arr[arr.length - 1];
+    if (last && ts - last.t < 4000) continue;
+    // 休市期间报价恒定，若每轮都追加常数点，会很快填满 900 点窗口、
+    // 把 Yahoo 历史线挤出去，走势图变成一条水平直线。值不变时只推进末点时间。
+    if (last && last.s === 'live' && last.v === v) { last.t = ts; continue; }
+    arr.push({ t: ts, v, s: 'live' });
+    if (arr.length > MAX_HISTORY) arr.splice(0, arr.length - MAX_HISTORY);
+  }
+}
+
+async function initYahooHistory() {
+  const ids = Object.keys(sources.YAHOO_MAP);
+  const results = await Promise.allSettled(ids.map(id => sources.fetchYahooHistory(id)));
+  let loaded = 0;
+  results.forEach((r, i) => {
+    if (r.status !== 'fulfilled' || !r.value.length) return;
+    const id = ids[i];
+    const old = (history[id] || []).filter(p => p.s === 'live');
+    const merged = r.value.map(p => ({ t: p.t, v: p.v, s: 'yahoo' })).concat(old);
+    merged.sort((a, b) => a.t - b.t);
+    // 同一时间戳去重
+    history[id] = merged.filter((p, k) => k === 0 || p.t !== merged[k - 1].t).slice(-MAX_HISTORY);
+    loaded++;
+  });
+  console.log('[history] Yahoo 历史线加载 ' + loaded + '/' + ids.length + ' 个标的');
+  broadcast('history', { history, source: 'Yahoo Finance 5分钟线', loaded });
+}
+
+/* ------------------------------- 轮询任务 ------------------------------- */
+
+async function doQuoteTick() {
+  if (quoteBusy) return;
+  quoteBusy = true;
+  const now = Date.now();
+  try {
+    const r = await sources.fetchQuotes();
+    latest.sourceLatency = r.latencyMs;
+    if (r.quotes.length) {
+      latest.quotes = r.quotes;
+      latest.health = r.health;
+      latest.errors = r.errors;
+      latest.quoteFetchedAt = r.fetchedAt;
+      runtime.lastQuoteSuccessAt = r.fetchedAt;
+      appendLiveHistory(r.quotes, r.fetchedAt);
+    } else {
+      latest.health = r.health;
+      latest.errors = r.errors;
+    }
+
+    const triggered = evaluate({
+      quotes: r.quotes, news: null, health: r.health,
+      config, runtime, now, isFirstQuote: !quotesSeen, mode: 'quote'
+    });
+    quotesSeen = true;
+    pushAlerts(triggered);
+    broadcast('tick', {
+      quotes: r.quotes, health: r.health, errors: r.errors,
+      sourceLatency: r.latencyMs, fetchedAt: r.fetchedAt, history
+    });
+    // 外围市场联动：每轮都更新上下文，出现显著变化时触发观察池「轻量重评分」
+    if (r.quotes.length) {
+      const mc = attention.buildMarketContext(r.quotes);
+      latest.market = mc;
+      if (lastMarketSignature && mc.signature !== lastMarketSignature && config.stocks.enabled) {
+        const bigMove = Math.abs(mc.score - lastMarketScore) >= 8;
+        const regimeChanged = mc.regime !== lastMarketRegime;
+        if ((bigMove || regimeChanged) && Date.now() - lastQuoteTriggerAt > 60000) {
+          lastQuoteTriggerAt = Date.now();
+          console.log('[linkage] 外围行情变化触发观察池重评分 | ' + lastMarketRegime + ' → ' + mc.regime +
+            ' | ' + lastMarketScore + ' → ' + mc.score);
+          runStocks(false).catch(e => console.warn('[stocks]', e.message));
+        }
+      }
+      lastMarketSignature = mc.signature;
+      lastMarketScore = mc.score;
+      lastMarketRegime = mc.regime;
+      // 宏观避险状态依赖实时行情；内部按签名去重，微小报价波动不会反复触发重评分
+      rebuildSignals();
+    }
+    if (r.errors.length) console.warn('[source] ' + r.errors.join(' | '));
+  } catch (e) {
+    console.error('[quote] 采集异常:', e.message);
+    latest.errors = ['行情采集异常: ' + e.message];
+    broadcast('tick', { quotes: latest.quotes, health: latest.health, errors: latest.errors, fetchedAt: now, history });
+  } finally {
+    quoteBusy = false;
+    if (now - lastPersist > 60000) { lastPersist = now; persistState(); }
+  }
+}
+
+async function doNewsTick() {
+  if (newsBusy) return;
+  newsBusy = true;
+  try {
+    const r = await sources.fetchNews();
+    if (r.items.length) {
+      // 轮询会重建 items，必须沿用上一轮的译文与分析字段，
+      // 否则解读节流期间新闻列表会「退回英文」，出现中文时有时无的问题。
+      const prev = new Map(latest.news.items.map(n => [n.id, n]));
+      const keep = ['titleZh', 'descZh', 'translation', 'displayTitle', 'sentiment',
+        'sentimentLabel', 'relevance', 'topics', 'primaryTopic', 'directions', 'importance', 'insight'];
+      const items = r.items.map(n => {
+        const p = prev.get(n.id);
+        if (!p) return n;
+        const carry = {};
+        for (const k of keep) if (p[k] !== undefined) carry[k] = p[k];
+        return { ...n, ...carry };
+      });
+      latest.news = {
+        items, feedHealth: r.feedHealth,
+        fetchedAt: r.fetchedAt, ok: r.ok
+      };
+      latest.newsFetchedAt = r.fetchedAt;
+      runtime.lastNewsAt = r.fetchedAt;
+    }
+    const triggered = evaluate({
+      quotes: latest.quotes, news: r.items.length ? r : null, health: {},
+      config, runtime, now: Date.now(), mode: 'news'
+    });
+    if (!r.items.length) {
+      pushAlerts([makeAlert({
+        level: 'warning', category: 'system', rule: 'news-down',
+        title: '新闻源全部不可达', message: '本轮未抓取到任何新闻，请检查网络连接。',
+        source: '新闻采集', silent: false
+      })]);
+    }
+    pushAlerts(triggered);
+    broadcast('news', latest.news);
+    // 宏观事件分类与避险温度随新闻流更新（纯计算，签名去重）
+    rebuildSignals();
+    // 翻译与解读异步进行：先让界面拿到原文，中文与分析结果稍后自动补齐
+    runAnalysis(false).catch(e => console.warn('[analysis]', e.message));
+  } catch (e) {
+    console.error('[news] 采集异常:', e.message);
+  } finally {
+    newsBusy = false;
+  }
+}
+
+/* ------------------------------- 新闻中文化与解读 ------------------------------- */
+
+async function runAnalysis(force) {
+  if (analysisBusy || !config.analysis.enabled || !latest.news.items.length) return;
+  // 出现未翻译的新英文条目时提前重算（译文有缓存，成本很低），但至少间隔 30 秒防止抖动
+  const pending = config.analysis.autoTranslate
+    ? latest.news.items.some(n => n.lang !== 'zh' && !n.titleZh) : false;
+  const minGap = Math.max(30, config.analysis.refreshSec || 180) * 1000;
+  const elapsed = Date.now() - (lastAnalysisAt || 0);
+  if (!force && lastAnalysisAt && elapsed < minGap && !(pending && elapsed > 30000)) return;
+  analysisBusy = true;
+  try {
+    const items = latest.news.items;
+    let tr = {};
+    if (config.analysis.autoTranslate) {
+      tr = await translate.translateNews(items, { descLimit: config.analysis.translateDescLimit });
+    } else {
+      for (const n of items) {
+        tr[n.id] = {
+          titleZh: n.lang === 'zh' ? n.title : null, descZh: null,
+          engine: n.lang === 'zh' ? 'native' : 'original'
+        };
+      }
+    }
+
+    const brief = analysis.buildBriefing({ ...latest.news, items }, tr, latest.quotes, { now: Date.now() });
+    const analyzed = new Map(brief.items.map(x => [x.id, x]));
+    latest.news.items = items.map(n => {
+      const t = tr[n.id] || {};
+      const a = analyzed.get(n.id);
+      const base = {
+        ...n,
+        titleZh: t.titleZh || null,
+        descZh: t.descZh || null,
+        translation: t.engine || (n.lang === 'zh' ? 'native' : 'original'),
+        displayTitle: t.titleZh || n.title
+      };
+      if (!a) return base;
+      return {
+        ...base,
+        sentiment: a.sentiment, sentimentLabel: a.sentimentLabel, relevance: a.relevance,
+        topics: a.topics, primaryTopic: a.primaryTopic,
+        directions: a.directions, importance: a.importance, insight: a.insight
+      };
+    });
+    latest.analysis = brief;
+    lastAnalysisAt = Date.now();
+    broadcast('news', latest.news);
+    broadcast('analysis', brief);
+    console.log('[analysis] 解读完成 | 新闻 ' + brief.counts.total + ' 条 | 译文 ' +
+      brief.counts.translated + ' 条 | 风险温度 ' + brief.riskTemperature);
+    // 消息面变化后，事件板块倾向、避险温度与观察池行业联动分都需要重算（内部签名去重）
+    rebuildSignals();
+  } finally {
+    analysisBusy = false;
+  }
+}
+
+/* ------------------------------- 当日观察池 ------------------------------- */
+
+function isTradingNow() {
+  const d = new Date(Date.now() + 8 * 3600000);
+  const day = d.getUTCDay(), hhmm = d.getUTCHours() * 60 + d.getUTCMinutes();
+  if (day === 0 || day === 6) return false;
+  return (hhmm >= 570 && hhmm <= 690) || (hhmm >= 780 && hhmm <= 900);
+}
+
+/** 新闻内容指纹：译文补齐、情绪/重要度变化都会改变它，从而触发观察池重评分 */
+function newsFingerprint(items) {
+  return (items || []).slice(0, 80).map(n =>
+    n.id + ':' + (n.sentiment === undefined ? '' : n.sentiment) + ':' +
+    (n.importance === undefined ? '' : n.importance) + ':' + (n.titleZh ? 1 : 0)
+  ).join('|');
+}
+
+/* ------------------------------- 公司事件 / 宏观状态 ------------------------------- */
+
+function eventOpts() {
+  const c = config.events || {};
+  return {
+    alertEnabled: c.alertEnabled !== false,
+    leaderCapYi: c.leaderCapYi,
+    lookbackDays: c.lookbackDays,
+    maxAdjust: c.maxAdjust,
+    volumeThresholdYi: c.volumeThresholdYi,
+    riskOffEnabled: c.riskOffEnabled,
+    macroMaxAdjust: c.macroMaxAdjust
+  };
+}
+
+/** 即时告警：只推「本轮新出现」的重点事件，冷启动先建立基线，避免历史公告一次性刷屏 */
+function pushEventAlerts(view) {
+  if (!config.events.alertEnabled || !view || !Array.isArray(view.items)) return;
+  const rank = { critical: 3, warning: 2, info: 1 };
+  const candidates = view.items.filter(e => e.alert)
+    .sort((a, b) => (rank[b.alert.level] || 0) - (rank[a.alert.level] || 0) || b.ts - a.ts);
+  if (!eventAlertBaselineSet) {
+    for (const e of view.items) seenEventAlerts.add(e.id);
+    eventAlertBaselineSet = true;
+    // 冷启动不补推历史积压，但把「当前仍在有效期内」的龙头超预期业绩汇总成一条提示，
+    // 让用户立刻知道事件监测已生效（此后新事件按级别即时提醒）。
+    const leaders = view.items.filter(e => e.type === 'earnings' && e.isBeat && e.isLeader);
+    if (leaders.length) {
+      pushAlerts([makeAlert({
+        level: 'info', category: 'event', rule: 'event-baseline-summary',
+        title: '事件监测已启动 · 龙头业绩超预期 ' + leaders.length + ' 家',
+        message: leaders.slice(0, 3).map(e => e.name + '（' + e.beatLevel + '，净利同比中值 ' +
+          (e.amp > 0 ? '+' : '') + Number(e.amp || 0).toFixed(1) + '%）').join('；') +
+          '。此后新出现的重点事件将即时声音 + 消息提醒。',
+        source: '东方财富 · 业绩预告 / 快报', silent: inQuietHours(config, Date.now()),
+        link: leaders[0].link || null
+      })]);
+    }
+    console.log('[events] 已建立事件告警基线（' + seenEventAlerts.size + ' 条历史事件不补推）');
+    return;
+  }
+  const fresh = candidates.filter(e => !seenEventAlerts.has(e.id));
+  for (const e of fresh) seenEventAlerts.add(e.id);
+  if (seenEventAlerts.size > 4000) {
+    const arr = Array.from(seenEventAlerts);
+    seenEventAlerts.clear();
+    arr.slice(-2000).forEach(x => seenEventAlerts.add(x));
+  }
+  // 每轮最多 5 条：龙头超预期业绩优先，其余进入告警中心但不会连响
+  const chosen = fresh.slice(0, 5);
+  if (!chosen.length) return;
+  const silent = inQuietHours(config, Date.now());
+  pushAlerts(chosen.map(e => makeAlert({ ...e.alert, now: Date.now(), silent })));
+  console.log('[events] 新事件提醒 ' + chosen.length + ' 条' +
+    (fresh.length > chosen.length ? '（另有 ' + (fresh.length - chosen.length) + ' 条按限流未推声音）' : ''));
+}
+
+/**
+ * 纯计算重建事件视图与宏观状态（不访问网络），因此行情 / 新闻 / 解读每次变化都能近实时反映。
+ * 只有签名变化才广播并触发观察池轻量重评分。
+ */
+function rebuildSignals(opts = {}) {
+  if (signalBusy || !config.events.enabled) return null;
+  signalBusy = true;
+  try {
+    const o = eventOpts();
+    const view = latest.eventRaw ? events.buildEventView(latest.eventRaw, {
+      news: { items: latest.news.items },
+      briefing: latest.analysis, style: latest.style,
+      market: latest.market, quotes: latest.quotes, opts: o
+    }) : null;
+    const macro = events.buildMacroRegime({
+      style: latest.style, briefing: latest.analysis,
+      market: latest.market, quotes: latest.quotes, opts: o
+    });
+    const viewChanged = !!view && view.signature !== lastEventSignature;
+    const macroChanged = macro.signature !== lastMacroSignature;
+    if (view) { latest.events = view; lastEventSignature = view.signature; }
+    latest.macro = macro; lastMacroSignature = macro.signature;
+    if (viewChanged) broadcast('events', view);
+    if (macroChanged) broadcast('macro', macro);
+    if (viewChanged || macroChanged) {
+      console.log('[events] 事件 ' + (view ? view.counts.total : 0) + ' 条 | 重点 ' +
+        (view ? view.counts.focus : 0) + ' | 超预期 ' + (view ? view.counts.earningsBeats : 0) +
+        ' | 龙头超预期 ' + (view ? view.counts.leaderBeats : 0) +
+        ' || ' + macro.volume.regime + ' | 避险 ' + macro.riskOff.score + '/100');
+      if (viewChanged) pushEventAlerts(view);
+      if (config.stocks.enabled && !opts.skipStocks) {
+        runStocks(false).catch(e => console.warn('[stocks]', e.message));
+      }
+    }
+    return { view, macro, viewChanged, macroChanged };
+  } catch (e) {
+    console.warn('[events] 信号重建失败: ' + e.message);
+    return null;
+  } finally { signalBusy = false; }
+}
+
+/** 事件材料采集（较慢，按 refreshMin 节流）；采集后重建信号 */
+async function runEvents(force) {
+  if (eventsBusy || !config.events.enabled) return null;
+  eventsBusy = true;
+  try {
+    const raw = await events.refreshRawEvents({
+      force: !!force, trading: isTradingNow(),
+      refreshMin: config.events.refreshMin,
+      lookbackDays: config.events.lookbackDays
+    });
+    latest.eventRaw = raw;
+    return rebuildSignals();
+  } catch (e) {
+    console.warn('[events] 事件采集失败: ' + e.message);
+    return null;
+  } finally { eventsBusy = false; }
+}
+
+/**
+ * 评分有效性自检：补算到期快照的前瞻收益 → 重建 Rank IC 报告 → 推送前端。
+ * 无到期样本时只重建聚合（纯读盘，几乎无成本）。
+ */
+async function runIC(force) {
+  if (icBusy || !(config.ic || {}).enabled) return null;
+  icBusy = true;
+  try {
+    const rep = force ? ic.getReport(config.ic, false) : await ic.tick(config.ic);
+    if (force) ic.appendLesson(rep);
+    latest.ic = rep;
+    broadcast('ic', rep);
+    const h5 = (rep.horizons || []).find(x => x.h === 5) || {};
+    console.log('[ic] 自检 | 快照 ' + rep.status.snapshots + ' 天 | 标注 ' + rep.status.labeled +
+      ' 条 | T+5 IC ' + (h5.mean ?? '—') + ' | ' + rep.verdict.level);
+    return rep;
+  } catch (e) {
+    console.warn('[ic] 自检失败: ' + e.message);
+    return null;
+  } finally { icBusy = false; }
+}
+
+/**
+ * 大盘量能 / 市值风格独立刷新。风格签名变化（或首次产出）时推送给前端，
+ * 并触发观察池的轻量重评分——风格分已纳入 contextSignature，无需重拉个股日线。
+ */
+async function refreshStyleAndStocks(force) {
+  if (!config.marketStyle.enabled) return null;
+  if (stylePromise) return stylePromise;
+  stylePromise = (async () => {
+    try {
+      const prev = latest.style && latest.style.signature;
+      const st = await marketStyle.getMarketStyle({
+        force: !!force, trading: isTradingNow(),
+        refreshMin: config.marketStyle.refreshMin,
+        breadthEnabled: config.marketStyle.breadthEnabled
+      });
+      latest.style = st;
+      if (st.signature !== prev) {
+        broadcast('style', st);
+        console.log('[style] ' + st.dominantLabel + ' | 置信度 ' + st.confidence +
+          ' | 两市 ' + (st.volume ? st.volume.state : '--') + ' | ' + (st.tradingDate || '--'));
+        // 单位资金弹性与量能分档依赖风格数据，先刷新宏观视图再重评分
+        rebuildSignals({ skipStocks: true });
+        if (config.stocks.enabled) runStocks(false).catch(e => console.warn('[stocks]', e.message));
+      }
+      return st;
+    } catch (e) {
+      console.warn('[style] 量能风格计算失败: ' + e.message);
+      return null;
+    }
+  })();
+  try { return await stylePromise; } finally { stylePromise = null; }
+}
+
+/** 观察池计算前确保风格数据可用：优先内存 → 落盘缓存 → 现算 */
+async function ensureStyle() {
+  if (latest.style) return latest.style;
+  const cached = marketStyle.loadCached();
+  if (cached && cached.ok) { latest.style = cached; return cached; }
+  await refreshStyleAndStocks(true);
+  return latest.style;
+}
+
+/**
+ * 涨停池 / 炸板池 / 跌停池刷新。
+ * 交易时段按 limitUp.refreshMin（默认 3 分钟）刷新——封板时间、封单额、开板次数盘中持续变化；
+ * 非交易时段且当日缓存已就绪时直接复用，不发请求（涨停池收盘后不再变化）。
+ * 涨停池一变就触发观察池轻量重评分，使板型/封单/开板次数即时反映到排序。
+ */
+async function runLimitUp(force) {
+  if (limitBusy || !config.limitUp || config.limitUp.enabled === false) return latest.limitup;
+  limitBusy = true;
+  try {
+    const bjYmd = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10).replace(/-/g, '');
+    const cached = limitup.readCache();
+    const cachedToday = cached && String(cached.date) === bjYmd;
+    if (!force && cachedToday && !isTradingNow()) {
+      const ageMin = (Date.now() - (cached.fetchedAt || 0)) / 60000;
+      if (ageMin >= 1) {
+        latest.limitRaw = cached;
+        if (!latest.limitContext) latest.limitContext = limitup.toContext(cached);
+        if (!latest.limitup) latest.limitup = limitup.buildView(cached);
+        return latest.limitup;
+      }
+    }
+    const pools = await limitup.fetchPools();
+    if (!pools.ok) {
+      console.warn('[limitup] 涨停池为空或不可达: ' + (pools.warnings.join('; ') || '无数据'));
+      return latest.limitup;
+    }
+    pools.fetchedAt = Date.now();
+    limitup.writeCache(pools);
+    latest.limitRaw = pools;
+    latest.limitContext = limitup.toContext(pools);
+    latest.limitup = limitup.buildView(pools);
+    broadcast('limitup', latest.limitup);
+    const s = latest.limitup.sentiment;
+    console.log('[limitup] 涨停 ' + s.ztCount + ' / 跌停 ' + s.dtCount + ' / 炸板 ' + s.zbCount +
+      '（炸板率 ' + s.zbRate + '%）| 情绪 ' + s.stage + ' | 最高 ' + s.maxBoards + ' 板');
+    // 结构因子随封板/开板变化 → 触发观察池重评分（复用日线缓存，无额外请求）
+    if (config.stocks.enabled) runStocks(false).catch(e => console.warn('[stocks]', e.message));
+    return latest.limitup;
+  } catch (e) {
+    console.warn('[limitup] 采集失败: ' + e.message);
+    return latest.limitup;
+  } finally {
+    limitBusy = false;
+  }
+}
+
+/* ------------------ 涨停 / 炸板「事实卡」（L0 确定性，不做因果） ------------------ */
+
+/**
+ * 只陈列可核验事实：涨停盘口 + 公告（带日期与原文链接）+ 新闻标题 + 规则关键词命中。
+ * 刻意不接 LLM、不写「涨停原因」——归纳那一步最容易产生幻觉且无法逐条溯源。
+ * 公告接口有限流，故串行抓取 + 6 小时缓存，只对涨停股定向抓，不做全市场扫描。
+ */
+async function runAttribution(force) {
+  if (attributionBusy) return latest.attribution;
+  if (!config.attribution || config.attribution.enabled === false) return latest.attribution;
+  attributionBusy = true;
+  try {
+    if (!latest.attribution) latest.attribution = attribution.readCache();
+    const v = await attribution.build({
+      force: !!force,
+      maxStocks: config.attribution.maxStocks || 30,
+      gapMs: config.attribution.gapMs || 1300
+    });
+    latest.attribution = v;
+    if (v && v.ok) {
+      broadcast('attribution', v);
+      console.log('[attribution] ' + v.date + ' 扫描 ' + v.coverage.scanned + ' 只 · 有素材 '
+        + (v.coverage.scanned - v.coverage.none) + ' · 公告失败 ' + v.coverage.annErrors);
+    }
+    return v;
+  } catch (e) {
+    console.warn('[attribution] 构建失败: ' + e.message);
+    if (!latest.attribution) {
+      latest.attribution = {
+        ok: false,
+        error: e.message,
+        builtAt: Date.now(),
+        disclaimer: attribution.DISCLAIMER,
+        items: [],
+        coverage: { scanned: 0, withAnn: 0, withNews: 0, none: 0, annErrors: 0, pct: 0 }
+      };
+    }
+    return latest.attribution;
+  } finally {
+    attributionBusy = false;
+  }
+}
+
+/* ====================================================================== */
+/* 闭环四模块：经验库 / 周期事件 / 资金主体 / 避险识别                       */
+/* ====================================================================== */
+
+function bjNow() {
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  return {
+    date: d.toISOString().slice(0, 10),
+    minutes: d.getUTCHours() * 60 + d.getUTCMinutes(),
+    weekday: d.getUTCDay()
+  };
+}
+
+let calMemo = { at: 0, set: null };
+async function isTradingDay(dateStr) {
+  try {
+    if (!calMemo.set || Date.now() - calMemo.at > 3600000) {
+      const cal = await ic.tradingCalendar();
+      calMemo = { at: Date.now(), set: new Set(cal), last: cal.length ? cal[cal.length - 1] : null };
+    }
+    if (calMemo.set.has(dateStr)) return true;
+    // 【关键修复】日历来自上证指数历史日K，只覆盖到最后一个「已收盘」的交易日。
+    // 任何交易日的早晨，当日都不在日历里（当日日K要到收盘后才存在）——
+    // 若直接返回 false，开盘档定格永远不会触发。对「日历末尾之后」的日期
+    // （= 今天与未来）按周一至周五推定为交易日：法定节假日会误判，
+    // 但定格幂等去重、复盘按真实下一交易日对齐，代价可控且远小于漏定格。
+    if (calMemo.last && dateStr > calMemo.last) {
+      // 用北京时间正午取星期（00:00+08:00 换算成 UTC 会落到前一天，星期会错位）
+      const d = new Date(dateStr + 'T12:00:00+08:00');
+      const wd = d.getUTCDay();
+      return wd >= 1 && wd <= 5;
+    }
+    return false;
+  } catch (_) { return true; } // 日历不可用时按交易日处理，宁可多定格一次（幂等去重会挡住重复）
+}
+
+/** 观察池定格用的上下文元数据（情绪阶段 / 量能 / 风格 / 避险温度） */
+function journalMeta() {
+  const s = (latest.limitup && latest.limitup.sentiment) || {};
+  const st = latest.style || {};
+  const mc = latest.macro || {};
+  // 外围市况存证：美股三大指数（早盘=隔夜收盘）+ 亚太指数（恒生盘前无报价自动缺省，不编数）
+  const overseas = (latest.quotes || [])
+    .filter(q => q.group === 'overseas' && q.changePct !== null && q.changePct !== undefined)
+    .map(q => ({ id: q.id, short: q.short || q.name, changePct: q.changePct, value: q.value }));
+  return {
+    sentimentStage: s.stage || null,
+    sentimentFactor: s.factor != null ? s.factor : null,
+    volumeYi: mc.amountYi != null ? mc.amountYi : (st.volumeYi != null ? st.volumeYi : null),
+    volumeRegime: mc.regime || null,
+    styleDominant: st.dominant || null,
+    marketRegime: (latest.market && latest.market.regime) || null,
+    riskOffScore: mc.riskOffScore != null ? mc.riskOffScore : null,
+    overseas: overseas.length ? overseas : null
+  };
+}
+
+/**
+ * 经验库编排（每分钟检查一次，幂等）：
+ *   09:05 定格开盘档（含外围市况：美股隔夜 + 亚太早盘）→ 15:10 起复盘 → 22:00 定格收盘档（美股盘中）→ 22:05 归纳经验。
+ * 定格必须用「当时的观察池」：若内存里的名单超过 3 小时（如周末后首日）则先强制重算一次。
+ */
+async function runJournalTick() {
+  if (journalBusy || !config.journal || config.journal.enabled === false) return;
+  journalBusy = true;
+  try {
+    const bj = bjNow();
+    const jcfg = config.journal || {};
+    const openMin = parseHm(jcfg.openTime, 9 * 60);
+    const eveMin = parseHm(jcfg.eveTime, 22 * 60);
+    const reviewMin = parseHm(jcfg.reviewTime, 15 * 60 + 10);
+
+    if (await isTradingDay(bj.date)) {
+      for (const kind of [['open', openMin, 9 * 60 + 25], ['eve', Math.max(eveMin, 15 * 60 + 5), 23 * 60 + 59]]) {
+        const [k, from, to] = kind;
+        // 定格有时效：开盘档必须在 09:25 集合竞价结束前取（那时报价仍是昨收），
+        // 盘后启动的服务不允许补建开盘档——参考价会被当日盘中价格污染，复盘就失去意义。
+        if (bj.minutes < from || bj.minutes > to) continue;
+        if (journal.listPicks({ date: bj.date, kind: k, limit: 1 }).length) continue;
+        if (!latest.stocks || !latest.stocks.items || !latest.stocks.items.length ||
+            Date.now() - (latest.stocks.generatedAt || 0) > 3 * 3600000) {
+          await runStocks(true);
+        }
+        if (!latest.stocks || !latest.stocks.items || !latest.stocks.items.length) continue; // 空名单宁可放弃本轮，绝不定格 0 只
+        // 定格前确保叠加视图已生成（冷启动时 edge 可能还没跑），再注入形态标签
+        if ((!latest.edge || !latest.edge.ok) && !edgeBusy) await runEdge(false);
+        const r = journal.snapshot(withStack(latest.stocks.items), { kind: k, date: bj.date, ...journalMeta() });
+        if (!r.exists) {
+          console.log('[journal] ' + bj.date + ' ' + (k === 'open' ? '开盘前' : '收盘后') + '定格 ' + r.count + ' 只');
+          latest.journal = journalView();
+          broadcast('journal', latest.journal);
+        }
+      }
+
+      // 实时观察池：交易时段内随评分滚动更新（与冻结定格互补，不作为复盘基准）。
+      // 仅当内存里的名单「新鲜」（10 分钟内产出）才滚动，防止把陈旧评分盖上新时间戳。
+      if (jcfg.liveEnabled !== false) {
+        const inSession = (bj.minutes >= 9 * 60 + 25 && bj.minutes <= 11 * 60 + 35) ||
+          (bj.minutes >= 13 * 60 && bj.minutes <= 15 * 60 + 5);
+        const stocksFresh = latest.stocks && latest.stocks.items && latest.stocks.items.length &&
+          Date.now() - (latest.stocks.generatedAt || 0) <= 10 * 60 * 1000;
+        if (inSession && stocksFresh) {
+          const r = journal.liveSnapshot(withStack(latest.stocks.items), {
+            date: bj.date, limit: jcfg.liveLimit || 12, ...journalMeta()
+          });
+          if (r.changed) {
+            latest.journal = journalView();
+            broadcast('journal', latest.journal);
+          }
+        }
+      }
+    }
+
+    // 复盘：收盘数据可用后回填 T+1 结果（每日一次即可，重复调用靠 outcomes 去重）
+    if (bj.minutes >= reviewMin && !runJournalTick._reviewedOn) {
+      const r = await journal.reviewPending();
+      if (r.ok && r.reviewed) {
+        console.log('[journal] 复盘回填 ' + r.reviewed + ' 条（待回填 ' + r.pending + '）');
+        const l = journal.buildLessons();
+        if (l.created) console.log('[journal] 新增待审经验 ' + l.created + ' 条');
+      }
+      runJournalTick._reviewedOn = bj.date;
+      latest.journal = journalView();
+      broadcast('journal', latest.journal);
+    }
+    if (runJournalTick._reviewedOn !== bj.date) runJournalTick._reviewedOn = null;
+
+    if (!latest.journal) { latest.journal = journalView(); }
+  } catch (e) {
+    console.warn('[journal] ' + e.message);
+  } finally {
+    journalBusy = false;
+  }
+}
+
+function parseHm(s, fallback) {
+  if (typeof s === 'string' && /^\d{1,2}:\d{2}$/.test(s)) {
+    const [h, m] = s.split(':').map(Number);
+    if (h >= 0 && h < 24 && m >= 0 && m < 60) return h * 60 + m;
+  }
+  return fallback;
+}
+
+function journalView() {
+  const st = journal.status();
+  return {
+    ...st,
+    live: journal.readLive(),
+    latestPicks: journal.listPicks({ limit: 2 }),
+    lessonsList: journal.listLessons({ limit: 40 }),
+    rules: journal.readRules()
+  };
+}
+
+/**
+ * 持仓监控编排：每 30 秒刷新实时行情与建议，与观察池评分联动。
+ * 告警去重：同一 (代码, 日期, 建议级别) 只推一次，避免止损位附近反复刷屏。
+ */
+const seenHoldAlerts = new Set();
+async function runHoldings() {
+  if (holdingsBusy) return latest.holdings;
+  holdingsBusy = true;
+  try {
+    const v = await holdings.buildView(latest.stocks && latest.stocks.items);
+    latest.holdings = v;
+    broadcast('holdings', v);
+    // 确定性告警：跌停(critical)与跌破止损(warning)才推入告警流，info 级只在面板展示
+    const bj = bjNow();
+    for (const p of (v.positions || [])) {
+      for (const a of (p.advice || [])) {
+        if (a.level !== 'critical' && a.level !== 'warning') continue;
+        const key = p.code + ':' + bj.date + ':' + (a.level === 'critical' ? 'limitdown' : 'stop');
+        if (seenHoldAlerts.has(key)) continue;
+        seenHoldAlerts.add(key);
+        pushAlerts([makeAlert({
+          level: a.level, category: 'stock', rule: 'holding-' + (a.level === 'critical' ? 'limitdown' : 'stop'),
+          instrument: p.code, instrumentName: p.name || p.code,
+          title: '持仓提醒：' + (p.name || p.code),
+          message: a.text,
+          source: '持仓监控', silent: false
+        })]);
+      }
+    }
+    if (seenHoldAlerts.size > 500) {
+      for (const k of seenHoldAlerts) if (!k.endsWith(bj.date)) seenHoldAlerts.delete(k);
+    }
+    return v;
+  } catch (e) {
+    console.warn('[holdings] ' + e.message);
+    return latest.holdings;
+  } finally {
+    holdingsBusy = false;
+  }
+}
+
+/** 周期事件研究：6 小时重建一次，或手动刷新 */
+async function runCycle(force) {
+  if (cycleBusy || !config.cycle || config.cycle.enabled === false) return latest.cyc;
+  cycleBusy = true;
+  try {
+    const v = await cycle.buildCycleView({ force: !!force });
+    if (v.ok) {
+      latest.cyc = v;
+      broadcast('cycle', v);
+      // 临近的高置信事件推送到告警流（一次性，按 id 去重）
+      if (config.cycle.alertEnabled !== false) {
+        for (const a of (v.alerts || [])) {
+          const key = 'cycle:' + a.name + ':' + a.date;
+          if (seenEventAlerts.has(key)) continue;
+          if (!eventAlertBaselineSet) { seenEventAlerts.add(key); continue; }
+          seenEventAlerts.add(key);
+          pushAlerts([{
+            id: key, level: a.level === 'warn' ? 'warning' : 'info',
+            title: '周期事件' + (a.level === 'warn' ? '·警惕兑现' : '临近'),
+            message: a.text, at: Date.now(), source: '周期事件日历',
+            kind: 'cycle'
+          }]);
+        }
+      }
+      console.log('[cycle] 事件 ' + v.counts.total + ' 个（完成 ' + v.counts.done + ' / 临近 ' + v.counts.upcoming + '），提前告知 ' + (v.alerts || []).length + ' 条');
+    }
+    return v;
+  } catch (e) {
+    console.warn('[cycle] ' + e.message);
+    return latest.cyc;
+  } finally {
+    cycleBusy = false;
+  }
+}
+
+/** 资金主体：增量回填一年龙虎榜 → 每日刷新近 3 天 → 重建视图 */
+async function runFlow() {
+  if (flowBusy || !config.flow || config.flow.enabled === false) return latest.flow;
+  flowBusy = true;
+  try {
+    const st = flow.backfillStatus();
+    if (!st.done) {
+      await flow.backfillLhb(1); // 每轮一个 20 天窗口，一年约 19 轮
+    } else {
+      const bj = bjNow();
+      if (flowRefreshDay !== bj.date && bj.minutes >= 10 * 60 + 30) {
+        flowRefreshDay = bj.date;
+        const r = await flow.refreshRecent();
+        if (r && r.ok) console.log('[flow] 近 3 日增量 ' + (r.rows || 0) + ' 条席位记录');
+      }
+    }
+    await flow.backfillMargin(2); // 两融：历史按月抽样缓慢补齐 + 最新一日
+    latest.flow = await flow.getView(false, { volumeYi: (latest.macro || {}).amountYi });
+    broadcast('flow', latest.flow);
+    return latest.flow;
+  } catch (e) {
+    console.warn('[flow] ' + e.message);
+    return latest.flow;
+  } finally {
+    flowBusy = false;
+  }
+}
+
+/** 两融 5 日变化（供避险模块）：仅当存在连续日样本时计算，否则返回 null 而不是编数 */
+function marginDelta() {
+  try {
+    const st = JSON.parse(require('node:fs').readFileSync(flow.STATE_FILE, 'utf8'));
+    const keys = Object.keys(st.margin || {}).sort();
+    const daily = keys.slice(-8).map(k => ({ d: k, rz: st.margin[k].rz }));
+    if (daily.length < 2) return null;
+    const last = daily[daily.length - 1];
+    const prev = daily[daily.length - 2];
+    if (!last || !prev || !Number.isFinite(last.rz) || !Number.isFinite(prev.rz)) return null;
+    return { rzYi: last.rz, rz5d: Math.round((last.rz - prev.rz) * 100) / 100, asOf: last.d };
+  } catch (_) { return null; }
+}
+
+/** 避险识别：10 分钟一次，量能与两融从现有模块传入（单一数据源原则） */
+async function runRiskOff(force) {
+  if (riskoffBusy || !config.riskoff || config.riskoff.enabled === false) return latest.riskoff;
+  riskoffBusy = true;
+  try {
+    const mc = latest.macro || {};
+    latest.riskoff = await riskoff.getRiskOff(!!force, {
+      volumeYi: mc.amountYi != null ? mc.amountYi : undefined,
+      volumePercentile: mc.percentile != null ? mc.percentile : undefined,
+      marginTrend: marginDelta() || undefined
+    });
+    if (latest.riskoff && latest.riskoff.ok) broadcast('riskoff', latest.riskoff);
+    return latest.riskoff;
+  } catch (e) {
+    console.warn('[riskoff] ' + e.message);
+    return latest.riskoff;
+  } finally {
+    riskoffBusy = false;
+  }
+}
+
+/**
+ * 预期研究层统一编排（strength / valuation / phase / stack）。
+ * 依赖关系：strength 是 valuation/stack 的输入；cycle 由 runCycle 独立维护，这里只读；
+ * phase 拉 22 个板块日 K（6 小时缓存），valuation/stack 是纯计算（每次可重算）。
+ * 任何一环失败不影响其它环，且绝不因「算不出」而编造数值。
+ */
+async function runEdge(force) {
+  if (edgeBusy || !config.edge || config.edge.enabled === false) return latest.edge;
+  edgeBusy = true;
+  const ecfg = config.edge || {};
+  try {
+    // 板块抓取失败时不让整条 edge 链路崩掉：回退上次成功缓存，并显式标记 stale
+    const strengthRaw = await strength.buildStrength({ force: !!force }).catch(e => {
+      console.warn('[edge/strength] ' + e.message); return null;
+    });
+    let str = strengthRaw, staleFromCache = false, staleReason = '';
+    if (!str || str.ok === false || !Array.isArray(str.boards)) {
+      staleReason = (strengthRaw && strengthRaw.error) || '板块数据源不可达';
+      try {
+        const c = JSON.parse(fs.readFileSync(strength.CACHE_FILE, 'utf8'));
+        if (c && c.ok && Array.isArray(c.boards) && c.boards.length) {
+          str = Object.assign({}, c, { stale: true, staleReason });
+          staleFromCache = true;
+          console.warn('[edge/strength] ' + staleReason + '；回退上次成功缓存（' +
+            c.boards.length + ' 板块，' + new Date(c.builtAt).toLocaleString('zh-CN') + '），标记 stale');
+        }
+      } catch (_) {}
+      if (!str || str.ok === false || !Array.isArray(str.boards)) {
+        // 连缓存都没有时给空壳，保证下游模块按「无数据」处理而不是抛异常
+        str = { ok: false, stale: true, staleReason, error: staleReason, builtAt: Date.now(),
+          boards: [], mainlines: [], leaders: [], laggards: [], categories: [], counts: { total: 0 } };
+      }
+    }
+    const industries = ((latest.stocks && latest.stocks.items) || []).map(x => x.industry).filter(Boolean);
+    const phRaw = await phase.buildPhase({ force: !!force, strength: str, industries }).catch(e => {
+      console.warn('[edge/phase] ' + e.message); return null;
+    });
+    // 板块源不可达 / 沪深300 日线不足时，phase.buildPhase 会返回不带 counts 的失败对象。
+    // 前端 app.js:renderEdge 无条件读 ph.counts.qualified，会抛 TypeError 并中断整个
+    // renderAll()（后续所有面板不再渲染）。这里统一补一个全 0 的 counts 空壳：
+    // 「无数据」按 0 展示，不编造任何数值，也不改前端一个字节。
+    const ph = (phRaw && phRaw.counts) ? phRaw : Object.assign({
+      ok: false, error: (phRaw && phRaw.error) || '板块价格周期数据不可用', builtAt: Date.now(),
+      boards: [], qualified: [], stageAggregate: []
+    }, phRaw || {}, {
+      counts: { boards: 0, qualified: 0, samples: 0 }
+    });
+    const env = edgeEnv();
+    const val = valuation.buildValuation({ events: latest.events, strength: str, env, limit: ecfg.valuationLimit || 30 });
+    const ctx = {
+      stocks: latest.stocks, events: latest.events, strength: str, valuation: val,
+      phase: ph, cycle: latest.cyc, flow: latest.flow, riskoff: latest.riskoff,
+      style: latest.style, quotes: latest.quotes
+    };
+    const stk = stack.buildStack({ ctx });
+
+    const cnt = (o, k) => (o && o.counts && Number.isFinite(o.counts[k]) ? o.counts[k] : 0);
+    latest.edge = {
+      ok: true, builtAt: Date.now(),
+      stale: staleFromCache || !!str.stale,
+      staleReason: staleReason || str.staleReason || null,
+      strength: str, valuation: val, phase: ph,
+      cycle: latest.cyc ? { boardPhase: latest.cyc.boardPhase || [], boardAlerts: latest.cyc.boardAlerts || [] } : null,
+      stack: stk,
+      counts: {
+        boards: cnt(str, 'total'),
+        mainlines: (str && Array.isArray(str.mainlines)) ? str.mainlines.length : 0,
+        valuations: cnt(val, 'total'),
+        phaseBoards: cnt(ph, 'boards'),
+        phaseQualified: cnt(ph, 'qualified'),
+        stackResonance: cnt(stk, 'resonance'),
+        stackDivergence: cnt(stk, 'divergence')
+      },
+      notes: [
+        '预期研究层与评分引擎解耦：不修改任何评分或修正项',
+        '叠加形态只写入经验库定格存证，由复盘统计裁决是否真有超额',
+        ...(staleFromCache ? ['板块数据源不可达：当前展示上次成功缓存（stale，' +
+          new Date(str.builtAt).toLocaleString('zh-CN') + '），数据可能过期，恢复后自动重算'] : [])
+      ]
+    };
+    broadcast('edge', latest.edge);
+    console.log('[edge] 板块 ' + latest.edge.counts.boards + ' | 主线 ' + latest.edge.counts.mainlines +
+      ' | 重估候选 ' + latest.edge.counts.valuations + ' | 阶段结论 ' + latest.edge.counts.phaseQualified +
+      ' | 共振 ' + latest.edge.counts.stackResonance + ' / 分歧 ' + latest.edge.counts.stackDivergence +
+      (staleFromCache ? ' | [stale 缓存回退]' : ''));
+    return latest.edge;
+  } catch (e) {
+    console.warn('[edge] ' + e.message);
+    return latest.edge;
+  } finally {
+    edgeBusy = false;
+  }
+}
+
+/** 市值重估用的外部环境快照：全部取自系统已有实时模块，不额外造数 */
+function edgeEnv() {
+  const mc = latest.macro || {};
+  const s = (latest.limitup && latest.limitup.sentiment) || {};
+  const qs = (latest.quotes || []).filter(q => q.group === 'overseas' && q.changePct != null);
+  const us = qs.filter(q => /道琼斯|标普|纳斯达克/.test(q.short || ''));
+  const overseasEquity = us.length >= 2
+    ? Math.round(us.reduce((a, b) => a + b.changePct, 0) / us.length * 100) / 100 : null;
+  return {
+    sentimentStage: s.stage || null,
+    volumeYi: mc.amountYi != null ? mc.amountYi : ((latest.style && latest.style.volume && latest.style.volume.totalAmountYi) || null),
+    volumeRegime: mc.volume && mc.volume.regime ? mc.volume.regime : null,
+    volumeThresholdYi: (config.events || {}).volumeThresholdYi || 25000,
+    riskOffScore: mc.riskOff && mc.riskOff.score != null ? mc.riskOff.score : mc.riskOffScore,
+    riskOffLevel: mc.riskOff && mc.riskOff.level ? mc.riskOff.level : null,
+    overseasEquity
+  };
+}
+
+/** 评分变化后只重算叠加（纯计算，不重复拉 K 线），保持 edge.stack 与观察池同步 */
+function refreshStackOnly() {
+  if (!latest.edge || !latest.edge.ok) return;
+  const e = latest.edge;
+  const ctx = {
+    stocks: latest.stocks, events: latest.events, strength: e.strength, valuation: e.valuation,
+    phase: e.phase, cycle: latest.cyc, flow: latest.flow, riskoff: latest.riskoff,
+    style: latest.style, quotes: latest.quotes
+  };
+  e.stack = stack.buildStack({ ctx });
+  e.builtAt = Date.now();
+  e.counts.stackResonance = e.stack.counts.resonance;
+  e.counts.stackDivergence = e.stack.counts.divergence;
+  broadcast('edge', e);
+}
+
+/** 定格 / 实时池前，把叠加形态注入观察池条目（供 journal 存证与复盘分组） */
+function withStack(items) {
+  const rows = (latest.edge && latest.edge.stack && latest.edge.stack.items) || [];
+  if (!rows.length) return items;
+  const map = new Map(rows.map(r => [r.code, r]));
+  return (items || []).map(it => {
+    const s = map.get(it.code);
+    if (!s) return it;
+    return {
+      ...it,
+      stackForm: s.form, stackLabel: s.label, stackFingerprint: s.fingerprint,
+      stackPos: s.posCount, stackNeg: s.negCount
+    };
+  });
+}
+
+async function runStocks(force) {
+  if (stocksBusy || !config.stocks.enabled) return;
+  stocksBusy = true;
+  try {
+    const trading = isTradingNow();
+    if (config.marketStyle.enabled) await ensureStyle();
+    let att = null;
+    if (config.attention.enabled) {
+      try {
+        att = await attention.fetchAttention({
+          force: !!force, refreshMin: config.attention.refreshMin, trading
+        });
+      } catch (e) {
+        console.warn('[attention] 热榜采集失败: ' + e.message);
+      }
+    }
+    latest.attention = att;
+    const mc = attention.buildMarketContext(latest.quotes);
+    latest.market = mc;
+
+    // 个股中文资讯：先按上一轮观察池取一次，拿到内容指纹用于判断是否需要重评分
+    const cachedCodes = ((latest.stocks && latest.stocks.items) || []).map(x => x.code);
+    let sn = null;
+    if (config.attention.enabled && cachedCodes.length) {
+      try {
+        sn = await attention.fetchStockNews(cachedCodes, { force: !!force, trading, refreshMin: 10 });
+        latest.stockNews = sn;
+      } catch (e) { console.warn('[attention] 个股资讯采集失败: ' + e.message); }
+    }
+
+    // sentiment 用异步回调：按「本轮实际入选标的」取个股资讯并计算舆情，避免候选池变化对不上号
+    const ctx = {
+      briefing: latest.analysis,
+      attention: att,
+      sentiment: async list => {
+        let merged = null;
+        if (config.attention.enabled) {
+          try {
+            merged = await attention.fetchStockNews(list.map(x => x.code), { trading, refreshMin: 10 });
+            latest.stockNews = merged;
+          } catch (e) { console.warn('[attention] 个股资讯补取失败: ' + e.message); }
+        }
+        return attention.buildStockSentiment(
+          latest.news.items, list, att, merged ? merged.items : (sn ? sn.items : null), Date.now()
+        );
+      },
+      market: mc,
+      style: latest.style,
+      maxStyleAdjust: config.marketStyle.maxAdjust,
+      events: latest.events,
+      macro: latest.macro,
+      limit: latest.limitContext,
+      maxEventAdjust: (config.events || {}).maxAdjust,
+      macroMaxAdjust: (config.events || {}).macroMaxAdjust,
+      maxTotalAdjust: (config.events || {}).maxTotalAdjust,
+      eventLookbackDays: (config.events || {}).lookbackDays,
+      valueTrapEnabled: (config.stocks || {}).valueTrapEnabled !== false,
+      stageWeights: (config.stocks || {}).stageWeights !== false,
+      maxLimitAdjust: (config.limitUp || {}).maxAdjust,
+      news: latest.news.items,
+      newsFingerprint: newsFingerprint(latest.news.items),
+      stockNewsFingerprint: sn ? sn.fingerprint : ''
+    };
+    const r = await stocks.analyzeStocks(ctx, {
+      force: !!force, maxStocks: config.stocks.maxStocks,
+      refreshMin: config.stocks.refreshMin
+    });
+    const same = latest.stocks && r.fromCache && latest.stocks.generatedAt === r.generatedAt;
+    latest.stocks = r;
+    refreshStackOnly(); // 叠加指纹随最新评分重算（纯计算）
+    if (same) return; // 缓存未变化时不重复推送
+    broadcast('stocks', r);
+    // 评分定格：仅在配置的时点窗口内、且非轻量重评分时写入，作为 IC 自检的样本
+    try {
+      const rec = ic.record(r, config.ic || {});
+      if (rec.recorded) {
+        latest.ic = ic.getReport(config.ic || {}, false);
+        broadcast('ic', latest.ic);
+      }
+    } catch (e) { console.warn('[ic] 定格失败: ' + e.message); }
+    console.log('[stocks] 观察池 | ' + tradingLabel(r) + ' | ' + (r.rescoreOnly ? '轻量重评分' : '全量重算') +
+      ' | ' + r.items.length + ' 只 | 重点关注 ' + r.summary.focus +
+      ' | 热度覆盖 ' + r.summary.heatCovered + ' | 舆情覆盖 ' + r.summary.sentimentCovered +
+      ' | 外围 ' + mc.regime + (r.fromCache ? '（缓存）' : ''));
+  } catch (e) {
+    console.warn('[stocks] 计算失败: ' + e.message);
+    if (latest.stocks) {
+      latest.stocks = { ...latest.stocks, lastError: e.message };
+      broadcast('stocks', latest.stocks);
+    } else {
+      latest.stocks = { error: e.message, generatedAt: Date.now(), items: [] };
+      broadcast('stocks', latest.stocks);
+    }
+  } finally {
+    stocksBusy = false;
+  }
+}
+
+function tradingLabel(r) {
+  return r.tradingDate ? r.tradingDate + (r.isTrading ? ' 盘中' : ' 收盘') : '日期未知';
+}
+
+function persistState() {
+  try {
+    saveState({
+      history,
+      seenNews: Array.from(runtime.seenNews).slice(-600),
+      lastQuoteAt: runtime.lastQuoteSuccessAt,
+      lastNewsAt: runtime.lastNewsAt
+    });
+  } catch (e) { console.error('[state] 保存失败:', e.message); }
+}
+
+function reschedule() {
+  clearTimeout(quoteTimer);
+  clearTimeout(newsTimer);
+  clearInterval(stocksTimer);
+  clearInterval(styleTimer);
+  clearInterval(eventsTimer);
+  clearInterval(limitTimer);
+  quoteTimer = setTimeout(async function loopQuote() {
+    await doQuoteTick();
+    quoteTimer = setTimeout(loopQuote, Math.max(5, config.quoteIntervalSec) * 1000);
+  }, Math.max(5, config.quoteIntervalSec) * 1000);
+  newsTimer = setTimeout(async function loopNews() {
+    await doNewsTick();
+    newsTimer = setTimeout(loopNews, Math.max(20, config.newsIntervalSec) * 1000);
+  }, Math.max(20, config.newsIntervalSec) * 1000);
+  stocksTimer = setInterval(() => {
+    if (config.stocks.enabled) runStocks(false).catch(e => console.warn('[stocks]', e.message));
+  }, Math.max(1, config.stocks.refreshMin) * 60000);
+  styleTimer = setInterval(() => {
+    refreshStyleAndStocks(false).catch(e => console.warn('[style]', e.message));
+  }, Math.max(1, config.marketStyle.refreshMin) * 60000);
+  eventsTimer = setInterval(() => {
+    runEvents(false).catch(e => console.warn('[events]', e.message));
+  }, Math.max(1, config.events.refreshMin) * 60000);
+  limitTimer = setInterval(() => {
+    runLimitUp(false).catch(e => console.warn('[limitup]', e.message));
+  }, Math.max(1, (config.limitUp || {}).refreshMin || 3) * 60000);
+  icTimer = setInterval(() => {
+    runIC(false).catch(e => console.warn('[ic]', e.message));
+  }, 10 * 60000);
+  journalTimer = setInterval(() => {
+    runJournalTick().catch(e => console.warn('[journal]', e.message));
+  }, 60 * 1000);
+  cycleTimer = setInterval(() => {
+    runCycle(false).catch(e => console.warn('[cycle]', e.message));
+  }, Math.max(30, (config.cycle || {}).refreshMin || 360) * 60000);
+  flowTimer = setInterval(() => {
+    runFlow().catch(e => console.warn('[flow]', e.message));
+  }, Math.max(2, (config.flow || {}).refreshMin || 5) * 60000);
+  riskoffTimer = setInterval(() => {
+    runRiskOff(false).catch(e => console.warn('[riskoff]', e.message));
+  }, 10 * 60000);
+  holdingsTimer = setInterval(() => {
+    runHoldings().catch(e => console.warn('[holdings]', e.message));
+  }, 30 * 1000);
+  edgeTimer = setInterval(() => {
+    runEdge(false).catch(e => console.warn('[edge]', e.message));
+  }, Math.max(2, (config.edge || {}).refreshMin || 10) * 60000);
+  /* 事实卡：启动后延迟 90 秒首次构建（避开启动时的行情/评分高峰），之后按 refreshMin 重建。
+     内部有 6 小时缓存，同一交易日重复调用会直接命中缓存、不发请求。 */
+  setTimeout(() => {
+    runAttribution(false).catch(e => console.warn('[attribution]', e.message));
+  }, 90 * 1000);
+  attributionTimer = setInterval(() => {
+    runAttribution(false).catch(e => console.warn('[attribution]', e.message));
+  }, Math.max(30, (config.attribution || {}).refreshMin || 360) * 60000);
+}
+
+/* ------------------------------- 配置校验 ------------------------------- */
+
+function clamp(v, min, max, fallback) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+function nullableNumber(v) {
+  if (v === null || v === '' || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function sanitizeConfig(c) {
+  const out = structuredClone(c);
+  out.quoteIntervalSec = clamp(out.quoteIntervalSec, 5, 600, 15);
+  out.newsIntervalSec = clamp(out.newsIntervalSec, 20, 900, 60);
+  out.cooldownSec = clamp(out.cooldownSec, 10, 3600, 300);
+  out.staleAfterSec = clamp(out.staleAfterSec, 60, 3600, 180);
+  out.sound = out.sound || {};
+  out.sound.volume = clamp(out.sound.volume, 0, 1, 0.55);
+  out.sound.minLevel = ['info', 'warning', 'critical'].includes(out.sound.minLevel) ? out.sound.minLevel : 'warning';
+  out.notification = out.notification || {};
+  out.notification.minLevel = ['info', 'warning', 'critical'].includes(out.notification.minLevel) ? out.notification.minLevel : 'critical';
+  out.newsAlert = out.newsAlert || {};
+  out.newsAlert.keywords = Array.isArray(out.newsAlert.keywords)
+    ? out.newsAlert.keywords.map(String).map(s => s.trim()).filter(Boolean).slice(0, 200)
+    : [...sources.NEWS_KEYWORDS.critical, ...sources.NEWS_KEYWORDS.warning];
+  out.analysis = out.analysis || {};
+  out.analysis.enabled = out.analysis.enabled !== false;
+  out.analysis.autoTranslate = out.analysis.autoTranslate !== false;
+  out.analysis.translateDescLimit = clamp(out.analysis.translateDescLimit, 0, 120, 40);
+  out.analysis.refreshSec = clamp(out.analysis.refreshSec, 30, 1800, 180);
+  out.stocks = out.stocks || {};
+  out.stocks.enabled = out.stocks.enabled !== false;
+  out.stocks.maxStocks = clamp(out.stocks.maxStocks, 8, 30, 18);
+  out.stocks.refreshMin = clamp(out.stocks.refreshMin, 1, 240, 15);
+  out.attention = out.attention || {};
+  out.attention.enabled = out.attention.enabled !== false;
+  out.attention.refreshMin = clamp(out.attention.refreshMin, 1, 240, 5);
+  out.marketStyle = out.marketStyle || {};
+  out.marketStyle.enabled = out.marketStyle.enabled !== false;
+  out.marketStyle.refreshMin = clamp(out.marketStyle.refreshMin, 1, 240, 5);
+  out.marketStyle.breadthEnabled = out.marketStyle.breadthEnabled !== false;
+  out.marketStyle.maxAdjust = clamp(out.marketStyle.maxAdjust, 0, 20, 12);
+  out.events = out.events || {};
+  out.events.enabled = out.events.enabled !== false;
+  out.events.refreshMin = clamp(out.events.refreshMin, 1, 240, 5);
+  out.events.lookbackDays = clamp(out.events.lookbackDays, 3, 60, 14);
+  out.events.alertEnabled = out.events.alertEnabled !== false;
+  out.events.maxAdjust = clamp(out.events.maxAdjust, 0, 24, 12);
+  out.events.volumeThresholdYi = clamp(out.events.volumeThresholdYi, 5000, 100000, 25000);
+  out.events.leaderCapYi = clamp(out.events.leaderCapYi, 100, 3000, 500);
+  out.events.riskOffEnabled = out.events.riskOffEnabled !== false;
+  out.events.macroMaxAdjust = clamp(out.events.macroMaxAdjust, 0, 20, 10);
+  out.events.maxTotalAdjust = clamp(out.events.maxTotalAdjust, 0, 40, 22);
+  out.limitUp = out.limitUp || {};
+  out.limitUp.enabled = out.limitUp.enabled !== false;
+  out.limitUp.refreshMin = clamp(out.limitUp.refreshMin, 1, 120, 3);
+  out.limitUp.maxAdjust = clamp(out.limitUp.maxAdjust, 0, 20, 12);
+  out.limitUp.cycleEnabled = out.limitUp.cycleEnabled !== false;
+  out.journal = out.journal || {};
+  out.journal.enabled = out.journal.enabled !== false;
+  out.journal.openTime = typeof out.journal.openTime === 'string' ? out.journal.openTime : '09:05';
+  out.journal.eveTime = typeof out.journal.eveTime === 'string' ? out.journal.eveTime : '22:00';
+  out.journal.reviewTime = typeof out.journal.reviewTime === 'string' ? out.journal.reviewTime : '15:10';
+  out.journal.liveEnabled = out.journal.liveEnabled !== false;
+  out.journal.liveLimit = Number.isFinite(+out.journal.liveLimit) ? Math.min(30, Math.max(6, Math.round(+out.journal.liveLimit))) : 12;
+  out.cycle = out.cycle || {};
+  out.cycle.enabled = out.cycle.enabled !== false;
+  out.cycle.refreshMin = clamp(out.cycle.refreshMin, 30, 1440, 360);
+  out.cycle.alertEnabled = out.cycle.alertEnabled !== false;
+  out.flow = out.flow || {};
+  out.flow.enabled = out.flow.enabled !== false;
+  out.flow.refreshMin = clamp(out.flow.refreshMin, 2, 120, 5);
+  out.flow.hfSeatMin = clamp(out.flow.hfSeatMin, 5, 100, 20);
+  out.riskoff = out.riskoff || {};
+  out.riskoff.enabled = out.riskoff.enabled !== false;
+  out.edge = out.edge || {};
+  out.edge.enabled = out.edge.enabled !== false;
+  out.edge.refreshMin = clamp(out.edge.refreshMin, 2, 240, 10);
+  out.edge.valuationLimit = clamp(out.edge.valuationLimit, 5, 100, 30);
+  out.ic = out.ic || {};
+  out.ic.enabled = out.ic.enabled !== false;
+  out.ic.rollDays = clamp(out.ic.rollDays, 5, 120, 20);
+  out.ic.minDays = clamp(out.ic.minDays, 3, 60, 5);
+  out.ic.keepDays = clamp(out.ic.keepDays, 60, 1000, 400);
+  out.ic.maxLabelsPerTick = clamp(out.ic.maxLabelsPerTick, 10, 200, 60);
+  out.ic.horizons = Array.isArray(out.ic.horizons)
+    ? [...new Set(out.ic.horizons.map(Number).filter(n => n >= 1 && n <= 30))].sort((a, b) => a - b).slice(0, 6)
+    : [1, 3, 5, 10];
+  if (!out.ic.horizons.length) out.ic.horizons = [1, 3, 5, 10];
+  out.ic.snapshots = Array.isArray(out.ic.snapshots)
+    ? out.ic.snapshots.filter(k => ['am', 'pm', 'close'].includes(k))
+    : ['pm'];
+  if (!out.ic.snapshots.length) out.ic.snapshots = ['pm'];
+  out.stocks.valueTrapEnabled = out.stocks.valueTrapEnabled !== false;
+  out.stocks.stageWeights = out.stocks.stageWeights !== false;
+  out.rules = out.rules || {};
+  for (const [id, r] of Object.entries(out.rules)) {
+    if (!r || typeof r !== 'object') { delete out.rules[id]; continue; }
+    for (const k of ['upper', 'lower', 'movePct', 'dayPct', 'moveBp', 'dayBp']) {
+      r[k] = nullableNumber(r[k]);
+      if (r[k] !== null && (k === 'movePct' || k === 'dayPct' || k === 'moveBp' || k === 'dayBp')) {
+        r[k] = clamp(r[k], 0.01, 1000, null);
+      }
+    }
+    r.enabled = r.enabled !== false;
+  }
+  return out;
+}
+
+/* ------------------------------- HTTP ------------------------------- */
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
+};
+
+function sendJson(res, code, obj) {
+  const body = JSON.stringify(obj);
+  res.writeHead(code, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store'
+  });
+  res.end(body);
+}
+
+function serveStatic(pathname, res) {
+  const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
+  const file = path.resolve(WEB_DIR, rel);
+  if (!file.startsWith(WEB_DIR + path.sep) && file !== path.join(WEB_DIR, 'index.html')) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
+  fs.readFile(file, (err, buf) => {
+    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      'Cache-Control': 'no-cache'
+    });
+    res.end(buf);
+  });
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let s = '';
+    req.on('data', c => {
+      s += c;
+      if (s.length > 1024 * 1024) { reject(new Error('请求体过大')); req.destroy(); }
+    });
+    req.on('end', () => {
+      if (!s.trim()) return resolve({});
+      try { resolve(JSON.parse(s)); } catch (e) { reject(new Error('JSON 格式错误')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  let pathname;
+  try { pathname = new URL(req.url, 'http://' + HOST).pathname; }
+  catch (_) { return sendJson(res, 400, { ok: false, error: 'bad url' }); }
+
+  if (req.method === 'GET' && pathname === '/api/stream') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    });
+    res.write(': connected\n\n');
+    sseClients.add(res);
+    res.write('event: snapshot\ndata: ' + JSON.stringify(snapshot()) + '\n\n');
+    req.on('close', () => sseClients.delete(res));
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/snapshot') return sendJson(res, 200, { ok: true, data: snapshot() });
+  if (req.method === 'GET' && pathname === '/api/health') {
+    return sendJson(res, 200, {
+      ok: true,
+      uptimeSec: Math.round((Date.now() - latest.startedAt) / 1000),
+      quotes: latest.quotes.length, news: latest.news.items.length,
+      health: latest.health, sseClients: sseClients.size,
+      quoteFetchedAt: latest.quoteFetchedAt,
+      analysis: latest.analysis ? { news: latest.analysis.counts.total, translated: latest.analysis.counts.translated, risk: latest.analysis.riskTemperature } : null,
+      stocks: latest.stocks ? {
+        items: (latest.stocks.items || []).length, date: latest.stocks.tradingDate,
+        fromCache: !!latest.stocks.fromCache, rescoreOnly: !!latest.stocks.rescoreOnly,
+        heatCovered: latest.stocks.summary && latest.stocks.summary.heatCovered,
+        sentimentCovered: latest.stocks.summary && latest.stocks.summary.sentimentCovered
+      } : null,
+      attention: latest.attention ? { ok: latest.attention.ok, poolSize: latest.attention.poolSize, stale: !!latest.attention.stale } : null,
+      market: latest.market ? { regime: latest.market.regime, score: latest.market.score } : null,
+      style: latest.style ? {
+        ok: !!latest.style.ok, date: latest.style.tradingDate,
+        dominant: latest.style.dominantLabel, confidence: latest.style.confidence,
+        volumeState: latest.style.volume && latest.style.volume.state,
+        volumeYi: latest.style.volume && latest.style.volume.totalAmountYi,
+        buckets: (latest.style.buckets || []).length,
+        breadthCoverage: latest.style.volume && latest.style.volume.breadth && latest.style.volume.breadth.coverage
+      } : null,
+      styleCovered: latest.stocks && latest.stocks.summary ? latest.stocks.summary.styleCovered : null,
+      events: latest.events ? {
+        total: latest.events.counts.total, focus: latest.events.counts.focus,
+        beats: latest.events.counts.earningsBeats, leaderBeats: latest.events.counts.leaderBeats,
+        alerts: latest.events.counts.alerts, macroEvents: latest.events.counts.macro
+      } : null,
+      macro: latest.macro ? {
+        regime: latest.macro.volume.regime, amountYi: latest.macro.volume.amountYi,
+        thresholdYi: latest.macro.volume.thresholdYi, percentile: latest.macro.volume.percentile,
+        riskOff: latest.macro.riskOff.score, riskOffLevel: latest.macro.riskOff.level
+      } : null,
+      limitup: latest.limitup ? {
+        date: latest.limitup.date,
+        limitUp: latest.limitup.counts.limitUp,
+        failed: latest.limitup.counts.failed,
+        limitDown: latest.limitup.counts.limitDown,
+        stage: latest.limitup.sentiment.stage,
+        maxBoards: latest.limitup.sentiment.maxBoards,
+        zbRate: latest.limitup.sentiment.zbRate
+      } : null,
+      ic: latest.ic ? {
+        snapshots: latest.ic.status.snapshots, labeled: latest.ic.status.labeled,
+        lastSnapshot: latest.ic.status.lastSnapshot,
+        rankIC5: (latest.ic.horizons.find(x => x.h === 5) || {}).mean,
+        verdict: latest.ic.verdict.level
+      } : null,
+      journal: latest.journal ? {
+        picks: latest.journal.picks, outcomes: latest.journal.outcomes,
+        pending: latest.journal.lessons && latest.journal.lessons.pending,
+        rules: latest.journal.rules && latest.journal.rules.count
+      } : null,
+      holdings: latest.holdings ? { count: latest.holdings.count } : null,
+      cycle: latest.cyc ? { total: latest.cyc.counts.total, alerts: (latest.cyc.alerts || []).length } : null,
+      flow: latest.flow ? { days: latest.flow.coverage.days, tilt: latest.flow.tilt.top } : null,
+      riskoff: latest.riskoff ? { form: latest.riskoff.form, score: latest.riskoff.score } : null,
+      edge: latest.edge ? {
+        boards: latest.edge.counts.boards, mainlines: latest.edge.counts.mainlines,
+        valuations: latest.edge.counts.valuations, phaseQualified: latest.edge.counts.phaseQualified,
+        resonance: latest.edge.counts.stackResonance, divergence: latest.edge.counts.stackDivergence
+      } : null
+    });
+  }
+  if (req.method === 'GET' && pathname === '/api/alerts') return sendJson(res, 200, { ok: true, data: alerts.slice(-300) });
+  if (req.method === 'GET' && pathname === '/api/analysis') return sendJson(res, 200, { ok: true, data: latest.analysis });
+  if (req.method === 'GET' && pathname === '/api/stocks') return sendJson(res, 200, { ok: true, data: latest.stocks });
+  if (req.method === 'GET' && pathname === '/api/style') return sendJson(res, 200, { ok: true, data: latest.style });
+  if (req.method === 'GET' && pathname === '/api/events') return sendJson(res, 200, { ok: true, data: latest.events });
+  if (req.method === 'GET' && pathname === '/api/macro') return sendJson(res, 200, { ok: true, data: latest.macro });
+  if (req.method === 'GET' && pathname === '/api/limitup') return sendJson(res, 200, { ok: true, data: latest.limitup });
+  if (req.method === 'GET' && pathname === '/api/journal') return sendJson(res, 200, { ok: true, data: latest.journal || journalView() });
+  if (req.method === 'GET' && pathname === '/api/journal/live') return sendJson(res, 200, { ok: true, data: journal.readLive() });
+  if (req.method === 'GET' && pathname === '/api/holdings') {
+    if (!latest.holdings) runHoldings().catch(() => {});
+    return sendJson(res, 200, { ok: true, data: latest.holdings || { ok: true, count: 0, positions: [], summary: null, note: '刷新中' } });
+  }
+  if (req.method === 'GET' && pathname === '/api/journal/picks') {
+    const u = new URL(req.url, 'http://x');
+    return sendJson(res, 200, { ok: true, data: journal.listPicks({ date: u.searchParams.get('date') || undefined, kind: u.searchParams.get('kind') || undefined, limit: 30 }) });
+  }
+  if (req.method === 'GET' && pathname === '/api/journal/outcomes') {
+    return sendJson(res, 200, { ok: true, data: journal.listOutcomes({ days: 90 }) });
+  }
+  if (req.method === 'GET' && pathname === '/api/cycle') return sendJson(res, 200, { ok: true, data: latest.cyc });
+  if (req.method === 'GET' && pathname === '/api/flow') return sendJson(res, 200, { ok: true, data: latest.flow });
+  if (req.method === 'GET' && pathname === '/api/riskoff') return sendJson(res, 200, { ok: true, data: latest.riskoff });
+  if (req.method === 'GET' && pathname === '/api/edge') return sendJson(res, 200, { ok: true, data: latest.edge });
+  if (req.method === 'GET' && pathname === '/api/attribution') {
+    return sendJson(res, 200, { ok: true, data: latest.attribution || attribution.readCache() });
+  }
+  if (req.method === 'GET' && pathname === '/api/mypicks') {
+    return sendJson(res, 200, { ok: true, data: mypicks.view() });
+  }
+  if (req.method === 'GET' && pathname === '/api/edge/strength') return sendJson(res, 200, { ok: true, data: latest.edge && latest.edge.strength });
+  if (req.method === 'GET' && pathname === '/api/edge/valuation') return sendJson(res, 200, { ok: true, data: latest.edge && latest.edge.valuation });
+  if (req.method === 'GET' && pathname === '/api/edge/phase') return sendJson(res, 200, { ok: true, data: latest.edge && latest.edge.phase });
+  if (req.method === 'GET' && pathname === '/api/edge/stack') return sendJson(res, 200, { ok: true, data: latest.edge && latest.edge.stack });
+  if (req.method === 'GET' && pathname === '/api/ic') return sendJson(res, 200, { ok: true, data: latest.ic || ic.getReport(config.ic || {}) });
+  if (req.method === 'GET' && pathname === '/api/ic/lessons') {
+    return sendJson(res, 200, { ok: true, data: { markdown: ic.readLessons(), status: ic.status() } });
+  }
+  if (req.method === 'GET' && pathname === '/api/attention') {
+    const sn = latest.stockNews;
+    return sendJson(res, 200, {
+      ok: true,
+      data: {
+        attention: latest.attention,
+        market: latest.market,
+        stockNews: sn ? {
+          generatedAt: sn.generatedAt, requested: sn.requested, refreshed: sn.refreshed,
+          failures: sn.failures, stale: sn.stale, fingerprint: sn.fingerprint,
+          covered: Object.values(sn.items || {}).filter(a => a.length).length,
+          note: sn.note
+        } : null
+      }
+    });
+  }
+  if (req.method === 'GET' && pathname === '/api/config') return sendJson(res, 200, { ok: true, data: config });
+
+  if (req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+
+      if (pathname === '/api/config') {
+        config = sanitizeConfig(deepMerge(config, body));
+        saveConfig(config);
+        broadcast('config', config);
+        reschedule();
+        console.log('[config] 配置已更新');
+        return sendJson(res, 200, { ok: true, data: config });
+      }
+      if (pathname === '/api/reset') {
+        config = sanitizeConfig(structuredClone(DEFAULT_CONFIG));
+        saveConfig(config);
+        broadcast('config', config);
+        reschedule();
+        console.log('[config] 已恢复默认设置');
+        return sendJson(res, 200, { ok: true, data: config });
+      }
+      if (pathname === '/api/test-alert') {
+        const level = ['info', 'warning', 'critical'].includes(body.level) ? body.level : 'critical';
+        const a = makeTestAlert(level);
+        pushAlerts([a]);
+        return sendJson(res, 200, { ok: true, data: a });
+      }
+      if (pathname === '/api/ack') {
+        if (body.all === true) alerts.forEach(a => { a.ack = true; });
+        else { const a = alerts.find(x => x.id === body.id); if (a) a.ack = true; }
+        broadcast('ack', { all: body.all === true, id: body.id || null });
+        return sendJson(res, 200, { ok: true });
+      }
+      if (pathname === '/api/clear') {
+        alerts = [];
+        broadcast('clear', {});
+        return sendJson(res, 200, { ok: true });
+      }
+      if (pathname === '/api/refresh') {
+        // 涨停池先拉：观察池的结构因子依赖它，且它会顺带触发一次轻量重评分
+        runLimitUp(true).catch(e => console.warn('[limitup]', e.message));
+        doQuoteTick(); doNewsTick();
+        runAnalysis(true).catch(e => console.warn('[analysis]', e.message));
+        refreshStyleAndStocks(true).catch(e => console.warn('[style]', e.message));
+        runEvents(true).catch(e => console.warn('[events]', e.message));
+        runStocks(true).catch(e => console.warn('[stocks]', e.message));
+        runIC(false).catch(e => console.warn('[ic]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已触发立即刷新（含涨停池、新闻解读、事件采集、观察池与 IC 自检）' });
+      }
+      if (pathname === '/api/analysis/refresh') {
+        runAnalysis(true).catch(e => console.warn('[analysis]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已重新翻译并生成新闻解读' });
+      }
+      if (pathname === '/api/stocks/refresh') {
+        runStocks(true).catch(e => console.warn('[stocks]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已重新计算当日观察池' });
+      }
+      if (pathname === '/api/style/refresh') {
+        refreshStyleAndStocks(true).catch(e => console.warn('[style]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已重新检测大盘量能与市值风格，并触发观察池重评分' });
+      }
+      if (pathname === '/api/events/refresh') {
+        runEvents(true).catch(e => console.warn('[events]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已重新采集公告、业绩预告与快报，并重建事件与宏观状态' });
+      }
+      if (pathname === '/api/limitup/refresh') {
+        runLimitUp(true).catch(e => console.warn('[limitup]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已重新采集涨停 / 炸板 / 跌停池并重建情绪周期' });
+      }
+      if (pathname === '/api/journal/review') {
+        journal.reviewPending().then(r => {
+          const l = journal.buildLessons();
+          latest.journal = journalView();
+          broadcast('journal', latest.journal);
+          console.log('[journal] 手动复盘 ' + (r.reviewed || 0) + ' 条，新经验 ' + (l.created || 0) + ' 条');
+        }).catch(e => console.warn('[journal]', e.message));
+        return sendJson(res, 200, { ok: true, message: '复盘已在后台执行（回填 T+1 结果并归纳经验）' });
+      }
+      if (pathname === '/api/journal/audit') {
+        const r = journal.auditLesson(body.id, body.action, { note: body.note });
+        if (r.ok) {
+          latest.journal = journalView();
+          broadcast('journal', latest.journal);
+        }
+        return sendJson(res, r.ok ? 200 : 400, r);
+      }
+      if (pathname === '/api/journal/snapshot') {
+        // 手动定格（补定格当日档位，幂等）
+        (async () => {
+          if (!latest.stocks || !latest.stocks.items) await runStocks(true);
+          if ((!latest.edge || !latest.edge.ok) && !edgeBusy) await runEdge(false);
+          if (latest.stocks && latest.stocks.items) {
+            const r = journal.snapshot(withStack(latest.stocks.items), { kind: body.kind === 'open' ? 'open' : 'eve', ...journalMeta() });
+            latest.journal = journalView();
+            broadcast('journal', latest.journal);
+            console.log('[journal] 手动定格 ' + r.count + ' 只（' + (r.exists ? '已存在' : '新建') + '）');
+          }
+        })().catch(e => console.warn('[journal]', e.message));
+        return sendJson(res, 200, { ok: true, message: '定格任务已提交' });
+      }
+      if (pathname === '/api/journal/live') {
+        // 手动刷新实时观察池（非交易时段也可看最新一次结果，但不重算）
+        (async () => {
+          if (!latest.stocks || !latest.stocks.items || Date.now() - (latest.stocks.generatedAt || 0) > 10 * 60 * 1000) {
+            await runStocks(true);
+          }
+          if (latest.stocks && latest.stocks.items) {
+            const jcfg = config.journal || {};
+            const r = journal.liveSnapshot(latest.stocks.items, { limit: jcfg.liveLimit || 12, ...journalMeta() });
+            latest.journal = journalView();
+            broadcast('journal', latest.journal);
+            console.log('[journal] 实时观察池刷新 ' + r.count + ' 只（新进 ' + r.added + ' / 移出 ' + r.removed + '）');
+          }
+        })().catch(e => console.warn('[journal]', e.message));
+        return sendJson(res, 200, { ok: true, message: '实时观察池刷新中' });
+      }
+      if (pathname === '/api/cycle/refresh') {
+        runCycle(true).catch(e => console.warn('[cycle]', e.message));
+        return sendJson(res, 200, { ok: true, message: '周期事件研究重建中（约 10 秒）' });
+      }
+      if (pathname === '/api/cycle/event') {
+        const r = cycle.addCalendarEvent(body);
+        if (r.ok) runCycle(true).catch(() => {});
+        return sendJson(res, r.ok ? 200 : 400, r);
+      }
+      if (pathname === '/api/flow/refresh') {
+        runFlow().catch(e => console.warn('[flow]', e.message));
+        return sendJson(res, 200, { ok: true, data: flow.backfillStatus(), message: '资金主体数据增量更新中' });
+      }
+      if (pathname === '/api/riskoff/refresh') {
+        runRiskOff(true).catch(e => console.warn('[riskoff]', e.message));
+        return sendJson(res, 200, { ok: true, message: '避险识别重建中' });
+      }
+      if (pathname === '/api/edge/refresh') {
+        runEdge(true).catch(e => console.warn('[edge]', e.message));
+        return sendJson(res, 200, { ok: true, message: '预期研究层重建中（板块日 K 与阶段统计约需 10-20 秒）' });
+      }
+      if (pathname === '/api/holdings') {
+        const r = holdings.upsert(body);
+        if (r.ok) {
+          runHoldings().catch(e => console.warn('[holdings]', e.message));
+          console.log('[holdings] 录入/更新持仓 ' + body.code + '（共 ' + r.positions + ' 只）');
+        }
+        return sendJson(res, r.ok ? 200 : 400, r);
+      }
+      if (pathname === '/api/holdings/delete') {
+        const r = holdings.remove(body.code);
+        if (r.ok) {
+          runHoldings().catch(e => console.warn('[holdings]', e.message));
+          console.log('[holdings] 删除持仓 ' + body.code + '（剩 ' + r.positions + ' 只）');
+        }
+        return sendJson(res, r.ok ? 200 : 400, r);
+      }
+      if (pathname === '/api/holdings/refresh') {
+        runHoldings().catch(e => console.warn('[holdings]', e.message));
+        return sendJson(res, 200, { ok: true, message: '持仓行情刷新中' });
+      }
+      if (pathname === '/api/ic/rebuild') {
+        // 先补标注（会拉日线，较慢），再重建报告；放后台执行，立即返回
+        runIC(false).catch(e => console.warn('[ic]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已开始补算前瞻收益并重建 IC 自检报告' });
+      }
+      if (pathname === '/api/attribution/refresh') {
+        // 公告抓取串行 + 限速，全量约 40~70 秒；放后台执行，立即返回
+        runAttribution(true).catch(e => console.warn('[attribution]', e.message));
+        return sendJson(res, 200, { ok: true, message: '已开始抓取涨停股公告事实，约需 40~70 秒' });
+      }
+      if (pathname === '/api/mypicks/add') {
+        const r = mypicks.add(body);
+        return sendJson(res, r.ok ? 200 : 400, r);
+      }
+      if (pathname === '/api/mypicks/remove') {
+        return sendJson(res, 200, mypicks.remove(body));
+      }
+      if (pathname === '/api/mypicks/clear') {
+        return sendJson(res, 200, mypicks.clear());
+      }
+    } catch (e) {
+      return sendJson(res, 400, { ok: false, error: e.message });
+    }
+  }
+
+  if (req.method === 'GET') return serveStatic(pathname, res);
+  res.writeHead(405); res.end('Method Not Allowed');
+});
+
+/* ------------------------------- 启动 ------------------------------- */
+
+function openBrowser(url) {
+  try {
+    const candidates = [
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+    ];
+    const exe = candidates.find(p => fs.existsSync(p));
+    if (exe) {
+      const child = spawn(exe, ['--app=' + url, '--window-size=1480,960', '--no-first-run', '--disable-features=Translate'], { stdio: 'ignore' });
+      child.on('error', e => console.warn('[browser] 启动失败:', e.message));
+      console.log('[browser] 已用独立应用窗口打开');
+    } else {
+      spawn('cmd.exe', ['/c', 'start', '', url], { stdio: 'ignore' });
+      console.log('[browser] 已用默认浏览器打开');
+    }
+  } catch (e) {
+    console.warn('[browser] 无法自动打开，请手动访问 ' + url + '（' + e.message + '）');
+  }
+}
+
+const heartbeat = setInterval(() => {
+  for (const res of sseClients) {
+    try { res.write(': ping\n\n'); } catch (_) { sseClients.delete(res); }
+  }
+}, 15000);
+
+server.on('error', e => {
+  if (e.code === 'EADDRINUSE') {
+    console.error('端口 ' + PORT + ' 已被占用。若系统已在运行，请直接访问 http://' + HOST + ':' + PORT);
+    console.error('如需换端口，可设置环境变量 PORT，例如 set PORT=8888');
+  } else console.error('[server] ', e);
+  process.exit(1);
+});
+
+server.listen(PORT, HOST, () => {
+  const url = 'http://' + HOST + ':' + PORT;
+  console.log('');
+  console.log('  全球市场监测与报警系统');
+  console.log('  ---------------------------------------------');
+  console.log('  服务地址: ' + url);
+  console.log('  行情轮询: ' + config.quoteIntervalSec + ' 秒 | 新闻轮询: ' + config.newsIntervalSec + ' 秒');
+  console.log('  主数据源: CNBC Quote API / 新浪财经 / 东方财富 / Yahoo Finance');
+  console.log('  新闻来源: Google News / BBC / Guardian / Al Jazeera / 中新网');
+  console.log('  新闻中文化: 自动机器翻译 + 落盘缓存 | 解读: 情感词典 + 事件主题 + 资产影响映射');
+  console.log('  当日观察池: 五榜候选池 + 涨停池 / 60日日线 / 12项指标 / 舆情热度 / 外围联动 / 量能风格 / 加权融合评分');
+  console.log('  涨停结构: 一字/T字/换手/炸板 板型 · 封板时间 · 封单占流通市值 · 连板梯队 · 开板次数 · 情绪周期六阶段');
+  console.log('  K线形态: Alpha158 Kbar 9 因子 + 涨停后高开大阴 / 单阳不破 / 缩量突破 / 多方炮 / 吞没 / 跳空缺口 等 14 种');
+  console.log('  量能风格: 两市量能 + 中证2000/1000/500/300 四层代理 / 份额偏移 / 风格动量 / 宽度与拥挤度');
+  console.log('  事件与宏观: 公告 / 重组收购回购减持 / 业绩超预期 / 龙头板块联动 + 2.5万亿存量博弈弹性 / 机构避险');
+  console.log('  评分自检: 每日定格评分快照 → T+1/3/5/10 前瞻收益 → Rank IC / 分组 IC / 分档单调性 / 经验库');
+  console.log('  实时联动: 新闻解读、公司事件、人气热榜或外围行情变化 → 自动轻量重评分（复用缓存指标，非预测）');
+  console.log('  热度来源: 东财人气榜 + 同花顺热榜 | 舆情: 中文新闻标题匹配 + VADER 式情感');
+  console.log('  评估闭环: 09:05/22:00 定格 → T+1 复盘 → n≥8 归纳 → 人工审核 → 有界回流（±2 分）');
+  console.log('  预期研究: 板块相对强弱 / 市值重估条件清单 / 周期阶段统计 / 多因素叠加指纹（不改分，由复盘裁决）');
+  console.log('  关闭窗口即停止监控；配置与告警保存在 data/ 目录');
+  console.log('  ---------------------------------------------');
+  console.log('');
+  doQuoteTick();
+  doNewsTick();
+  initYahooHistory();
+  reschedule();
+  // 量能风格先算（含全市场分页宽度），观察池随后可复用结果
+  setTimeout(() => refreshStyleAndStocks(false).catch(e => console.warn('[style]', e.message)), 2500);
+  // 事件材料（公告 / 业绩预告快报 / 行业市值）采集，完成后自动重建信号并触发重评分
+  setTimeout(() => runEvents(false).catch(e => console.warn('[events]', e.message)), 6000);
+  // 兜底：新闻源异常时也能独立完成选股，不依赖解读流程
+  // 涨停池优先拉取：观察池的结构因子（板型/封板/封单/连板）依赖它
+  setTimeout(() => runLimitUp(false).catch(e => console.warn('[limitup]', e.message)), 6000);
+  // 闭环四模块：周期事件 → 资金主体（增量回填）→ 避险 → 经验库（定时定格在 09:05 / 22:00）
+  setTimeout(() => runCycle(false).catch(e => console.warn('[cycle]', e.message)), 9000);
+  setTimeout(() => runFlow().catch(e => console.warn('[flow]', e.message)), 12000);
+  setTimeout(() => runRiskOff(false).catch(e => console.warn('[riskoff]', e.message)), 16000);
+  setTimeout(() => runJournalTick().catch(e => console.warn('[journal]', e.message)), 20000);
+  // 持仓监控：启动即算一次（观察池就绪前先出行情与盈亏，评分联动等 stocks 就绪后自动补齐）
+  setTimeout(() => runHoldings().catch(e => console.warn('[holdings]', e.message)), 22000);
+  setTimeout(() => runStocks(false).catch(e => console.warn('[stocks]', e.message)), 15000);
+  // 预期研究层：等事件/周期/避险/观察池就绪后再跑，保证叠加因子都有真实输入
+  setTimeout(() => runEdge(false).catch(e => console.warn('[edge]', e.message)), 30000);
+  // 评分自检：启动后补算到期快照的前瞻收益并重建报告（纯读盘 + 少量日线）
+  setTimeout(() => runIC(false).catch(e => console.warn('[ic]', e.message)), 40000);
+  if (!process.argv.includes('--no-browser')) setTimeout(() => openBrowser(url), 900);
+});
+
+function shutdown() {
+  clearInterval(heartbeat);
+  clearTimeout(quoteTimer);
+  clearTimeout(newsTimer);
+  clearInterval(stocksTimer);
+  clearInterval(styleTimer);
+  clearInterval(eventsTimer);
+  clearInterval(limitTimer);
+  clearInterval(journalTimer);
+  clearInterval(cycleTimer);
+  clearInterval(flowTimer);
+  clearInterval(riskoffTimer);
+  clearInterval(holdingsTimer);
+  clearInterval(edgeTimer);
+  clearInterval(attributionTimer);
+  persistState();
+  for (const res of sseClients) { try { res.end(); } catch (_) {} }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1500);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

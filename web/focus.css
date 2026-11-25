@@ -1,0 +1,44 @@
+/* focus.css — 选股聚焦模式（纯增量，可逆；不改 styles.css / app.js） */
+
+/* 聚焦模式下：监控面板只保留被标记的两个，其余全部隐藏；但 DOM 与数据采集照常运行 */
+body.focus-on .app .panel:not(.focus-keep){ display:none !important; }
+body.focus-on .app .footer{ display:none; }
+body.focus-on .gm-group{ display:none; }
+body.focus-on .gm-nav:not(.focus-keep){ display:none; }
+body.focus-on .iw-side-label{ display:none; }
+body.focus-on .iw-side-foot{ display:none; }
+
+/* 两个保留面板在聚焦模式下并排铺开，不再挤在长滚动列表里 */
+body.focus-on .app{ max-width:100%; }
+body.focus-on .app .panel.focus-keep{ margin-bottom:14px; }
+
+.gm-focus-btn{
+  border:1px solid #d3dceb;background:#fff;color:#25304a;border-radius:7px;
+  padding:6px 12px;cursor:pointer;font-size:12.5px;white-space:nowrap;
+  margin-left:8px;
+}
+.gm-focus-btn:hover{ background:#eef3fc;border-color:#b9c9e6; }
+.gm-focus-btn.on{ background:#1f56d6;color:#fff;border-color:#1f56d6; }
+body.gm-dark .gm-focus-btn{ background:#202b40;border-color:#39496a;color:#dce6f7; }
+body.gm-dark .gm-focus-btn.on{ background:#2d4670;border-color:#4a6aa8;color:#fff; }
+
+/* 聚焦提示条：说明当前是收敛视图、其余面板只是隐藏不是删除 */
+.focus-banner{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 12px;margin:0 0 12px;border-radius:8px;
+  background:var(--blue-soft);border:1px solid #d7e2fb;
+  font-size:11px;color:#2a4a8a;line-height:1.6;
+}
+.focus-banner b{ font-weight:700; }
+.focus-banner .fb-sp{ flex:1; }
+.focus-banner button{
+  border:1px solid #b9c9e6;background:#fff;color:#1f56d6;border-radius:6px;
+  padding:4px 10px;cursor:pointer;font-size:11px;
+}
+.focus-banner button:hover{ background:#eaf0ff; }
+body.gm-dark .focus-banner{ background:#1c2740;border-color:#2d4670;color:#b9cdec; }
+body.gm-dark .focus-banner button{ background:#202b40;border-color:#39496a;color:#9dc0ff; }
+
+@media (max-width:760px){
+  .gm-focus-btn{ font-size:11px;padding:5px 8px;margin-left:4px; }
+}

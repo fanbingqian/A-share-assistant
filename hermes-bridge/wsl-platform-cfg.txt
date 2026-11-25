@@ -1,0 +1,42 @@
+=== .env 中 platform/api_server 相关 ===
+39:# Get your key at: https://platform.kimi.ai (Kimi Code console)
+41:# Legacy keys from platform.moonshot.ai need KIMI_BASE_URL override below.
+105:# Get your key at: https://platform.xiaomimimo.com
+255:# Get at: https://platform.openai.com/api-keys
+302:# Gateway-wide: allow ALL users without an allowlist (default: false = deny)
+304:# GATEWAY_ALLOW_ALL_USERS=false
+309:# Human-like delays between message chunks on messaging platforms.
+413:# Gateway API Server
+414:API_SERVER_ENABLED=true
+415:API_SERVER_HOST=127.0.0.1
+416:API_SERVER_PORT=8642
+417:API_SERVER_CORS_ORIGINS=http://localhost:5173,http://localhost:8643,http://127.0.0.1:5173
+=== config.yaml 中 platform 段 ===
+40:    enabled: true
+69:    enabled: true
+76:    enabled: true
+90:    enabled: true
+108:  enabled: true
+119:  enabled: true
+137:    enabled: true
+143:    enabled: true
+193:  memory_enabled: true
+197:  user_profile_enabled: true
+235:platforms:
+237:    enabled: true
+262:    enabled: false
+273:  enabled: false
+277:  enabled: false
+279:  enabled: true
+347:  enabled: []
+=== config.yaml platforms 详情 ===
+235: platforms:
+236:   weixin:
+237:     enabled: true
+238:     split_long_messages: true
+239:     max_message_length: 2000
+240:     language: zh
+241:     extra:
+242:       allow_from: ''
+243:       dm_policy: open
+244: prefill_messages_file: ''

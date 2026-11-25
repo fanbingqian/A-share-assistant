@@ -1,0 +1,47 @@
+=== api_server 源码端点定义 ===
+3:Serves /v1/chat/completions, /v1/responses, /v1/models, /v1/capabilities, /api/sessions,
+63:    ("chat_completions", ("POST", "/v1/chat/completions")),
+64:    ("responses", ("POST", "/v1/responses")), ("runs", ("POST", "/v1/runs")),
+67:    ("run_approval", ("POST", "/v1/runs/{run_id}/approval")),
+68:    ("run_steer", ("POST", "/v1/runs/{run_id}/steer")),
+69:    ("run_unknown_resolution", ("POST", "/v1/runs/{run_id}/resolve-unknown", "run_unknown_resolution")),
+70:    ("run_stop", ("POST", "/v1/runs/{run_id}/stop")), ("skills", ("GET", "/v1/skills")),
+72:    ("session_create", ("POST", "/api/sessions")),
+77:    ("session_fork", ("POST", "/api/sessions/{session_id}/fork")),
+78:    ("session_chat", ("POST", "/api/sessions/{session_id}/chat")),
+79:    ("session_chat_stream", ("POST", "/api/sessions/{session_id}/chat/stream")),
+80:    ("session_model_lock", ("POST", "/api/sessions/{session_id}/model")))
+92:    envelope, and the ``choices`` the client may send back to ``POST /v1/runs/{id}/approval``."""
+648:    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+682:        if request.method in {"POST", "PUT", "PATCH"}:
+972:    """Ordered SSE event queue for one /api/sessions/{id}/chat/stream run. ``payload`` stamps
+1080:        self._model_routes: dict[str, dict[str, Any]] = self._parse_model_routes(extra.get("model_routes"))
+1116:        # Concurrency cap shared across all agent-serving endpoints (/v1/chat/completions, /v1/responses,
+1117:        # /v1/runs, /api/sessions/{id}/chat[/stream]). Read from config.yaml
+1578:            ("POST", "/api/sessions", self._handle_create_session),
+1583:            ("POST", "/api/sessions/{session_id}/fork", self._handle_fork_session),
+1584:            ("POST", "/api/sessions/{session_id}/chat", self._handle_session_chat),
+1585:            ("POST", "/api/sessions/{session_id}/chat/stream", self._handle_session_chat_stream),
+1586:            ("POST", "/api/sessions/{session_id}/model", self._handle_session_model_lock),
+1587:            ("POST", "/v1/chat/completions", self._handle_chat_completions),
+1588:            ("POST", "/v1/responses", self._handle_responses),
+1593:            ("POST", "/api/platforms/{platform}/events", self._handle_platform_event_callback),
+1595:            ("POST", "/api/jobs", self._handle_create_job),
+1599:            ("POST", "/api/jobs/{job_id}/pause", self._handle_pause_job),
+1600:            ("POST", "/api/jobs/{job_id}/resume", self._handle_resume_job),
+1601:            ("POST", "/api/jobs/{job_id}/run", self._handle_run_job)]
+1602:        routes.extend(_room_grants._http_routes(self))
+1603:        routes.extend(_api_runs._http_routes(self))
+1606:            routes.append(("POST", "/api/cron/fire", self._handle_cron_fire))
+1789:    def _parse_model_routes(raw: Any) -> dict[str, dict[str, Any]]:
+2579:        """POST /api/sessions -- create an empty Hermes session row. Existence check, insert and
+2757:        """POST /api/sessions/{session_id}/fork: branch through the storage interface."""
+2799:        """Shared prelude for /api/sessions/{id}/chat[/stream]: header/body validation, then
+2861:            # request path (/api/sessions/{session_id}/chat) — so a wake self-post lands where
+2914:        holds that chat. Both peer transports (``/api/sessions/{id}/chat`` for ``peer dm``,
+=== 探测 GET / ===
+
+=== 探测 GET /health ===
+
+=== 探测 GET /v1/models ===
+
