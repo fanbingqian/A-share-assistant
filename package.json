@@ -11,6 +11,7 @@
     "start": "electron .",
     "serve": "node server/server.js",
     "build:desktop": "node scripts/build-desktop.js",
+    "prepare:portable": "node scripts/prepare-portable.js",
     "shortcuts": "node scripts/install-shortcuts.js",
     "shortcuts:remove": "node scripts/install-shortcuts.js --uninstall",
     "preview": "node scripts/generate-preview.js"

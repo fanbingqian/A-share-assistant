@@ -129,7 +129,7 @@ GlobalMarketMonitor.exe --shot=D:\...\window.png    # 加载真实页面后截�
 ## 一·D、GitHub 仓库与「换一台电脑怎么用」（2026-11-25 新增）
 
 **仓库（公开）**：<https://github.com/fanbingqian/A-share-assistant> · 中文名「**A股助手**」
-**免安装包**：该仓库 **Releases** 里的 `GlobalMarketMonitor-win32-x64-v1.0.0.zip`
+**免安装包**：该仓库 **Releases** 里的 `GlobalMarketMonitor-win32-x64-v2.0.0.zip`
 
 仓库里放的是**纯净源码 + 构建脚本 + 文档 + 脱敏配置模板**；363 MB 的免安装成品不走 git（单个 exe 225 MB 已超 GitHub 单文件 100 MB 限制），而是作为 Release 附件分发。
 
@@ -146,7 +146,7 @@ GlobalMarketMonitor.exe --shot=D:\...\window.png    # 加载真实页面后截�
 
 ### 从 Release 安装（推荐，零环境）
 
-1. 下载 `GlobalMarketMonitor-win32-x64-v1.0.0.zip`，**解压整个文件夹**到一个有写权限的目录，例如 `D:\A股助手\` 或桌面；**不要**放在 `C:\Program Files`（程序要往自身 `resources\app\data\` 写数据），路径尽量不含中文与空格。
+1. 下载 `GlobalMarketMonitor-win32-x64-v2.0.0.zip`，**解压整个文件夹**到一个有写权限的目录，例如 `D:\A股助手\` 或桌面；**不要**放在 `C:\Program Files`（程序要往自身 `resources\app\data\` 写数据），路径尽量不含中文与空格。
 2. 双击 `GlobalMarketMonitor.exe`。首次运行 Windows SmartScreen 可能拦截 → 点「**更多信息 → 仍要运行**」（exe 未做代码签名）。部分安全软件会对「应用起本地服务」弹窗询问，选允许即可（服务只监听 `127.0.0.1`，不对外暴露）。
 3. 发行包**已清空 API Key**，首次进入「设置 → 智能体」填入自己的 DeepSeek API Key（或编辑 `resources\app\data\config.json` 的 `agent.apiKey`，也可复制仓库根目录 `config.example.json` 作模板）。不配 Key 时行情、新闻、技术标注、复盘等均可正常使用，仅 AI 解读不可用。
 4. 可选：双击包内 `创建桌面快捷方式.vbs` 建立桌面与开始菜单图标。
