@@ -62,6 +62,7 @@ const chatStore = require('./chat-store');
 const sentiment = require('./sentiment');
 const strategy = require('./strategy');
 const futureEvents = require('./future-events');
+const calendarGate = require('./calendar-gate');
 const updateFeed = require('./update-feed');
 const newsTriage = require('./news-triage');
 /* ===== 全板块知识图谱 / 垃圾信息处理 / Hermes agent loop ===== */
@@ -2339,6 +2340,58 @@ const server = http.createServer(async (req, res) => {
     if (u.searchParams.get('mark') === '1') cal.markReminded(due.map(d => d.id));
     return sendJson(res, 200, { ok: true, items: due });
   }
+
+  // —— 日程准入闸门 / 信源真伪分级 / 人工复核台（calendar-gate.js）——
+  if (req.method === 'GET' && pathname === '/api/v2/calendar/gate/status') {
+    try { return sendJson(res, 200, calendarGate.status()); }
+    catch (e) { return sendJson(res, 502, { ok: false, error: e.message }); }
+  }
+  if (req.method === 'GET' && pathname === '/api/v2/calendar/gate/review') {
+    try { return sendJson(res, 200, calendarGate.loadReview()); }
+    catch (e) { return sendJson(res, 502, { ok: false, error: e.message }); }
+  }
+  if (req.method === 'GET' && pathname === '/api/v2/calendar/gate/evidence') {
+    try { return sendJson(res, 200, calendarGate.listEvidence()); }
+    catch (e) { return sendJson(res, 502, { ok: false, error: e.message }); }
+  }
+  if (req.method === 'GET' && pathname === '/api/v2/calendar/gate/blacklist') {
+    try { return sendJson(res, 200, calendarGate.loadBlacklist()); }
+    catch (e) { return sendJson(res, 502, { ok: false, error: e.message }); }
+  }
+  // 人工裁决：放行（写白名单，需重新扫描才入历）/ 驳回（写黑名单，永久防回写）
+  if (req.method === 'POST' && pathname === '/api/v2/calendar/gate/decide') {
+    try {
+      const b = await readBody(req);
+      const r = calendarGate.decideReview({ fingerprint: b.fingerprint, action: b.action, by: b.by || 'user' });
+      return sendJson(res, r.ok ? 200 : 400, r);
+    } catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
+  }
+  // 记录外部核验证据卡（人工/会话检索所得，非系统自动联网核验）
+  if (req.method === 'POST' && pathname === '/api/v2/calendar/gate/evidence') {
+    try { return sendJson(res, 200, { ok: true, item: calendarGate.saveEvidence(await readBody(req)) }); }
+    catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
+  }
+  // 存量误入历回溯清理：默认 dryRun，只有 apply:true 才真正改写并自动备份
+  if (req.method === 'POST' && pathname === '/api/v2/calendar/gate/purge') {
+    try {
+      const b = await readBody(req);
+      const r = calendarGate.purgeMisentries({ dryRun: b.apply !== true, backup: true });
+      return sendJson(res, 200, r);
+    } catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
+  }
+  if (req.method === 'POST' && pathname === '/api/v2/calendar/gate/blacklist/remove') {
+    try { return sendJson(res, 200, calendarGate.removeBlacklist((await readBody(req)).fingerprint)); }
+    catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
+  }
+  // 带智能体实时审查的完整重扫（复核台「重新扫描」按钮用）
+  if (req.method === 'POST' && pathname === '/api/v2/calendar/gate/rescan') {
+    try {
+      const b = await readBody(req);
+      const r = await futureEvents.scanAsync({ news: latest.news.items, now: Date.now(), cfg: config, hermes, noAI: b.noAI === true });
+      return sendJson(res, 200, { ok: true, generatedAt: r.generatedAt, coverage: r.coverage, gate: r.gate, rejectedSample: r.rejectedSample });
+    } catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
+  }
+
   // 事件历史统计引擎：近2年事件 × 板块代理 ETF 的 T+1/T+3/T+5 超额与胜率
   if (req.method === 'GET' && pathname === '/api/v2/calendar/event-study/status') return sendJson(res, 200, eventStudy.status());
   if (req.method === 'GET' && pathname === '/api/v2/calendar/event-study') {
@@ -2500,17 +2553,21 @@ const server = http.createServer(async (req, res) => {
   // —— 未来事件扫描入历：从全部新闻抽取带确定时间的、对股市有影响的事件 ——
   if (req.method === 'GET' && pathname === '/api/v2/future-events') {
     const rep = futureEvents.report();
-    return sendJson(res, 200, { ok: true, ...rep, events: futureEvents.scannedEvents() });
+    let gateStatus = null;
+    try { gateStatus = calendarGate.status(); } catch (_) {}
+    return sendJson(res, 200, { ok: true, ...rep, events: futureEvents.scannedEvents(), gateStatus });
   }
   if (req.method === 'POST' && pathname === '/api/v2/future-events/scan') {
     try {
-      const r = futureEvents.scan({ news: latest.news.items, now: Date.now() });
-      const cv = r.coverage || {};
-      updateFeed.record('calendar', '未来事件', '未来事件扫描入历',
-        `扫描 ${cv.scannedNews || 0} 条新闻 · 带确定时间 ${cv.timedCandidates || 0} 条 · 入历 ${cv.totalUpsertCandidates || 0} 条 · 待复核 ${cv.reviewQueue || 0} 条`, 'manual:future-events');
+      // 手动扫描走异步版：先跑智能体结构化审查，再带着完整结论决策，一次返回可追溯结果
+      const r = await futureEvents.scanAsync({ news: latest.news.items, now: Date.now(), cfg: config, hermes });
+      const cv = r.coverage || {}, g = r.gate || {};
+      updateFeed.record('calendar', '未来事件', '未来事件扫描入历（含准入闸门）',
+        `扫描 ${cv.scannedNews || 0} 条新闻 · 带确定时间 ${cv.timedCandidates || 0} 条 · 准入通过 ${g.admitted || 0} 条 · 驳回 ${g.rejected || 0} 条 · 待复核 ${g.review || 0} 条 · 智能体审查 ${g.aiReviewed || 0} 条`, 'manual:future-events');
       return sendJson(res, 200, {
-        ok: true, generatedAt: r.generatedAt, coverage: r.coverage,
-        upserted: (r.upserted || []).slice(0, 20), reviewQueue: (r.reviewQueue || []).slice(0, 10)
+        ok: true, generatedAt: r.generatedAt, coverage: r.coverage, gate: r.gate,
+        upserted: (r.upserted || []).slice(0, 20), reviewQueue: (r.reviewQueue || []).slice(0, 10),
+        rejectedSample: r.rejectedSample || []
       });
     } catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
   }
@@ -2924,8 +2981,8 @@ function runNewsPulse() {
     if (hour === lastNewsPulseHour) return null;
     lastNewsPulseHour = hour;
     const pulse = newsPulse.persist(newsPulse.build({ news: latest.news, analysis: latest.analysis }));
-    // 未来事件扫描：跟随每小时新闻脉冲，把「带确定时间 + 对股市有影响」的内容去重写入日程
-    try { futureEvents.scan({ news: latest.news.items, now: Date.now() }); }
+    // 未来事件扫描：跟随每小时新闻脉冲，先过准入闸门再决定是否入历（同步版读 AI 审查缓存并后台预热）
+    try { futureEvents.scan({ news: latest.news.items, now: Date.now(), cfg: config, hermes }); }
     catch (e) { console.warn('[future-events]', e.message); }
     // 同步重建「新闻价值分级」候选集快照，供 Hermes 技能按需 Pull 精排（此处不调用大模型）
     try { newsTriage.build({ news: latest.news, pulse }); }
@@ -2942,8 +2999,8 @@ function runNewsPulse() {
 // 冷启动后 12 秒做一次未来事件扫描（新闻缓存已就绪），此后每小时随新闻脉冲自动扫描
 setTimeout(() => {
   try {
-    const r = futureEvents.scan({ news: latest.news.items, now: Date.now() });
-    console.log('[future-events] initial scan', JSON.stringify(r.coverage));
+    const r = futureEvents.scan({ news: latest.news.items, now: Date.now(), cfg: config, hermes });
+    console.log('[future-events] initial scan', JSON.stringify(r.coverage), JSON.stringify(r.gate));
   } catch (e) { console.warn('[future-events] initial scan failed:', e.message); }
 }, 12000);
 const v2Timer = setInterval(() => {

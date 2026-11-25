@@ -792,6 +792,55 @@ button{cursor:pointer}
 .fe-src-tag{font-size:10px;color:var(--brand);background:var(--brand-soft);border-radius:4px;padding:0 5px;white-space:nowrap}
 @media(max-width:900px){.fe-grid{grid-template-columns:repeat(3,1fr)}}
 
+/* ===== 日程准入闸门：事件卡上的「准入结论 / 信源等级 / 真伪状态」标签 ===== */
+.gate-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.gate-badge{font-size:10px;line-height:1.5;padding:1px 7px;border-radius:4px;
+  border:1px solid var(--line);background:var(--line2);color:var(--ink2);white-space:nowrap}
+.gb-ok{border-color:rgba(22,93,255,.34);background:var(--brand-soft);color:var(--brand);font-weight:600}
+.gb-warn{border-color:rgba(212,107,8,.32);background:rgba(212,107,8,.08);color:var(--warn);font-weight:600}
+.gb-bad{border-color:rgba(198,40,40,.32);background:rgba(198,40,40,.08);color:#9e1f1f;font-weight:600}
+.gb-rule{border-color:var(--line);background:var(--panel);color:var(--ink3)}
+.gb-tier,.gb-truth{border-color:var(--line);background:var(--panel);color:var(--ink2)}
+.gb-ai{color:var(--ink3)}
+.gb-ai.on{border-color:rgba(22,93,255,.28);background:var(--brand-soft);color:var(--brand)}
+
+/* ===== 准入复核台（日程与事件 → 右侧折叠区） ===== */
+.gr-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.gr-kpi{background:var(--line2);border-radius:var(--r-sm);padding:8px 10px}
+.gr-k{font-size:10px;color:var(--ink3)}
+.gr-v{font-size:15px;font-weight:700;color:var(--brand);word-break:break-all}
+.gr-tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.gr-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.gr-tab{border:0;background:transparent;padding:6px 10px;font-size:12px;color:var(--ink3);border-bottom:2px solid transparent}
+.gr-tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+.gr-panel{max-height:420px;overflow:auto}
+.gr-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 11px;margin-bottom:9px;background:var(--panel)}
+.gr-head{display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap}
+.gr-date{font-family:monospace;font-size:11px;color:var(--brand);flex:none}
+.gr-title{font-size:12.5px;font-weight:600;color:var(--ink);flex:1;min-width:180px;line-height:1.5}
+.gr-meta{font-size:11px;color:var(--ink3);margin-top:5px}
+.gr-why{margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.gr-why span{font-size:11px;color:var(--ink2);line-height:1.5;padding-left:10px;position:relative}
+.gr-why span::before{content:'·';position:absolute;left:1px;color:var(--warn);font-weight:700}
+.gr-hint{font-size:11px;color:var(--ink3);margin-top:5px;line-height:1.55}
+.gr-ai{font-size:11px;color:var(--ink2);background:var(--brand-soft);border-radius:5px;padding:6px 8px;margin-top:6px;line-height:1.55}
+.gr-ai.muted{background:var(--line2);color:var(--ink3)}
+.gr-actions{display:flex;align-items:center;gap:7px;margin-top:8px;flex-wrap:wrap}
+.gr-link{font-size:11px;color:var(--brand);text-decoration:none}
+.gr-ev{border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:11px 12px;margin-bottom:10px;background:var(--panel)}
+.gr-ev-claim{font-size:13px;font-weight:650;color:var(--ink);line-height:1.5}
+.gr-ev-verdict{font-size:12px;color:var(--ink2);margin-top:7px;line-height:1.6}
+.gr-ev-mode{font-size:10px;color:var(--ink3);margin-top:5px}
+.gr-ev-sub{font-size:11.5px;color:var(--ink2);margin-top:8px;line-height:1.6}
+.gr-ev-sub ul{margin:3px 0 0 16px}
+.gr-ev-sub li{margin:2px 0}
+.gr-ev-sub a{color:var(--brand);text-decoration:none}
+.gr-ev-sub.warn{color:#9e1f1f}
+.gr-ev-note{font-size:10.5px;color:var(--ink3);margin-top:7px;line-height:1.55}
+.gr-bl{border-bottom:1px solid var(--line2);padding:8px 0;font-size:12px}
+.gr-bl b{font-weight:600;color:var(--ink)}
+@media(max-width:900px){.gr-kpis{grid-template-columns:repeat(2,1fr)}}
+
 /* ===== 对话面板：侧推隐藏（与最小化的 46px 竖条互斥） ===== */
 .chat-hide{width:24px;height:24px;border:1px solid var(--line);background:var(--panel);color:var(--ink2);
   border-radius:4px;font-size:13px;line-height:1;cursor:pointer}

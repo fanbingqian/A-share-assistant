@@ -36,7 +36,7 @@ $$('.nav-item').forEach(btn=>{
     currentView=view;
     $$('.nav-item').forEach(b=>b.classList.toggle('active', b===btn));
     $$('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+view));
-    if(view==='calendar'){ renderCalendar(); loadUpcoming(); loadEventStudy(); }
+    if(view==='calendar'){ renderCalendar(); loadUpcoming(); loadEventStudy(); loadGateReview(); }
     if(view==='newsflash'){ loadNewsFlash(); loadPolicyNews().then(()=>markPolicySeen()); loadPolicyTriage(); loadFutureEvents(); }
     if(view==='market'){ loadMarket(); }
     if(view==='portfolio'){ loadPortfolio(); }
@@ -364,6 +364,34 @@ function eventAiBtn(e){
     '<span class="event-ai-sub">原因 · 历史涨跌概率 · 证伪条件</span>'+
     '<span class="event-ai-go">→</span></button></div>';
 }
+/* ===== 日程准入闸门标签：确定性结论 + 信源等级 + 真伪状态 + 智能体审查标记 ===== */
+const GATE_DECISION = {
+  admit:['准入通过','ok'], review:['待人工复核','warn'], reject:['已驳回','bad'],
+  'rule-generated':['系统规则推算','rule'], 'legacy-retained':['存量回溯保留','rule']
+};
+const GATE_TIER = {
+  official:'官方一手', authoritative:'权威署名', relay:'转述援引', anonymous:'匿名信源',
+  unknown:'信源未分级', 'system-calendar-rule':'系统规则'
+};
+const GATE_TRUTH = {
+  'official-firsthand-available':'可核对官方一手', 'anonymous-unverified':'含未证实细节',
+  'authoritative-report':'署名媒体报道', 'media-relay':'媒体转述', 'ungraded':'真伪未分级',
+  'legacy-ungraded':'真伪未分级（存量）', 'not-a-news-claim':'非新闻线索'
+};
+function gateDecLabel(d){ return (GATE_DECISION[d]||['未标注','rule']); }
+function gateBadge(e){
+  const g=e && e.gate; if(!g) return '';
+  const d=gateDecLabel(g.decision);
+  const tier=GATE_TIER[g.sourceTier]||'信源未分级';
+  const truth=GATE_TRUTH[g.truthStatus]||'真伪未分级';
+  const ai=g.aiReviewed?'智能体已审查':'未过智能体审查';
+  return `<div class="gate-badges" title="${esc(g.label||'')}">
+    <span class="gate-badge gb-${d[1]}">准入 · ${esc(d[0])}</span>
+    <span class="gate-badge gb-tier">信源 · ${esc(tier)}</span>
+    <span class="gate-badge gb-truth">真伪 · ${esc(truth)}</span>
+    <span class="gate-badge gb-ai${g.aiReviewed?' on':''}">${esc(ai)}</span>
+  </div>`;
+}
 function calEventCard(e, withImpact){
   const g=calGrade(e.grade), title=String(e.name||'（无标题）');
   const when=e.spanStart?('行程 '+fmtSpanRange(e)):fmtDateCN(e.date||e.onDate);
@@ -375,6 +403,7 @@ function calEventCard(e, withImpact){
     ${e.detail?`<div class="ce-detail">${esc(e.detail)}</div>`:''}
     ${(e.sectors&&e.sectors.length)?`<div class="ce-sectors">相关板块：${e.sectors.map(esc).join(' / ')}</div>`:''}
     ${src?`<div class="ce-src">${esc(src)}</div>`:''}
+    ${gateBadge(e)}
     ${(e.newsRef&&e.newsRef.url)?`<div class="ce-link"><a href="${esc(e.newsRef.url)}" target="_blank" rel="noopener">新闻原文 ↗</a></div>`:''}
     ${withImpact?eventAiBtn(e):''}
   </div>`;
@@ -494,7 +523,7 @@ async function renderCalendar(focusDate){
 
 /* ============ 右栏分区折叠：当日事件常驻，未来30天 / 历史统计可折叠 ============
    默认收起，避免把版面拉得太长；展开状态记在 localStorage，切月 / SSE 重绘不打扰。 */
-const CAL_SEC_KEYS=['upcoming','study'];
+const CAL_SEC_KEYS=['upcoming','gate','study'];
 function calSecPref(k){
   try{ const v=localStorage.getItem('gmm.cal.sec.'+k); return v===null?false:v==='1'; }
   catch(e){ return false; }
@@ -533,7 +562,8 @@ function renderDayEvents(date, byDate){
         <div class="event-title">${esc(e.name)} <span class="grade-tag">${g==='user'?'自定义':g+'级'}</span>${spanTag}</div>
         ${e.detail?`<div class="event-detail">${esc(e.detail)}</div>`:''}
         ${(e.sectors&&e.sectors.length)?`<div class="event-sectors">相关：${e.sectors.map(esc).join(' / ')}</div>`:''}
-        ${(e.source&&(e.source==='news-scan'||e.source==='calendar-rule'))?`<div class="event-source">来源：${esc(srcLabel(e.source))}${e.confirmLevel?(' · '+esc(cfLabel(e.confirmLevel))):''}${e.dateBasis?(' · '+esc(e.dateBasis)):''}${e.newsRef&&e.newsRef.url?(' <a href="'+esc(e.newsRef.url)+'" target="_blank" rel="noopener">新闻原文 ↗</a>'):''}</div>`:''}
+        ${(e.source&&['news-scan','calendar-rule','gate-human-admit'].includes(e.source))?`<div class="event-source">来源：${esc(srcLabel(e.source))}${e.confirmLevel?(' · '+esc(cfLabel(e.confirmLevel))):''}${e.dateBasis?(' · '+esc(e.dateBasis)):''}${e.newsRef&&e.newsRef.url?(' <a href="'+esc(e.newsRef.url)+'" target="_blank" rel="noopener">新闻原文 ↗</a>'):''}</div>`:''}
+        ${gateBadge(e)}
         ${eventAiBtn(e)}
       </div>`;
     }).join('');
@@ -603,13 +633,13 @@ async function loadUpcoming(){
   }).join('');
 }
 function srcLabel(s){
-  const map={'news-scan':'新闻扫描','calendar-rule':'周期规则','rule':'规则','user':'自定义',
+  const map={'news-scan':'新闻扫描','calendar-rule':'周期规则','gate-human-admit':'人工复核放行','rule':'规则','user':'自定义',
     'official':'官方','policy-calendar':'政策日历','policy-window':'政策窗口'};
   return map[s]||s||'--';
 }
 function cfLabel(c){
   const map={'news-explicit-date':'新闻明确日期','news-relative-estimate':'新闻相对时间推算',
-    'news-window-estimate':'新闻窗口推算','rule-estimate':'规律推算·待官方确认'};
+    'news-window-estimate':'新闻窗口推算','rule-estimate':'规律推算·待官方确认','human-reviewed':'人工复核确认'};
   return map[c]||c||'--';
 }
 async function loadFutureEvents(force){
@@ -621,31 +651,157 @@ async function loadFutureEvents(force){
   if(meta) meta.textContent='上次扫描 '+(r.generatedAt||'--')+' · 窗口 '+((r.horizon&&r.horizon.from)||'--')+' ~ '+((r.horizon&&r.horizon.to)||'--');
   const kpis=[
     {k:'扫描新闻',v:c.scannedNews||0},{k:'带确定时间',v:c.timedCandidates||0},
-    {k:'命中影响词',v:c.relevantMatched||0},{k:'新闻入历',v:c.relevantMerged||0},
+    {k:'准入通过',v:c.relevantMatched||0},{k:'实际入历',v:c.relevantMerged||0},
     {k:'规则兜底',v:c.calendarRules||0},{k:'待复核',v:c.reviewQueue||0}
   ];
+  const g=r.gate||{};
   box.innerHTML='<div class="fe-grid">'+kpis.map(x=>
     '<div class="fe-kpi"><div class="fe-k">'+esc(x.k)+'</div><div class="fe-v">'+x.v+'</div></div>').join('')+'</div>'+
-    '<div class="note" style="margin-top:8px">本次候选 '+(c.totalUpsertCandidates||0)+' 条（新增 '+(c.created||0)+' / 更新 '+(c.updated||0)+' / 失败 '+(c.failed||0)+'）· 已入历事件 '+(r.events||[]).length+' 条。'+esc(r.note||'')+'</div>';
+    '<div class="note" style="margin-top:8px">本次候选 '+(c.totalUpsertCandidates||0)+' 条（新增 '+(c.created||0)+' / 更新 '+(c.updated||0)+' / 失败 '+(c.failed||0)+'）· 已入历事件 '+(r.events||[]).length+' 条。'+
+    '<br><b>准入闸门</b>：智能体审查 '+(g.aiReviewed||0)+' 条（'+esc(g.aiBackend||'—')+'）· 准入通过 '+(g.admitted||0)+' · 驳回 '+(g.rejected||0)+' · 待复核 '+(g.review||0)+' · 黑名单跳过 '+(g.blacklistSkipped||0)+' 条。</div>';
   const q=r.reviewQueue||[], rb=$('#feReview');
   const corp=q.filter(x=>/回购|增持|减持|停牌|复牌|中标|业绩|公告|股份|股东|风险警示|ST|解禁|质押/.test(String(x.title||'')));
   if($('#feCompanyCount')) $('#feCompanyCount').textContent='共 '+q.length+' 条 · 其中公司公告类 '+corp.length+' 条（回购 / 增减持 / 停复牌等）';
-  if(rb) rb.innerHTML=q.length? q.slice(0,40).map(x=>
-    '<div class="fe-q-item"><span class="fe-q-date">'+esc(x.date)+'</span><span class="fe-q-title">'+esc(String(x.title||'').slice(0,72))+'</span>'+
+  if(rb) rb.innerHTML=q.length? q.slice(0,40).map(x=>{
+    const d=gateDecLabel(x.decision);
+    return '<div class="fe-q-item"><span class="fe-q-date">'+esc(x.date)+'</span><span class="fe-q-title">'+esc(String(x.title||'').slice(0,72))+'</span>'+
     '<span class="fe-q-src">'+esc(x.source||'')+'</span>'+
-    '<div class="fe-q-why">'+esc(x.reason||'')+' · '+esc(x.dateBasis||'')+'</div></div>').join('')
+    '<span class="fe-src-tag">'+esc(d[0])+'</span>'+
+    '<div class="fe-q-why">'+esc((x.reasons||[]).slice(0,2).join('；')||x.reason||'')+' · '+esc(x.dateBasis||'')+'</div></div>';
+  }).join('')
     : '<div class="empty">无待复核条目</div>';
 }
 $('#btnFutureScan')?.addEventListener('click',async()=>{
-  toast('扫描中','正在扫描全部新闻并写入日程…');
-  await loadFutureEvents(true);
-  renderCalendar(); loadUpcoming();
-  toast('扫描完成','扫描报告与日历已更新');
+  const b=$('#btnFutureScan');
+  if(b){ b.disabled=true; b.textContent='审查中…'; }
+  toast('准入扫描中','确定性闸门 + 智能体结构化审查，约需 1 分钟，请勿关闭页面');
+  try{
+    await loadFutureEvents(true);
+    renderCalendar(); loadUpcoming(); await loadGateReview();
+    toast('扫描完成','扫描报告、准入复核台与日历已更新');
+  }catch(e){ toast('扫描失败',e.message); }
+  finally{ if(b){ b.disabled=false; b.textContent='立即扫描'; } }
 });
 $('#btnFeReviewToggle')?.addEventListener('click',()=>{
   const b=$('#feReview'); if(!b) return;
   b.style.display = (b.style.display==='none') ? 'block' : 'none';
 });
+
+/* ===== 准入复核台：确定性闸门 + 智能体审查 + 人工裁决 ===== */
+let GATE_CACHE = { status:null, review:null, evidence:null, blacklist:null };
+async function loadGateReview(){
+  const st=$('#gateStatus'); if(!st) return;
+  const [s,r,ev,bl]=await Promise.all([
+    api('/api/v2/calendar/gate/status'),
+    api('/api/v2/calendar/gate/review'),
+    api('/api/v2/calendar/gate/evidence'),
+    api('/api/v2/calendar/gate/blacklist')
+  ]);
+  GATE_CACHE={ status:s, review:r, evidence:ev, blacklist:bl };
+  const note=$('#gateSecNote');
+  if(note) note.textContent='待复核 '+((s&&s.reviewPending)||0)+' 条 · 黑名单 '+((s&&s.blacklisted)||0)+' 条 · 证据卡 '+((s&&s.evidenceCards)||0)+' 张';
+  const cards=[
+    {k:'待复核',v:(s&&s.reviewPending)||0},
+    {k:'驳回黑名单',v:(s&&s.blacklisted)||0},
+    {k:'核验证据卡',v:(s&&s.evidenceCards)||0},
+    {k:'队列生成',v:String((s&&s.reviewGeneratedAt)||'--').slice(5,16)}
+  ];
+  st.innerHTML='<div class="gr-kpis">'+cards.map(x=>
+    '<div class="gr-kpi"><div class="gr-k">'+esc(x.k)+'</div><div class="gr-v">'+esc(x.v)+'</div></div>').join('')+'</div>'+
+    '<div class="note" style="margin-top:6px">闸门 '+esc((s&&s.gateVersion)||'--')+' · 默认拒绝 fail-closed · 程序只做来源分级与措辞识别，不裁定事实真伪；智能体结论仅为建议标注。</div>';
+  renderGrReview(); renderGrEvidence(); renderGrBlacklist();
+}
+function renderGrReview(){
+  const box=$('#grReview'); if(!box) return;
+  const items=(GATE_CACHE.review&&GATE_CACHE.review.items)||[];
+  if(!items.length){ box.innerHTML='<div class="empty">当前无待复核条目</div>'; return; }
+  box.innerHTML=items.slice(0,60).map(x=>{
+    const d=gateDecLabel(x.decision);
+    const tier=GATE_TIER[x.sourceTier]||'信源未分级';
+    const truth=GATE_TRUTH[x.truthStatus]||'真伪未分级';
+    const reasons=(x.reasons||[]).slice(0,4);
+    const hints=(x.verifyHints||[]).slice(0,2);
+    const ai=x.ai&&x.ai.reviewed
+      ? '<div class="gr-ai">智能体建议 <b>'+esc(x.ai.admitSuggestion||'—')+'</b> · 风险 '+esc(x.ai.truthRisk||'—')+' · '+esc(x.ai.reason||'')+(x.ai.backend?' · '+esc(x.ai.backend):'')+'</div>'
+      : '<div class="gr-ai muted">智能体未审查（缓存未命中，按 fail-closed 保留在复核队列）</div>';
+    return '<div class="gr-item">'+
+      '<div class="gr-head"><span class="gr-date">'+esc(x.date||'—')+'</span>'+
+        '<span class="gate-badge gb-'+d[1]+'">'+esc(d[0])+'</span>'+
+        '<span class="gr-title">'+esc(x.title||'')+'</span></div>'+
+      '<div class="gr-meta">来源 '+esc(x.source||'—')+' · 信源 '+esc(tier)+' · 真伪 '+esc(truth)+'</div>'+
+      (reasons.length?'<div class="gr-why">'+reasons.map(v=>'<span>'+esc(v)+'</span>').join('')+'</div>':'')+
+      (hints.length?'<div class="gr-hint">核实途径：'+hints.map(esc).join('；')+'</div>':'')+
+      ai+
+      '<div class="gr-actions"><button class="mini-btn gr-admit" data-fp="'+esc(x.fingerprint)+'">人工放行</button>'+
+        '<button class="mini-btn gr-reject" data-fp="'+esc(x.fingerprint)+'">驳回并拉黑</button>'+
+        (x.url?'<a class="gr-link" href="'+esc(x.url)+'" target="_blank" rel="noopener">原文 ↗</a>':'')+'</div>'+
+    '</div>';
+  }).join('');
+  $$('.gr-admit,.gr-reject', box).forEach(b=>b.addEventListener('click',()=>
+    gateDecide(b.dataset.fp, b.classList.contains('gr-admit')?'admit':'reject')));
+}
+function renderGrEvidence(){
+  const box=$('#grEvidence'); if(!box) return;
+  const items=(GATE_CACHE.evidence&&GATE_CACHE.evidence.items)||[];
+  if(!items.length){ box.innerHTML='<div class="empty">暂无核验证据卡</div>'; return; }
+  box.innerHTML=items.slice(0,12).map(x=>{
+    const off=(x.officialSources||[]).map(v=>'<li>'+esc(v.name)+(v.date?'（'+esc(v.date)+'）':'')+(v.quote?'：'+esc(v.quote):'')+(v.url?' <a href="'+esc(v.url)+'" target="_blank" rel="noopener">↗</a>':'')+'</li>').join('');
+    const relay=(x.mediaRelay||[]).map(v=>esc(v.name)).join('、');
+    const unv=(x.unverifiedDetails||[]).map(v=>'<li>'+esc(v)+'</li>').join('');
+    return '<div class="gr-ev">'+
+      '<div class="gr-ev-claim">'+esc(x.claim||'')+'</div>'+
+      '<div class="gr-ev-verdict">核验结论：'+esc(x.verdict||'')+'</div>'+
+      '<div class="gr-ev-mode">'+esc(x.sourceModeLabel||'')+' · '+esc(x.verifiedAt||'')+'</div>'+
+      (off?'<div class="gr-ev-sub">官方一手来源：<ul>'+off+'</ul></div>':'')+
+      (relay?'<div class="gr-ev-sub">媒体转述：'+relay+'</div>':'')+
+      (unv?'<div class="gr-ev-sub warn">未证实细节：<ul>'+unv+'</ul></div>':'')+
+      (x.note?'<div class="gr-ev-note">'+esc(x.note)+'</div>':'')+
+      (x.disclaimer?'<div class="gr-ev-note">'+esc(x.disclaimer)+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+function renderGrBlacklist(){
+  const box=$('#grBlacklist'); if(!box) return;
+  const items=(GATE_CACHE.blacklist&&GATE_CACHE.blacklist.items)||[];
+  if(!items.length){ box.innerHTML='<div class="empty">黑名单为空</div>'; return; }
+  box.innerHTML=items.slice(0,60).map(x=>
+    '<div class="gr-bl"><div><b>'+esc(x.title||'')+'</b><span class="gr-meta"> · '+esc(x.source||'—')+' · '+esc(x.rejectedAt||'')+'</span></div>'+
+    '<div class="gr-why"><span>'+esc(x.reason||'')+'</span></div>'+
+    '<div class="gr-actions"><button class="mini-btn gr-unblack" data-fp="'+esc(x.fingerprint)+'">移除（可恢复扫描）</button></div></div>').join('');
+  $$('.gr-unblack', box).forEach(b=>b.addEventListener('click',async()=>{
+    const r=await post('/api/v2/calendar/gate/blacklist/remove',{fingerprint:b.dataset.fp});
+    toast(r.ok?'已移除':'移除失败', r.ok?'该条目下次扫描可重新进入准入判定':(r.error||''));
+    await loadGateReview();
+  }));
+}
+async function gateDecide(fp, action){
+  if(!fp) return;
+  const r=await post('/api/v2/calendar/gate/decide',{fingerprint:fp,action});
+  toast(r.ok?'已处理':'操作失败', r.note||r.error||'');
+  await loadGateReview();
+  if(r.ok && action==='admit'){ await loadFutureEvents(); renderCalendar(); }
+}
+$$('.gr-tab').forEach(b=>b.addEventListener('click',()=>{
+  $$('.gr-tab').forEach(t=>t.classList.toggle('active', t===b));
+  const k=b.dataset.grtab;
+  ['review','evidence','blacklist'].forEach(n=>{ const p=$('#gr'+n.charAt(0).toUpperCase()+n.slice(1)); if(p) p.hidden=(n!==k); });
+}));
+$('#btnGateRefresh')?.addEventListener('click',()=>loadGateReview());
+$('#btnGateRescan')?.addEventListener('click',async()=>{
+  const b=$('#btnGateRescan');
+  if(b){ b.disabled=true; b.textContent='智能体审查中（约 1 分钟）…'; }
+  toast('准入重扫','确定性闸门 + 智能体结构化审查，约需 1 分钟，请勿关闭页面');
+  try{
+    const r=await post('/api/v2/calendar/gate/rescan',{});
+    const g=r.gate||{};
+    toast(r.ok?'扫描完成':'扫描失败', r.ok
+      ? ('准入通过 '+(g.admitted||0)+' 条 · 驳回 '+(g.rejected||0)+' 条 · 待复核 '+(g.review||0)+' 条 · 智能体审查 '+(g.aiReviewed||0)+' 条'+(g.aiBackend?'（'+g.aiBackend+'）':''))
+      : (r.error||''));
+    await loadGateReview(); await loadFutureEvents(); renderCalendar();
+  }catch(e){ toast('扫描失败',e.message); }
+  finally{ if(b){ b.disabled=false; b.textContent='重新扫描（含智能体）'; } }
+});
+
 async function loadEventStudy(refresh){
   const box=$('#eventStudyBox');
   if(!box) return;
@@ -2969,6 +3125,7 @@ renderCalendar();
 loadUpcoming();
 loadEventStudy();
 loadFutureEvents();
+loadGateReview();
 loadMarket();
 loadPortfolio();
 loadNotes();

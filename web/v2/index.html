@@ -120,6 +120,32 @@
             </div>
           </section>
 
+          <!-- 可折叠：日程准入复核台（确定性闸门 + 智能体审查 + 人工裁决） -->
+          <section class="cal-sec" data-sec="gate">
+            <button type="button" class="cal-sec-head" data-sec="gate" data-toggle="calSecGate" aria-expanded="false">
+              <span class="cal-sec-chev">▸</span>
+              <span class="cal-sec-title">准入复核台</span>
+              <span class="cal-sec-note" id="gateSecNote">读取中…</span>
+              <span class="cal-sec-tag">折叠</span>
+            </button>
+            <div class="cal-sec-body" id="calSecGate" hidden>
+              <p class="note">新闻线索默认不自动入历：先过确定性闸门（未来事件 / 时间绑定 / 信源分级），再由智能体做结构化审查，最后交人工复核放行。智能体只给建议，不预判行情、不改事实，也无权把驳回升级为放行。</p>
+              <div class="gr-status" id="gateStatus"><div class="empty">读取中…</div></div>
+              <div class="gr-tools">
+                <button class="mini-btn" id="btnGateRescan" title="带智能体实时审查重新扫描，约需 1 分钟">重新扫描（含智能体）</button>
+                <button class="mini-btn" id="btnGateRefresh">刷新队列</button>
+              </div>
+              <div class="gr-tabs">
+                <button type="button" class="gr-tab active" data-grtab="review">待复核 / 已驳回</button>
+                <button type="button" class="gr-tab" data-grtab="evidence">核验证据卡</button>
+                <button type="button" class="gr-tab" data-grtab="blacklist">驳回黑名单</button>
+              </div>
+              <div id="grReview" class="gr-panel"></div>
+              <div id="grEvidence" class="gr-panel" hidden></div>
+              <div id="grBlacklist" class="gr-panel" hidden></div>
+            </div>
+          </section>
+
           <!-- 可折叠：事件历史统计 -->
           <section class="cal-sec" data-sec="study">
             <button type="button" class="cal-sec-head" data-sec="study" data-toggle="calSecStudy" aria-expanded="false">
@@ -199,7 +225,7 @@
           <div><b>公司公告 / 待复核新闻线索</b><span class="note" id="feMeta">读取中…</span></div>
           <span class="head-inline-btns"><button class="btn tiny ghost" id="btnFutureScan">立即扫描</button></span>
         </div>
-        <p class="note">回购、增减持、停复牌等个股公告属于「新闻线索」，已不再在日程与事件里显示。扫描服务内存中的全部新闻，只把「带确定时间且对 A 股有影响」的内容自动写入日历；未命中影响词的进入待复核队列，不静默丢弃。相对时间与周期规律一律标注来源与确认级别。</p>
+        <p class="note">回购、增减持、停复牌等个股公告属于「新闻线索」，不进日程。新闻一律先过<b>准入闸门</b>（默认拒绝）：已发生/回顾性报道、立场与人事叙事、匿名信源未证实细节、公司名误命中一律驳回；再经智能体结构化审查（只给建议），最后交人工复核放行。仅「准入通过」才写入日历，驳回项进黑名单防回写。相对时间与周期规律一律标注来源与确认级别。</p>
         <div id="feCoverage" class="fe-coverage"><div class="empty">读取中…</div></div>
         <div class="fe-review-title">待复核队列 <span class="note" id="feCompanyCount"></span><button class="mini-btn" id="btnFeReviewToggle">展开 / 收起</button></div>
         <div id="feReview" class="fe-review" style="display:none"><div class="empty">读取中…</div></div>

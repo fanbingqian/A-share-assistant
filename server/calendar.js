@@ -388,6 +388,8 @@ function upsertEvent(ev) {
     newsRef: ev.newsRef || null,
     scanKey: key || null,
     ruleId: ev.ruleId || null,
+    // 日程准入审查元数据（calendar-gate.js）：结论 / 信源等级 / 真伪状态 / 智能体审查标记
+    gate: ev.gate || null,
     createdAt: ev.createdAt || now,
     updatedAt: now
   };
