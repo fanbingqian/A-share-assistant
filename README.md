@@ -19,9 +19,13 @@
 
 > 以下 7 张截图与 1 段演示视频全部来自本机实际运行的 v2 界面（2026-11-26），未做修饰。画面中的行情、新闻与个股数据是当时公开接口抓取的**历史快照**，仅用于展示界面与功能，不构成投资建议。
 
-**演示视频**：[▶ 点击在线观看 / 下载（76 秒 · 1920×1080 · H.264 · 约 71 MB）](docs/showcase/demo-walkthrough.mp4) —— GitHub 文件页自带播放器，可直接播放；也可下载原始 MP4。
+**快速演示**（18 秒节选，GIF 自动播放，无需点击）：
 
-[![演示视频封面](docs/showcase/demo-cover.jpg)](docs/showcase/demo-walkthrough.mp4)
+![界面操作演示（18 秒节选）](docs/showcase/demo-preview.gif)
+
+**完整演示视频**：[⬇ 76 秒 1080P 完整版 MP4（约 71 MB）](docs/showcase/demo-walkthrough.mp4) —— 原始视频未压缩、未剪辑，点击下载后用任意播放器观看；也可在文件页点 `View raw`。GitHub 对**提交进仓库**的大 MP4 只提供下载 / raw，不提供内联播放器，所以这里用上面的动图做首屏预览。
+
+[![完整演示视频封面](docs/showcase/demo-cover.jpg)](docs/showcase/demo-walkthrough.mp4)
 
 <table>
   <tr>
@@ -61,10 +65,10 @@
     </td>
     <td width="50%" valign="top">
       <br><b>素材与口径</b><br>
-      • 原始文件：<code>docs/showcase/</code>（7 张 PNG 截图 + <code>demo-walkthrough.mp4</code> + 封面帧）<br>
+      • 原始文件：<code>docs/showcase/</code>（7 张 PNG 截图 + 18 秒 GIF + 完整 MP4 + 封面帧）<br>
       • 左侧导航：日程与事件 / 新闻快讯 / 每日行情 / 我的股池 / 个人知识库 / 设置<br>
       • 右侧常驻「Hermes 智能体」面板，AI 产出标注「AI 提案 · 未生效」，不自动改评分、不下单<br>
-      • 视频约 71 MB，低于 GitHub 单文件 100 MB 上限；只需源码可在文件页单独下载，不必克隆视频
+      • 视频约 71 MB，低于 GitHub 单文件 100 MB 上限（>50 MB 会收到体积提示，不影响下载）<br>
     </td>
   </tr>
 </table>
@@ -1027,7 +1031,7 @@ D:\WorkBuddy\projects\GlobalMarketMonitor\
 ├─ README.md             本说明（首屏含实机截图与演示视频）
 ├─ LICENSE               MIT 开源协议
 ├─ 界面预览.png           早期界面截图
-├─ docs\showcase\        实机截图 ×7 + 演示视频 + 封面帧（README 首屏引用）
+├─ docs\showcase\        实机截图 ×7 + 18 秒内联 GIF + 完整演示视频 + 封面帧（README 首屏引用）
 ├─ server\
 │  ├─ server.js          HTTP 服务 / SSE 推送 / 轮询调度 / 配置 API / 分析流水线
 │  ├─ sources.js         多源采集与解析（行情 + 新闻 + 历史线）
