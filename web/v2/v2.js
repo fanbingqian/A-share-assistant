@@ -338,6 +338,13 @@ const CAL_EV_STORE = {}; let calEvSeq = 0;
 function calStore(e){ const k='ce'+(++calEvSeq); CAL_EV_STORE[k]=e; return k; }
 function calGrade(g){ const x=(g==='自定义'?'user':g); return x||'C'; }
 function calGradeLabel(g){ const x=calGrade(g); return ({A:'A 已确认',B:'B 待核实',C:'C 季节性',user:'自定义'})[x]||x; }
+/* 美股交易日历专用样式类：与 A/B/C 等级色区分，中性灰蓝 + 虚线，明确是「美股」而非 A 股休市 */
+function usMkClass(e){
+  if(!e || e.market!=='US') return '';
+  if(e.marketStatus==='closed') return ' us-mk us-mk-closed';
+  if(e.marketStatus==='early-close') return ' us-mk us-mk-early';
+  return '';
+}
 function fmtDateCN(ds){ const p=String(ds||'').slice(0,10).split('-'); return p.length===3?(Number(p[1])+'月'+Number(p[2])+'日'):String(ds||''); }
 function fmtSpanRange(e){ return e.spanStart&&e.spanEnd ? (fmtDateCN(e.spanStart)+'–'+fmtDateCN(e.spanEnd)+'（共'+(e.spanDays||1)+'天）') : fmtDateCN(e.date||e.onDate); }
 function calSrcLine(e){
@@ -396,7 +403,7 @@ function calEventCard(e, withImpact){
   const g=calGrade(e.grade), title=String(e.name||'（无标题）');
   const when=e.spanStart?('行程 '+fmtSpanRange(e)):fmtDateCN(e.date||e.onDate);
   const src=calSrcLine(e);
-  return `<div class="ce-card g-${g}">
+  return `<div class="ce-card g-${g}${usMkClass(e)}">
     <div class="ce-card-head"><span class="ce-grade g-${g}">${esc(calGradeLabel(e.grade))}</span><span class="ce-when">${esc(when)}</span></div>
     <div class="ce-name">${esc(title)}</div>
     ${e.category?`<div class="ce-cat">${esc(e.category)}</div>`:''}
@@ -437,6 +444,8 @@ async function renderCalendar(focusDate){
   const r = await api(`/api/v2/calendar?year=${calY}&month=${calM}`);
   if(!r.ok){ $('#calGrid').innerHTML='<div class="empty">加载失败</div>'; return; }
   const byDate = r.byDate||{};
+  const usClosed = new Set(r.marketClosedDates||[]);
+  const usEarly = new Set(r.marketEarlyCloseDates||[]);
   const first = new Date(calY, calM-1, 1);
   let startDow = first.getDay(); startDow = startDow===0?6:startDow-1; // 周一=0
   const total = r.daysInMonth;
@@ -482,18 +491,20 @@ async function renderCalendar(focusDate){
         const g=calGrade(e.grade), seg=e.spanSeg||'mid', isStart=seg==='start', k=calStore(e);
         const label=isStart?(String(e.name||'')+' · '+fmtDateCN(e.spanStart)+'–'+fmtDateCN(e.spanEnd)):'';
         const tip=String(e.name||'')+'（'+fmtSpanRange(e)+'）';
-        return `<div class="cal-ev cal-span g-${g} seg-${seg}" style="top:${meta.lane*13}px" data-evi="${k}" title="${esc(tip)}">${isStart?esc(label):'<span class="cal-span-cont">⋯</span>'}</div>`;
+        return `<div class="cal-ev cal-span g-${g} seg-${seg}${usMkClass(e)}" style="top:${meta.lane*13}px" data-evi="${k}" title="${esc(tip)}">${isStart?esc(label):'<span class="cal-span-cont">⋯</span>'}</div>`;
       }).join('')+'</div>';
     }
     // 单日事件：每格最多 3 条，超出用「+N 条」折叠，点击查看当日全部
     const evChips = normalEvs.slice(0,3).map(e=>{
       const g = calGrade(e.grade), k = calStore(e);
       const src = (e.source && e.source!=='rule') ? ' · '+srcLabel(e.source)+(e.confirmLevel?(' / '+cfLabel(e.confirmLevel)):'') : '';
-      return `<div class="cal-ev g-${g}" data-evi="${k}" title="${esc(e.name+src)}">${esc(e.name)}</div>`;
+      return `<div class="cal-ev g-${g}${usMkClass(e)}" data-evi="${k}" title="${esc(e.name+src)}">${esc(e.name)}</div>`;
     }).join('');
     const more = normalEvs.length>3 ? `<div class="cal-ev-more" data-date="${ds}">+${normalEvs.length-3} 条</div>` : '';
-    html+=`<div class="cal-cell${other?' other':''}${isToday?' today':''}${sel?' selected':''}${evs.length?' has-ev':''}" id="cell-${ds}" data-date="${ds}">
-      <div class="cal-num">${d}</div>
+    const usFlag = usClosed.has(ds) ? '<span class="us-mk-flag closed" title="NYSE / Nasdaq 全天休市（A 股照常）">US 休</span>'
+      : (usEarly.has(ds) ? '<span class="us-mk-flag early" title="NYSE / Nasdaq 13:00 ET 提前收盘（A 股照常）">US 早收</span>' : '');
+    html+=`<div class="cal-cell${other?' other':''}${isToday?' today':''}${sel?' selected':''}${evs.length?' has-ev':''}${usClosed.has(ds)?' us-closed':''}${usEarly.has(ds)?' us-early':''}" id="cell-${ds}" data-date="${ds}">
+      <div class="cal-num">${d}</div>${usFlag}
       ${spanHtml}
       <div class="cal-ev-list">${evChips}${more}</div>
     </div>`;
@@ -558,7 +569,7 @@ function renderDayEvents(date, byDate){
     $('#calDayEvents').innerHTML = list.map(e=>{
       const g = calGrade(e.grade);
       const spanTag = e.spanStart ? `<span class="grade-tag span-tag">行程 ${fmtDateCN(e.spanStart)}–${fmtDateCN(e.spanEnd)}</span>` : '';
-      return `<div class="event-item g-${g}">
+      return `<div class="event-item g-${g}${usMkClass(e)}">
         <div class="event-title">${esc(e.name)} <span class="grade-tag">${g==='user'?'自定义':g+'级'}</span>${spanTag}</div>
         ${e.detail?`<div class="event-detail">${esc(e.detail)}</div>`:''}
         ${(e.sectors&&e.sectors.length)?`<div class="event-sectors">相关：${e.sectors.map(esc).join(' / ')}</div>`:''}
@@ -628,13 +639,14 @@ async function loadUpcoming(){
   if(!r.items.length){ box.innerHTML='<div class="empty">未来30天无事件</div>'; return; }
   box.innerHTML=r.items.map(e=>{
     const dt=new Date(e.date+'T00:00:00Z'); const days=Math.round((dt-Date.now())/86400e3);
-    const tag=(e.source==='news-scan'||e.source==='calendar-rule')?`<span class="fe-src-tag">${esc(srcLabel(e.source))}</span>`:'';
+    const tag=(['news-scan','calendar-rule','nyse-official','nyse-rule-projection'].includes(e.source))?`<span class="fe-src-tag">${esc(srcLabel(e.source))}</span>`:'';
     return `<div class="up-item"><span class="up-date">${e.date.slice(5)}</span><span class="up-name">${esc(e.name)}</span>${tag}<span class="up-days">${days<=0?'今日':days+'天'}</span></div>`;
   }).join('');
 }
 function srcLabel(s){
   const map={'news-scan':'新闻扫描','calendar-rule':'周期规则','gate-human-admit':'人工复核放行','rule':'规则','user':'自定义',
-    'official':'官方','policy-calendar':'政策日历','policy-window':'政策窗口'};
+    'official':'官方','policy-calendar':'政策日历','policy-window':'政策窗口',
+    'nyse-official':'NYSE 官方','nyse-rule-projection':'NYSE 规则推算'};
   return map[s]||s||'--';
 }
 function cfLabel(c){
@@ -1237,16 +1249,24 @@ $('#btnNfBiasAI')?.addEventListener('click', nfInterpretBias);
 function renderNewsFeed(){
   const box=$('#newsFeedBox'); if(!box||!nfData) return;
   const all=nfData.feed||[];
-  const list=nfKind==='all'?all:all.filter(n=>nfItemKind(n)===nfKind);
+  /* 「金融」是跨类别的主题筛选（不与政策/公司公告/其他互斥），其余沿用单选分类 */
+  const list=nfKind==='all'?all
+    :nfKind==='finance'?all.filter(n=>n.finance&&n.finance.isFinance)
+    :all.filter(n=>nfItemKind(n)===nfKind);
   const meta=$('#newsFeedMeta');
-  if(meta) meta.textContent='共 '+all.length+' 条 · 当前显示 '+list.length+' 条 · 英文原文 '+
-    all.filter(n=>n.isEn).length+' 条（保留原文 + 中译对照）';
+  const finCount=all.filter(n=>n.finance&&n.finance.isFinance).length;
+  const finPct=all.length?Math.round(finCount/all.length*100):0;
+  if(meta) meta.textContent='共 '+all.length+' 条 · 金融相关 '+finCount+' 条（'+finPct+'%） · 当前显示 '+
+    list.length+' 条 · 英文原文 '+all.filter(n=>n.isEn).length+' 条（保留原文 + 中译对照）';
   if(!list.length){ box.innerHTML='<div class="empty">该分类下暂无新闻</div>'; return; }
   box.innerHTML=list.map((n,i)=>{
     const kind=nfItemKind(n), tag=kind==='company'?'公司公告':kind==='policy'?'政策':'其他';
     const link=n.link?'<a href="'+esc(n.link)+'" target="_blank" rel="noopener">原文 ↗</a>':'';
     const topics=(n.topics||[]).length?'<span class="nf-topic">'+esc(n.topics.slice(0,3).join(' / '))+'</span>':'';
     const secChips=(n.sectors||[]).slice(0,4).map(x=>'<span class="nf-topic nf-sec-chip">'+esc(x)+'</span>').join('');
+    /* 金融相关性标签：词表近似标注，只说明主题归属，不代表对 A 股有影响、不构成建议 */
+    const finChips=(n.finance&&n.finance.isFinance?(n.finance.tags||[]):[]).slice(0,2)
+      .map(x=>'<span class="nf-topic nf-fin-chip" title="金融相关性为双语词表近似标注，仅说明主题归属，不构成投资建议">'+esc(x)+'</span>').join('');
     /* 英文消息：主标题 / 摘要一律保留英文原文，中文译文只作对照，不替换原文 */
     const enTag=n.isEn?'<span class="nf-lang en" title="英文原文消息：事实以原文为准，中译仅辅助理解">EN 原文</span>':'';
     const zhTitle=n.titleZh?'<div class="nf-zh"><span class="nf-zh-cap">中译</span>'+esc(n.titleZh)+'</div>':'';
@@ -1275,7 +1295,7 @@ function renderNewsFeed(){
       (n.desc?'<div class="nf-desc">'+esc(n.desc)+'</div>':'')+
       zhDesc+
       analysis+
-      '<div class="nf-foot">'+topics+secChips+'<span>重要性 '+(n.importance||0)+'</span>'+link+'</div>'+
+      '<div class="nf-foot">'+finChips+topics+secChips+'<span>重要性 '+(n.importance||0)+'</span>'+link+'</div>'+
       '<div class="nf-ai-wrap">'+nfAiBtn(n)+'</div>'+
       '<div class="nf-ai-slot"></div>'+
     '</div>';
@@ -1296,6 +1316,25 @@ document.addEventListener('click', async e=>{
   e.preventDefault(); e.stopPropagation();
   await nfInterpretOne(b);
 }, true);
+/* 历史同类情形：程序确定性统计卡片（不依赖智能体输出，响应恒返回） */
+function renderHistoricalCard(h){
+  if(!h) return '';
+  const head='<div class="ha-head"><b>历史同类情形（程序统计 · 非预测）</b><span>'+esc(h.scopeLabel||'')+(h.stale?' · 快照陈旧':'')+'</span></div>';
+  if(!h.ok){
+    return '<div class="ha-card ha-na">'+head+
+      '<div class="ha-body">该类事件暂无可核对的 A 股代理样本，按低幻觉纪律不提供历史类比。'+
+      (h.unavailableReason?'（'+esc(h.unavailableReason)+'）':'')+'</div></div>';
+  }
+  const rows=(h.rows||[]).map(r=>'<div class="ha-kpi"><div class="ha-k">'+esc(r.k)+'</div><div class="ha-v">'+esc(r.v)+'</div></div>').join('');
+  const prox=(h.proxies||[]).length?'<div class="ha-sub">分板块（ETF 代理近似）：'+h.proxies.map(p=>esc(p.label)+' T+5 '+esc(p.ret5)+' · 上涨概率 '+esc(p.upProb5)).join('；')+'</div>':'';
+  const mech=h.mechanism?'<div class="ha-sub">机制：'+esc(h.mechanism)+'</div>':'';
+  const cav=(h.caveats||[]).map(c=>'<div class="ha-cav">· '+esc(c)+'</div>').join('');
+  return '<div class="ha-card">'+head+
+    '<div class="ha-sub">'+esc(h.eventType||'')+' · '+esc(h.sampleLine||'')+
+    (h.generatedAt?' · 统计生成于 '+esc(String(h.generatedAt).slice(0,10)):'')+'</div>'+
+    '<div class="ha-grid">'+rows+'</div>'+mech+prox+
+    (cav?'<div class="ha-cavs">'+cav+'</div>':'')+'</div>';
+}
 async function nfInterpretOne(btn){
   const jparse=(v,fb)=>{ try{ return JSON.parse(v||'null')||fb; }catch(_){ return fb; } };
   const item={ title:btn.dataset.title||'', desc:btn.dataset.desc||'', source:btn.dataset.source||'',
@@ -1313,7 +1352,7 @@ async function nfInterpretOne(btn){
   if(btn.classList.contains('loading')) return;
   btn.classList.add('loading');
   slot.innerHTML='<div class="nf-ai-loading"><span class="event-ai-spin"></span>'+
-    '智能体正在解读这条新闻（机制链条 / 板块 / 真实标的 / 证伪条件）…<br>'+
+    '智能体正在解读这条新闻（事件解释 / 二级市场影响判断 / 历史同类情形）…<br>'+
     '<span class="event-ai-hint">走 Hermes 桥接，实测约 30–60 秒，请勿关闭页面</span></div>';
   try{
     const r=await post('/api/v2/news-flash/interpret',{mode:'one',item});
@@ -1321,17 +1360,18 @@ async function nfInterpretOne(btn){
        再放智能体叙述；智能体不可用时该卡片依然可见（不编造、不依赖模型）。 */
     const macroHtml=(r.macro&&r.macro.detected&&window.MacroRender)
       ? window.MacroRender.render(r.macro) : '';
+    const haHtml=r.historicalCard?renderHistoricalCard(r.historicalCard):'';
     if(r.ok && r.text){
       const html=window.MarkdownLite?window.MarkdownLite.render(r.text):esc(r.text);
-      slot.innerHTML=macroHtml+'<div class="nf-report open">'+
+      slot.innerHTML=macroHtml+haHtml+'<div class="nf-report open">'+
         '<div class="nf-report-head" role="button" tabindex="0" aria-expanded="true">'+
-          '<span class="nf-report-ico">▾</span><b>智能体解读'+(macroHtml?'（含机构预期 / 跨资产 / 多数方向）':'')+'</b>'+
-          '<span class="nf-report-meta">'+esc(r.promptVersion||'news-flash-v1')+' · '+esc(r.backend||'')+'</span>'+
+          '<span class="nf-report-ico">▾</span><b>智能体解读（事件中心 · 含历史同类情形）'+(macroHtml?' + 官方指数发布增强':'')+'</b>'+
+          '<span class="nf-report-meta">'+esc(r.promptVersion||'news-flash-v3-event')+' · '+esc(r.backend||'')+'</span>'+
           '<button type="button" class="nf-fold-btn">收起 ▴</button></div>'+
         '<div class="ai-text nf-report-text md-body">'+html+'</div></div>';
       const lab=btn.querySelector('.nf-ai-label'); if(lab) lab.textContent='重新解读这条';
     }else{
-      slot.innerHTML=macroHtml+'<div class="empty">解读失败：'+esc(r.error||'智能体未返回内容')+'</div>';
+      slot.innerHTML=macroHtml+haHtml+'<div class="empty">解读失败：'+esc(r.error||'智能体未返回内容')+'</div>';
     }
   }catch(err){ slot.innerHTML='<div class="empty">解读失败：'+esc(err.message||err)+'</div>'; }
   finally{ btn.classList.remove('loading'); }
@@ -1344,19 +1384,20 @@ async function nfInterpretDaily(){
   if(card){ card.classList.remove('hidden'); card.classList.add('open'); }
   if(btn){ btn.disabled=true; btn.textContent='解读中…'; }
   if(text) text.innerHTML='<div class="nf-ai-loading"><span class="event-ai-spin"></span>'+
-    '智能体正在通读今日新闻清单并撰写整体解读（主线 / 分板块 / 标的线索 / 证伪条件）…<br>'+
+    '智能体正在通读今日新闻并撰写整体解读（核心事件 / 影响判断 / 历史同类情形）…<br>'+
     '<span class="event-ai-hint">走 Hermes 桥接，实测约 30–60 秒，请勿关闭页面</span></div>';
   if(meta) meta.textContent='生成中…';
   try{
     const r=await post('/api/v2/news-flash/interpret',{mode:'daily'});
     const macroHtml=(r.macro&&r.macro.detected&&window.MacroRender)
       ? window.MacroRender.render(r.macro) : '';
+    const haHtml=r.historicalCard?renderHistoricalCard(r.historicalCard):'';
     if(r.ok && r.text){
       const body=window.MarkdownLite?window.MarkdownLite.render(r.text):esc(r.text);
-      if(text) text.innerHTML=macroHtml+body;
-      if(meta) meta.textContent='今日新闻 '+(r.newsCount||0)+' 条 · '+esc(r.promptVersion||'news-daily-v1')+' · '+esc(r.backend||'')+(macroHtml?' · 含官方指数发布增强':'');
+      if(text) text.innerHTML=macroHtml+haHtml+body;
+      if(meta) meta.textContent='今日新闻 '+(r.newsCount||0)+' 条 · '+esc(r.promptVersion||'news-daily-v3-event')+' · '+esc(r.backend||'')+(macroHtml?' · 含官方指数发布增强':' · 含历史同类统计');
     }else{
-      if(text) text.innerHTML=macroHtml+'<div class="empty">解读失败：'+esc(r.error||'智能体未返回内容')+'</div>';
+      if(text) text.innerHTML=macroHtml+haHtml+'<div class="empty">解读失败：'+esc(r.error||'智能体未返回内容')+'</div>';
       if(meta) meta.textContent='生成失败';
     }
   }catch(err){

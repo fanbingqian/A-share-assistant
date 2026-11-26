@@ -20,6 +20,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const usHolidays = require('./us-market-holidays');
 
 const DIR = path.join(__dirname, '..', 'data', 'calendar');
 const USER_FILE = path.join(DIR, 'events.jsonl');
@@ -148,6 +149,12 @@ function expandRules(year, month) {
       verified: !!d.confirmed, confirmed: !!d.confirmed
     });
   }
+  // 美股官方交易日历（NYSE 官网 2026/2027/2028 已公布 + 2029 起规则推算）：
+  // 与 A 股披露截止日 / FOMC 等一样属于确定性事件库，不经过新闻准入闸门，
+  // 也不写入 events.jsonl，避免被每小时新闻扫描重复追加或当成新闻线索复核。
+  for (const e of usHolidays.eventsForYear(year, month)) {
+    byKey.set(e.ruleId + '|' + e.date, e);
+  }
   return Array.from(byKey.values());
 }
 
@@ -261,6 +268,9 @@ function view({ year, month, date } = {}) {
     daysInMonth: daysInMonth(y, m),
     events: selected,
     byDate,
+    // 供前端给日历格子加「US 休 / US 早收」角标（仅当月事件，不把推算冒充官方）
+    marketClosedDates: [...new Set(all.filter(e => e.marketStatus === 'closed').map(e => String(e.date).slice(0, 10)))].sort(),
+    marketEarlyCloseDates: [...new Set(all.filter(e => e.marketStatus === 'early-close').map(e => String(e.date).slice(0, 10)))].sort(),
     stats: {
       total: all.length,
       byGrade: all.reduce((a, e) => { a[e.grade] = (a[e.grade] || 0) + 1; return a; }, {}),
@@ -311,6 +321,9 @@ function dueReminders({ aheadDays = 7, now } = {}) {
     const daysTo = Math.round((new Date(e.date + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 86400e3);
     // 只提醒 A/B 级；C 级季节性不弹框（避免噪音）
     if (!['A', 'B'].includes(e.grade)) continue;
+    // 美股休市 / 提前收盘是交易所日历背景信息，不是待办事项：
+    // 仍显示于日历网格、当日事件与「未来30天」，但不进自动提醒弹框，避免新增每日弹窗噪音。
+    if (e.market === 'US' && (e.marketStatus === 'closed' || e.marketStatus === 'early-close')) continue;
     if (state.sent[e.id + '@' + today]) continue;
     due.push({
       id: e.id + '@' + today,
@@ -695,5 +708,5 @@ async function eventImpact(cfg, hermes, event, historical) {
 module.exports = {
   view, upcoming, expandRules, readUserEvents, dueReminders, markReminded,
   addEvent, upsertEvent, removeEvent, eventImpact, relatedStocks, deriveEndDate,
-  RULES, DATED_EVENTS, DIR, USER_FILE
+  RULES, DATED_EVENTS, DIR, USER_FILE, US_HOLIDAYS: usHolidays
 };

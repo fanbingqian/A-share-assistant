@@ -8,6 +8,7 @@
  */
 
 const crypto = require('node:crypto');
+const financeRel = require('./finance-relevance');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -23,6 +24,15 @@ const SYMBOL_META = {
   '.DXY': { id: 'dxy',    name: 'ICE 美元指数',         short: '美元指数',unit: '',        kind: 'index',   decimals: 3, group: 'fx' }
 };
 
+/**
+ * 新闻源（2026-11-25 补齐金融垂直源）。
+ * 全部 URL 均在本机实测连通；lang 决定中文化与情感分析口径。
+ * 原 7 个源以综合国际新闻为主，实测只有约 66%~74% 与金融相关；新增 11 个金融垂直源
+ * （中文财经聚合 / CNBC 分频道 / MarketWatch / Investing.com / SEC / 东方财富），把金融内容补齐。
+ * The Guardian（综合国际）对服务端 fetch 间歇性返回 403（curl 可通、并发采集下持续 403），
+ * 且并非金融源，2026-11-25 起替换为稳定的 CNBC · Top News；地缘信息仍由
+ * Google 全球头条 / BBC World / Al Jazeera 提供。headers 字段保留供个别源覆盖请求头。
+ */
 const NEWS_FEEDS = [
   {
     name: 'Google News · 市场关键词', lang: 'en',
@@ -31,10 +41,42 @@ const NEWS_FEEDS = [
   { name: 'Google News · 全球头条', lang: 'en', url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en' },
   { name: 'BBC World', lang: 'en', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { name: 'BBC Business', lang: 'en', url: 'https://feeds.bbci.co.uk/news/business/rss.xml' },
-  { name: 'The Guardian', lang: 'en', url: 'https://www.theguardian.com/world/rss' },
+  { name: 'CNBC · Top News', lang: 'en', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
   { name: 'Al Jazeera', lang: 'en', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-  { name: '中新网财经', lang: 'zh', url: 'https://www.chinanews.com.cn/rss/finance.xml' }
+  { name: '中新网财经', lang: 'zh', url: 'https://www.chinanews.com.cn/rss/finance.xml' },
+
+  /* ↓ 金融垂直源（2026-11-25 新增，本机实测） */
+  { name: 'Google News · 中文财经', lang: 'zh',
+    url: 'https://news.google.com/rss/search?q=(A%E8%82%A1+OR+%E5%A4%AE%E8%A1%8C+OR+%E8%AF%81%E7%9B%91%E4%BC%9A+OR+%E8%B4%A2%E6%8A%A5)+when:1d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans' },
+  { name: 'Google News · 中文市场', lang: 'zh',
+    url: 'https://news.google.com/rss/search?q=(%E5%9F%BA%E9%87%91+OR+%E5%80%BA%E5%88%B8+OR+%E6%B1%87%E7%8E%87+OR+%E8%82%A1%E5%B8%82)+when:1d&hl=zh-CN&gl=CN&ceid=CN:zh-Hans' },
+  { name: 'Google News · 金融市场', lang: 'en',
+    url: 'https://news.google.com/rss/search?q=(earnings+OR+%22central+bank%22+OR+%22bond+yield%22+OR+IPO)+when:1d&hl=en-US&gl=US&ceid=US:en' },
+  { name: 'CNBC · Finance', lang: 'en', url: 'https://www.cnbc.com/id/10000664/device/rss/rss.html' },
+  { name: 'CNBC · Economy', lang: 'en', url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html' },
+  { name: 'CNBC · Earnings', lang: 'en', url: 'https://www.cnbc.com/id/15839135/device/rss/rss.html' },
+  { name: 'CNBC · Investing', lang: 'en', url: 'https://www.cnbc.com/id/15839069/device/rss/rss.html' },
+  { name: 'MarketWatch · Top Stories', lang: 'en', url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories' },
+  { name: 'Investing.com · News', lang: 'en', url: 'https://www.investing.com/rss/news.rss' },
+  { name: 'SEC · Press Releases', lang: 'en', url: 'https://www.sec.gov/news/pressreleases.rss' }
 ];
+
+/**
+ * 中文财经 JSON/JSONP 快讯源（非 RSS，单独解析）。
+ * 东方财富快讯：实测返回 `var ajaxResult={...,"LivesList":[...]};`，
+ * 字段 title / digest / showtime(北京时间) / url_w / id，一次 50 条。
+ */
+const CN_JSON_FEEDS = [
+  { name: '东方财富 · 快讯', kind: 'eastmoney',
+    url: 'https://newsapi.eastmoney.com/kuaixun/v1/getlist_102_ajaxResult_50_1_.html' }
+];
+
+/** 新闻池上限保持不变（200）：runAnalysis 会对全池做翻译，扩容会显著增加翻译成本 */
+const NEWS_POOL_LIMIT = 200;
+/** 金融条目保底配额：优先保留 160 条金融，剩余位置留给综合新闻作地缘/风险参考 */
+const FINANCE_QUOTA = 160;
+/** 单源上限：避免单个快讯源（如华尔街见闻 160 条）独占整个池子 */
+const PER_FEED_CAP = 40;
 
 /**
  * A 股政策/监管快讯源（2026-11-22 增加）。
@@ -146,6 +188,16 @@ async function fetchText(url, opts) {
   const m = /encoding\s*=\s*["']([\w-]+)["']/i.exec(head);
   const enc = m && /gbk|gb2312|gb18030|big5/i.test(m[1]) ? 'gbk' : 'utf-8';
   try { return new TextDecoder(enc).decode(buf); } catch (_) { return buf.toString('utf8'); }
+}
+
+/** 采集层轻量重试：部分源（如 The Guardian）WAF 会偶发 403，重试一次即可恢复 */
+async function fetchTextRetry(url, opts, retries = 1) {
+  let last;
+  for (let i = 0; i <= retries; i++) {
+    try { return await fetchText(url, opts); }
+    catch (e) { last = e; if (i < retries) await new Promise(r => setTimeout(r, 350)); }
+  }
+  throw last;
 }
 
 function num(s) {
@@ -671,7 +723,7 @@ function parseFeed(xml, feed) {
 
 /** 华尔街见闻快讯（JSON API）→ 与 RSS 新闻统一的条目格式 */
 async function fetchWallstreetFeed(feed) {
-  const text = await fetchText(feed.url, { timeout: 12000 });
+  const text = await fetchTextRetry(feed.url, { timeout: 12000 });
   const json = JSON.parse(text);
   const rows = (json && json.data && json.data.items) || [];
   const out = [];
@@ -707,47 +759,131 @@ async function fetchWallstreetFeed(feed) {
   return out;
 }
 
+/** 东方财富快讯（JSONP）→ 与 RSS 新闻统一的条目格式 */
+async function fetchEastmoneyFeed(feed) {
+  const raw = await fetchTextRetry(feed.url, { timeout: 12000 });
+  const text = String(raw).replace(/^\s*var\s+ajaxResult\s*=\s*/, '').replace(/;\s*$/, '').trim();
+  const json = JSON.parse(text);
+  const rows = (json && json.LivesList) || [];
+  const out = [];
+  for (const x of rows) {
+    const title = String(x.title || x.simtitle || '').trim();
+    if (!title) continue;
+    const desc = String(x.digest || x.simdigest || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 260);
+    const st = String(x.showtime || x.ordertime || '').trim();              // 形如 2026-11-25 23:39:14（北京时间）
+    const ts = st ? Date.parse(st.replace(' ', 'T') + '+08:00') : NaN;
+    const textForMatch = title + ' ' + desc;
+    const hits = matchKeywords(textForMatch);
+    const pol = matchPolicy(textForMatch);
+    out.push({
+      id: 'em_' + String(x.id || x.newsid || crypto.createHash('md5').update(title).digest('hex').slice(0, 14)),
+      title,
+      link: x.url_w || x.url_unique || null,
+      source: '东方财富',
+      feed: feed.name,
+      lang: 'zh',
+      publishedAt: Number.isFinite(ts) ? ts : Date.now(),
+      publishedText: st || '',
+      desc,
+      hits,
+      level: hits.some(h => h.level === 'critical') ? 'critical'
+        : (pol.alert && pol.importance >= 84) || hits.length ? 'warning' : 'none',
+      policyHits: pol.hits,
+      importance: pol.importance,
+      policyImportance: pol.importance,
+      category: pol.category,
+      policyAlert: pol.alert,
+      symbolCodes: []
+    });
+  }
+  return out;
+}
+
+/**
+ * 金融优先的池子保留策略。
+ * 旧逻辑是「全量按时间倒序 → slice(0,200)」，实测 433 条里丢掉 233 条，且综合媒体
+ * （BBC World / Al Jazeera / 全球头条）的社会新闻会按时间挤掉中文金融快讯。
+ * 新逻辑：① 单源配额（避免单一快讯源刷屏）② 金融组优先占 FINANCE_QUOTA
+ * ③ 剩余位置留给非金融作地缘/风险参考 ④ 总量仍 200，翻译成本不变。
+ * 只做排序与截断，不删除标题、不改写事实、不预判行情。
+ */
+function prioritizeNews(all) {
+  const byTime = (a, b) => (b.publishedAt || 0) - (a.publishedAt || 0);
+  const count = new Map();
+  const capped = [];
+  for (const n of [...all].sort(byTime)) {
+    const k = n.feed || n.source || '未知';
+    const c = count.get(k) || 0;
+    if (c >= PER_FEED_CAP) continue;
+    count.set(k, c + 1);
+    capped.push(n);
+  }
+  const fin = capped.filter(n => n.finance && n.finance.isFinance);
+  const non = capped.filter(n => !(n.finance && n.finance.isFinance));
+  const finKeep = fin.slice(0, FINANCE_QUOTA);
+  const room = Math.max(0, NEWS_POOL_LIMIT - finKeep.length);
+  return finKeep.concat(non.slice(0, room)).sort(byTime);
+}
+
 async function fetchNews() {
   const results = await Promise.allSettled(NEWS_FEEDS.map(async f => {
-    const xml = await fetchText(f.url, { timeout: 12000 });
+    const xml = await fetchTextRetry(f.url, { timeout: 12000, headers: f.headers || {} });
     return { feed: f, items: parseFeed(xml, f) };
   }));
   const cnResults = await Promise.allSettled(CN_POLICY_FEEDS.map(f => fetchWallstreetFeed(f)));
+  const jsonResults = await Promise.allSettled(CN_JSON_FEEDS.map(f => fetchEastmoneyFeed(f)));
 
   const feedHealth = {};
   const seen = new Set();
   const all = [];
-  NEWS_FEEDS.forEach((f, i) => {
-    const r = results[i];
-    feedHealth[f.name] = r.status === 'fulfilled' ? r.value.items.length : 0;
-    if (r.status !== 'fulfilled') return;
-    for (const item of r.value.items) {
-      if (seen.has(item.id)) continue;
+  const absorb = (name, rows) => {
+    feedHealth[name] = rows.length;
+    for (const item of rows) {
+      if (!item || seen.has(item.id)) continue;
       seen.add(item.id);
       all.push(item);
     }
+  };
+  NEWS_FEEDS.forEach((f, i) => {
+    const r = results[i];
+    absorb(f.name, r.status === 'fulfilled' ? r.value.items : []);
   });
   CN_POLICY_FEEDS.forEach((f, i) => {
     const r = cnResults[i];
-    feedHealth[f.name] = r.status === 'fulfilled' ? r.value.length : 0;
-    if (r.status !== 'fulfilled') return;
-    for (const item of r.value) {
-      if (seen.has(item.id)) continue;
-      seen.add(item.id);
-      all.push(item);
-    }
+    absorb(f.name, r.status === 'fulfilled' ? r.value : []);
   });
-  all.sort((a, b) => b.publishedAt - a.publishedAt);
+  CN_JSON_FEEDS.forEach((f, i) => {
+    const r = jsonResults[i];
+    absorb(f.name, r.status === 'fulfilled' ? r.value : []);
+  });
+
+  // 确定性金融相关性标注（零模型、可复现），供池子保留、前端筛选与覆盖率统计使用
+  for (const n of all) n.finance = financeRel.classify(n.title, n.desc || '');
+
+  const items = prioritizeNews(all);
   return {
-    items: all.slice(0, 200),
+    items,
     feedHealth,
     fetchedAt: Date.now(),
-    ok: all.length > 0
+    ok: items.length > 0,
+    poolStats: {
+      collected: all.length,
+      finance: all.filter(n => n.finance.isFinance).length,
+      nonFinance: all.filter(n => !n.finance.isFinance).length,
+      kept: items.length,
+      keptFinance: items.filter(n => n.finance.isFinance).length,
+      limit: NEWS_POOL_LIMIT,
+      financeQuota: FINANCE_QUOTA,
+      perFeedCap: PER_FEED_CAP
+    }
   };
 }
 
 module.exports = {
   fetchQuotes, fetchNews, fetchYahooHistory, fetchOverseas, fetchOverseasSina, fetchCrypto,
   matchKeywords, matchConfigured, keywordRegex, matchPolicy, fetchWallstreetFeed,
-  NEWS_FEEDS, CN_POLICY_FEEDS, NEWS_KEYWORDS, POLICY_KEYWORDS, SYMBOL_META, YAHOO_MAP, UA
+  fetchEastmoneyFeed, prioritizeNews,
+  NEWS_FEEDS, CN_POLICY_FEEDS, CN_JSON_FEEDS, NEWS_KEYWORDS, POLICY_KEYWORDS,
+  SYMBOL_META, YAHOO_MAP, UA,
+  NEWS_POOL_LIMIT, FINANCE_QUOTA, PER_FEED_CAP
 };

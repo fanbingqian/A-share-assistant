@@ -10,6 +10,8 @@
   --cal-a-soft:rgba(198,40,40,.13); --cal-b-soft:rgba(178,106,0,.14);
   --cal-c-soft:rgba(95,70,184,.13); --cal-u-soft:rgba(22,82,204,.12);
   --cal-a-ink:#9e1f1f; --cal-b-ink:#875000; --cal-c-ink:#4a3599; --cal-u-ink:#17409a;
+  /* 美股交易日历专用：中性灰蓝，与 A/B/C 等级色区分，不代表涨跌方向 */
+  --cal-us:#2d6a86; --cal-us-soft:rgba(45,106,134,.14); --cal-us-ink:#1c4b63;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -134,6 +136,19 @@ button{cursor:pointer}
 .cal-ev.g-B{color:var(--cal-b-ink);background:var(--cal-b-soft);border-left-color:var(--cal-b)}
 .cal-ev.g-C{color:var(--cal-c-ink);background:var(--cal-c-soft);border-left-color:var(--cal-c)}
 .cal-ev.g-user{color:var(--cal-u-ink);background:var(--cal-u-soft);border-left-color:var(--cal-u)}
+/* 美股休市 / 提前收盘：虚线锚条 + 灰蓝底，明确是「美股」日历，不是 A 股休市、也不是涨跌信号 */
+.cal-ev.us-mk{color:var(--cal-us-ink);background:var(--cal-us-soft);border-left:3px dashed var(--cal-us)}
+.cal-ev.us-mk-early{background:rgba(45,106,134,.09);border-left-style:dotted}
+.cal-ev.cal-span.seg-start.us-mk{border-left:3px dashed var(--cal-us)}
+.cal-legend .dot.us-mk{background:var(--cal-us-soft);border-left:3px dashed var(--cal-us)}
+/* 日历格子：极淡斜纹 + 右上角标；用伪元素，不覆盖 today / selected 的高亮背景 */
+.cal-cell.us-closed::after,.cal-cell.us-early::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(45,106,134,.05) 7px 14px)}
+.cal-cell.us-early::after{background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(45,106,134,.028) 7px 14px)}
+.us-mk-flag{position:absolute;top:3px;right:4px;z-index:2;font-size:9px;font-weight:700;line-height:1.5;
+  padding:0 4px;border-radius:3px;white-space:nowrap;color:var(--cal-us-ink);
+  background:var(--cal-us-soft);border:1px dashed var(--cal-us)}
+.us-mk-flag.early{border-style:dotted;opacity:.9}
 .cal-ev:hover{box-shadow:0 1px 6px rgba(0,0,0,.16);filter:saturate(1.15)}
 .cal-cell.selected .cal-ev{box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
 /* 跨天行程：半透明连续横条，仅首端保留实色锚，跨周围界自然分段（FullCalendar 风格） */
@@ -170,6 +185,9 @@ button{cursor:pointer}
 .ce-card{border-left:4px solid var(--cal-u);background:var(--line2);border-radius:0 9px 9px 0;padding:12px 14px}
 .ce-card.g-A{border-left-color:var(--cal-a)}.ce-card.g-B{border-left-color:var(--cal-b)}
 .ce-card.g-C{border-left-color:var(--cal-c)}.ce-card.g-user{border-left-color:var(--cal-u)}
+.ce-card.us-mk{border-left:4px dashed var(--cal-us);background:var(--cal-us-soft)}
+.ce-card.us-mk-early{border-left-style:dotted}
+.ce-card.us-mk .ce-grade{background:var(--cal-us)}
 .ce-card-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .ce-grade{font-size:10px;font-weight:700;color:#fff;padding:2px 7px;border-radius:4px;background:var(--cal-u)}
 .ce-grade.g-A{background:var(--cal-a)}.ce-grade.g-B{background:var(--cal-b)}
@@ -190,6 +208,8 @@ button{cursor:pointer}
 .event-item{border-left:3px solid var(--line);padding:8px 12px;margin-bottom:8px;background:var(--line2);border-radius:0 8px 8px 0}
 .event-item.g-A{border-left-color:var(--up)}.event-item.g-B{border-left-color:var(--warn)}
 .event-item.g-C{border-left-color:#9385d6}.event-item.g-user{border-left-color:var(--brand)}
+.event-item.us-mk{border-left:3px dashed var(--cal-us);background:var(--cal-us-soft)}
+.event-item.us-mk-early{border-left-style:dotted}
 .event-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
 .grade-tag{font-size:10px;padding:0 5px;border-radius:4px;background:rgba(0,0,0,.05);color:var(--ink2)}
 .event-detail{font-size:12px;color:var(--ink2);margin-top:4px}
@@ -1301,6 +1321,8 @@ button{cursor:pointer}
 .nf-ana-boards i{font-style:normal;font-size:9.5px;color:var(--ink3);margin-right:2px}
 .nf-board{font-size:10px;color:var(--ink2);background:var(--brand-soft);border-radius:4px;padding:1px 6px}
 .nf-sec-chip{background:transparent;border:1px solid var(--line);color:var(--ink3)}
+/* 金融相关性标签：用品牌色描边区分于普通主题/板块标签，近似标注、非投资建议 */
+.nf-fin-chip{background:var(--brand-soft);border:1px solid rgba(22,93,255,.22);color:var(--brand);font-weight:600}
 .nf-lang-mini{margin-top:8px;font-size:10.5px;color:var(--ink2);line-height:1.6}
 .nf-lang-cov{margin-top:12px;padding:10px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--panel)}
 .nf-lang-cov-h{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px}
@@ -1888,3 +1910,18 @@ button{cursor:pointer}
 .mo-gaps{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;font-size:11.5px;color:var(--ink2)}
 .mo-foot{margin-top:12px;border-top:1px solid var(--line2);padding-top:9px;font-size:11px;color:var(--ink3);line-height:1.75}
 .mo-foot-disc{margin-top:7px;color:#8a5a12}
+
+/* ===== 历史同类情形卡片（新闻解读 · 程序确定性统计，恒返回） ===== */
+.ha-card{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);padding:11px 12px;margin:0 0 10px;overflow-wrap:anywhere;word-break:break-word}
+.ha-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink)}
+.ha-head b{font-weight:600}
+.ha-head span{font-size:11px;color:var(--ink3);text-align:right}
+.ha-sub{font-size:11.5px;line-height:1.75;color:var(--ink2);margin-top:7px}
+.ha-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}
+.ha-kpi{background:var(--bg);border:1px solid var(--line2);border-radius:7px;padding:7px 8px}
+.ha-k{font-size:10.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ha-v{font-size:14px;font-weight:600;color:var(--ink);margin-top:3px}
+.ha-cavs{margin-top:9px;border-top:1px dashed var(--line2);padding-top:7px}
+.ha-cav{font-size:11px;line-height:1.7;color:#8a5a12}
+.ha-na .ha-body{font-size:12px;line-height:1.75;color:var(--ink2);margin-top:8px}
+@media(max-width:900px){.ha-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

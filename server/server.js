@@ -293,7 +293,8 @@ async function doNewsTick() {
       // 否则解读节流期间新闻列表会「退回英文」，出现中文时有时无的问题。
       const prev = new Map(latest.news.items.map(n => [n.id, n]));
       const keep = ['titleZh', 'descZh', 'translation', 'displayTitle', 'sentiment',
-        'sentimentLabel', 'sentimentHits', 'relevance', 'topics', 'primaryTopic', 'directions', 'importance', 'insight'];
+        'sentimentLabel', 'sentimentHits', 'relevance', 'topics', 'primaryTopic', 'directions', 'importance', 'insight',
+        'finance'];
       const items = r.items.map(n => {
         const p = prev.get(n.id);
         if (!p) return n;
@@ -303,6 +304,7 @@ async function doNewsTick() {
       });
       latest.news = {
         items, feedHealth: r.feedHealth,
+        poolStats: r.poolStats || null,
         fetchedAt: r.fetchedAt, ok: r.ok
       };
       latest.newsFetchedAt = r.fetchedAt;
