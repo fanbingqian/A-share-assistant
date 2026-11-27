@@ -21,6 +21,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const usHolidays = require('./us-market-holidays');
+const fomcCal = require('./fomc-calendar');
 
 const DIR = path.join(__dirname, '..', 'data', 'calendar');
 const USER_FILE = path.join(DIR, 'events.jsonl');
@@ -52,7 +53,11 @@ const RULES = [
   { id: 'cn-lianghui', name: '全国两会', grade: 'A', category: '中国重要会议', months: [3], dayRule: (y, m) => 5, detail: '全国人大/政协会议通常3月初开幕，政府工作报告定调当年增长目标、财政赤字与产业政策，具体日期以官方公告为准', sectors: ['政策主题', '新质生产力', '扩内需'] },
 
   // —— B 级：制度性规律 / 已确认国际会议（具体日期以主办方公告为准）——
-  { id: 'fomc', name: '美联储 FOMC 议息会议', grade: 'B', category: '全球央行', months: [1, 3, 5, 6, 7, 9, 10, 12], dayRule: () => null, detail: '每年约8次，议息决定与点阵图影响美债利率、美元与全球风险偏好；具体两日会议日期以 Federal Reserve 官网公布为准', sectors: ['黄金', '美债', '美元', '北向资金'] },
+  // FOMC 已改为官方日历常量库（server/fomc-calendar.js）：2026 逐条照录美联储官网
+  // 确定日期（A 级）、2027/2028 官网暂定日程（B 级）。原规则 months 含 5 月、缺 4 月，
+  // 且 dayRule 返回 null 只生成「当月 1 日的月事件」，既无具体日期也不准确，故停用。
+  // 保留 ruleId='fomc' 供事件研究/历史类比的类型映射使用，由 expandRules() 合并官方事件。
+  { id: 'fomc', name: '美联储 FOMC 议息会议（见官方日历）', grade: 'B', category: '全球央行', months: [], dayRule: () => null, detail: '具体会议日期由 server/fomc-calendar.js 依据美联储官网日历生成；本规则已停用，仅为事件类型映射保留 ruleId。', sectors: ['黄金', '美债', '美元', '北向资金'] },
   { id: 'us-nfp', name: '美国非农就业报告', grade: 'B', category: '海外指标', months: [1,2,3,4,5,6,7,8,9,10,11,12], dayRule: (y, m) => firstFriday(y, m), detail: '通常为每月第一个周五（北京时间晚间），就业强弱直接影响降息预期、美元与黄金；以 BLS 日历为准', sectors: ['黄金', '美元', '美债'] },
   { id: 'us-cpi', name: '美国 CPI 发布', grade: 'B', category: '海外指标', months: [1,2,3,4,5,6,7,8,9,10,11,12], dayRule: (y, m) => 13, detail: '通常在每月中旬发布，通胀超预期会压制成长股估值；以 BLS 日历为准', sectors: ['黄金', '美债', '成长股'] },
   { id: 'cn-politburo', name: '中央政治局会议（经济议题）', grade: 'B', category: '中国重要会议', months: [4, 7, 10, 12], dayRule: (y, m) => 24, detail: '讨论经济工作的政治局会议多在4/7/10/12月下旬，是政策转向的重要观察窗口；日期以新华社通稿为准', sectors: ['政策主题', '地产', '基建'] },
@@ -153,6 +158,12 @@ function expandRules(year, month) {
   // 与 A 股披露截止日 / FOMC 等一样属于确定性事件库，不经过新闻准入闸门，
   // 也不写入 events.jsonl，避免被每小时新闻扫描重复追加或当成新闻线索复核。
   for (const e of usHolidays.eventsForYear(year, month)) {
+    byKey.set(e.ruleId + '|' + e.date, e);
+  }
+  // 美联储 FOMC 官方会议日历（2026 已公布 A 级 / 2027–2028 官网暂定 B 级）：
+  // 两日会议带 endDate，前端按跨天行程展开为连续色条；同样不写入 events.jsonl、
+  // 不经过新闻准入闸门。2029 起官网未公布则返回空，不推算。
+  for (const e of fomcCal.eventsForYear(year, month)) {
     byKey.set(e.ruleId + '|' + e.date, e);
   }
   return Array.from(byKey.values());
@@ -708,5 +719,5 @@ async function eventImpact(cfg, hermes, event, historical) {
 module.exports = {
   view, upcoming, expandRules, readUserEvents, dueReminders, markReminded,
   addEvent, upsertEvent, removeEvent, eventImpact, relatedStocks, deriveEndDate,
-  RULES, DATED_EVENTS, DIR, USER_FILE, US_HOLIDAYS: usHolidays
+  RULES, DATED_EVENTS, DIR, USER_FILE, US_HOLIDAYS: usHolidays, FOMC: fomcCal
 };

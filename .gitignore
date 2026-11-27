@@ -21,7 +21,7 @@ Thumbs.db
 .DS_Store
 
 # 本机计划任务定义快照：含本机账户 SID 与绝对路径，不入库
-scripts/*HealthCheck*.xml
+scripts/GlobalMarketMonitor-*.xml
 
 # 本地凭据
 .env

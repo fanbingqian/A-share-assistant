@@ -639,14 +639,15 @@ async function loadUpcoming(){
   if(!r.items.length){ box.innerHTML='<div class="empty">未来30天无事件</div>'; return; }
   box.innerHTML=r.items.map(e=>{
     const dt=new Date(e.date+'T00:00:00Z'); const days=Math.round((dt-Date.now())/86400e3);
-    const tag=(['news-scan','calendar-rule','nyse-official','nyse-rule-projection'].includes(e.source))?`<span class="fe-src-tag">${esc(srcLabel(e.source))}</span>`:'';
+    const tag=(['news-scan','calendar-rule','nyse-official','nyse-rule-projection','fed-official','fed-tentative'].includes(e.source))?`<span class="fe-src-tag">${esc(srcLabel(e.source))}</span>`:'';
     return `<div class="up-item"><span class="up-date">${e.date.slice(5)}</span><span class="up-name">${esc(e.name)}</span>${tag}<span class="up-days">${days<=0?'今日':days+'天'}</span></div>`;
   }).join('');
 }
 function srcLabel(s){
   const map={'news-scan':'新闻扫描','calendar-rule':'周期规则','gate-human-admit':'人工复核放行','rule':'规则','user':'自定义',
     'official':'官方','policy-calendar':'政策日历','policy-window':'政策窗口',
-    'nyse-official':'NYSE 官方','nyse-rule-projection':'NYSE 规则推算'};
+    'nyse-official':'NYSE 官方','nyse-rule-projection':'NYSE 规则推算',
+    'fed-official':'美联储官网','fed-tentative':'美联储暂定日程'};
   return map[s]||s||'--';
 }
 function cfLabel(c){
